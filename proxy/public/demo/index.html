@@ -2651,25 +2651,48 @@
       // Nur kompakten Seitenkontext senden – NICHT den vollen HTML (zu groß, zu langsam)
       const pageContext = `Website: Haarwerk Schmidt – Premium Friseursalon Augsburg
 
-DOM-Struktur (exakte Selektoren):
-- Topbar Telefon: .topbar-item a[href^="tel"]  → aktuell "0821 234 56 78"
-- Topbar Adresse: .topbar-item:first-child  → "📍 Blücherstraße 22, 86165 Augsburg"
-- Topbar Öffnungszeiten: .topbar-item:nth-child(3)  → "🕐 Mo–Fr 9–18:30 · Sa 8:30–15:00"
-- Nav Telefon: .nav-tel  → "✂ 0821 234 56 78"
-- Hero Überschrift Zeile 1: #hero h1 (erstes TextNode) → "Ihr Haar in"
-- Hero Überschrift gold: #hero h1 .gold-text  → "besten Händen"
+── TEXTE & KONTAKT ──
+- Topbar Telefon: .topbar-item a[href^="tel"]
+- Topbar Adresse: .topbar-item:first-child
+- Topbar Öffnungszeiten: .topbar-item:nth-child(3)
+- Nav Telefon: .nav-tel
+- Hero Überschrift: #hero h1 (TextNode[0]="Ihr Haar in", .gold-text="besten Händen")
 - Hero Subtext: #hero .hero-content p:first-of-type
-- Hero Stats: #hero .stat-number (4 Stück: 15+, 2.400, 4.9, 6)
-- Leistungen: #leistungen .service-card (6 Stück) mit h3 und p
-- Galerie: #galerie .gallery-item img (5 Bilder)
-- Team: #team .team-card (4 Stück) mit .team-name und .team-role
-- Preise: #preise .price-table (4 Tabellen) mit .price-table-title und td-Zellen
-- Bewertungen: #bewertungen .review-card (6 Stück) mit .review-text
-- Kontakt Adressblock: #kontakt .contact-block (3 Stück mit Icon + h4 + p)
-- Footer Telefon: .footer-contact-item a[href^="tel"]  → aktuell "0821 234 56 78"
-- Footer Adresse: .footer-contact-item:first-child span:last-child  → "Blücherstraße 22\n86165 Augsburg"
+- Hero Stats: #hero .stat-number (4×: 15+, 2.400, 4.9, 6)
+- Leistungen: #leistungen .service-card h3 / p (6 Stück)
+- Team: #team .team-name / .team-role (4 Stück)
+- Preise: #preise .price-table-title / td (4 Tabellen)
+- Bewertungen: #bewertungen .review-text (6 Stück)
+- Kontakt: #kontakt .contact-block h4/p (3 Stück)
+- Footer Telefon: .footer-contact-item a[href^="tel"]
+- Footer Adresse: .footer-contact-item:first-child span:last-child
 - Footer Öffnungszeiten: .footer-contact-item:last-child span:last-child
-CSS-Variablen: --gold:#b8935a  --gold-l:#d4aa78  --dark:#1a1a1a  --light:#f5f3ef`;
+
+── BUTTONS (Hintergrund/Textfarbe ändern via .style) ──
+- Gold-Haupt-Button (Hero, Promo, About): .btn-primary → style.background / style.color
+- Outline-Button (Hero): .btn-outline → style.background / style.borderColor / style.color
+- Nav-Button oben rechts: .nav-cta → style.background / style.color
+- Mobile-Button: .mobile-menu-cta → style.background / style.color
+- Formular-Absenden (Termin anfragen): .form-submit → style.background / style.color
+- ALLE Haupt-Buttons: document.querySelectorAll('.btn-primary,.nav-cta,.mobile-menu-cta,.form-submit')
+
+── ÜBERSCHRIFTEN (Farbe ändern via .style.color) ──
+- Alle Sektions-h2: document.querySelectorAll('h2.section-title')
+- Alle h3: document.querySelectorAll('h3')
+- Nur eine Sektion: document.querySelector('#leistungen h2.section-title')
+- Gold-Text in Hero: document.querySelector('#hero h1 .gold-text')
+- Promo-Titel: document.querySelector('.promo-title')
+
+── FARBEN via CSS-Variablen (ändert alles auf einmal) ──
+- Akzentfarbe/Buttons: document.documentElement.style.setProperty('--gold','#FARBE')
+- Helles Akzent: document.documentElement.style.setProperty('--gold-l','#FARBE')
+- Dunkel (Nav, Texte): document.documentElement.style.setProperty('--dark','#FARBE')
+- Seitenhintergrund: document.documentElement.style.setProperty('--light','#FARBE')
+Beispiel Blau: setProperty('--gold','#1a6fc4') + setProperty('--gold-l','#3a8fd4')
+Beispiel Rot:  setProperty('--gold','#c0392b') + setProperty('--gold-l','#e74c3c')
+Beispiel Grün: setProperty('--gold','#1a6638') + setProperty('--gold-l','#27ae60')
+
+── SEKTIONS-IDs: #leistungen #galerie #ueber-uns #team #preise #bewertungen #kontakt`;
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 25000); // 25s Timeout
