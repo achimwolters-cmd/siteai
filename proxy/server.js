@@ -10,6 +10,16 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const ADMIN_KEY = process.env.ADMIN_KEY;
 const CLIENTS_FILE = path.join(__dirname, 'clients.json');
 
+// Seed clients.json from CLIENTS_SEED env var if file doesn't exist
+if (!fs.existsSync(CLIENTS_FILE) && process.env.CLIENTS_SEED) {
+  try {
+    fs.writeFileSync(CLIENTS_FILE, process.env.CLIENTS_SEED, 'utf8');
+    console.log('[SiteAI] clients.json aus CLIENTS_SEED wiederhergestellt.');
+  } catch (e) {
+    console.error('[SiteAI] Fehler beim Seeden:', e.message);
+  }
+}
+
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
