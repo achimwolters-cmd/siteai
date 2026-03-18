@@ -2700,15 +2700,22 @@ Beispiele:
 
       const jsCode = (data.content?.[0]?.text || '').trim();
 
-      // Zurückgegebenes JS direkt auf die Seite anwenden
-      try {
-        // eslint-disable-next-line no-eval
-        eval(jsCode);
-        const commentMatch = jsCode.match(/\/\/\s*✅(.+)/);
-        const comment = commentMatch ? commentMatch[1].trim() : 'Änderung angewendet!';
-        addMsg(`✅ ${comment}`, 'bot');
-      } catch(evalErr) {
-        addMsg(`⚠️ Konnte nicht angewendet werden: ${evalErr.message}<br><small>${jsCode.substring(0,120)}…</small>`, 'error');
+      // Prüfen ob Antwort JavaScript oder natürliche Sprache ist
+      const looksLikeJS = /^\s*(const|let|var|document|window|\/\/|\[|if\s*\()/.test(jsCode);
+
+      if (!looksLikeJS) {
+        // Claude hat eine Rückfrage geliefert → als Chat-Nachricht anzeigen
+        addMsg(jsCode, 'bot');
+      } else {
+        try {
+          // eslint-disable-next-line no-eval
+          eval(jsCode);
+          const commentMatch = jsCode.match(/\/\/\s*✅(.+)/);
+          const comment = commentMatch ? commentMatch[1].trim() : 'Änderung angewendet!';
+          addMsg(`✅ ${comment}`, 'bot');
+        } catch(evalErr) {
+          addMsg(`⚠️ Konnte nicht angewendet werden: ${evalErr.message}<br><small>${jsCode.substring(0,120)}…</small>`, 'error');
+        }
       }
 
       if (data._credits_remaining !== undefined) {
