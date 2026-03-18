@@ -2711,17 +2711,19 @@ ${preise}
 ${bewertungen}
 
 ═ KONTAKT & ÖFFNUNGSZEITEN
-  Adresse: "${t(q('#kontakt .contact-block:nth-child(1) p'))}" [#kontakt .contact-block:nth-child(1) p]
-  Telefon: "${t(q('#kontakt .contact-block:nth-child(2) p'))}" [#kontakt .contact-block:nth-child(2) p]
-  E-Mail: "${t(q('#kontakt .contact-block:nth-child(3) a'))}" [#kontakt .contact-block:nth-child(3) a]
+  Adresse: "${t(q('#kontakt .contact-block:nth-child(1) .cb-val'))}" [#kontakt .contact-block:nth-child(1) .cb-val]
+  Telefon: "${t(q('#kontakt .contact-block:nth-child(2) .cb-val a'))}" [#kontakt .contact-block:nth-child(2) .cb-val a]
+  E-Mail: "${t(q('#kontakt .contact-block:nth-child(3) .cb-val a'))}" [#kontakt .contact-block:nth-child(3) .cb-val a]
   Öffnungszeiten (Tabelle – ALLE Zeilen):
 ${oeffnungszeiten}
 
 ═ FOOTER
-  Telefon: "${t(q('.footer-contact-item a[href^="tel"]'))}" [.footer-contact-item a[href^="tel"]]
-  Adresse: "${t(q('.footer-contact-item:first-child span:last-child'))}" [.footer-contact-item:first-child span:last-child]
-  Öffnungszeiten: "${t(q('.footer-contact-item:last-child span:last-child'))}" [.footer-contact-item:last-child span:last-child]
-  Beschreibungstext: "${t(q('.footer-about p'))}" [.footer-about p]
+  Beschreibungstext (z.B. "seit 2009"): "${t(q('.footer-desc'))}" [.footer-desc]
+  Kleiner Text oben im Startbereich (Eyebrow): "${t(q('.hero-eyebrow'))}" [.hero-eyebrow]
+  Adresse: "${t(q('.footer-contact-item:nth-child(1) span:last-child'))}" [.footer-contact-item:nth-child(1) span:last-child]
+  Telefon: "${t(q('.footer-contact-item:nth-child(2) a'))}" [.footer-contact-item:nth-child(2) a]
+  E-Mail: "${t(q('.footer-contact-item:nth-child(3) a'))}" [.footer-contact-item:nth-child(3) a]
+  Öffnungszeiten: "${t(q('.footer-contact-item:nth-child(4) span:last-child'))}" [.footer-contact-item:nth-child(4) span:last-child]
 
 ═ FARBEN (Akzentfarbe der ganzen Seite)
   Goldfarbe (Buttons, Icons, Akzente): document.documentElement.style.setProperty('--gold','#FARBE')
