@@ -2665,10 +2665,11 @@
         `  ${i+1}: "${t(c.querySelector('.team-name'))}" – ${t(c.querySelector('.team-role'))} [#team .team-card:nth-child(${i+1}) .team-name/.team-role]`
       ).join('\n');
 
-      const preise = qa('#preise .price-table').map((tbl,i) =>
-        `  Kategorie ${i+1}: "${t(tbl.querySelector('.price-table-title'))}" – Zeilen: ` +
-        qa.call(tbl,'tr').slice(0,3).map(r=>t(r).slice(0,40)).join(' | ') +
-        ` [#preise .price-table:nth-child(${i+1}) td]`
+      const preise = qa('#preise .price-category').map((cat,i) =>
+        `  Kategorie ${i+1}: "${t(cat.querySelector('.price-cat-name'))}" [#preise .price-category:nth-child(${i+1}) .price-cat-name]\n` +
+        qa.call(cat,'.price-row').map((row,j) =>
+          `    Zeile ${j+1}: "${t(row.querySelector('.price-name'))}" → "${t(row.querySelector('.price-val'))}" [#preise .price-category:nth-child(${i+1}) .price-row:nth-child(${j+1}) .price-val]`
+        ).join('\n')
       ).join('\n');
 
       const bewertungen = qa('#bewertungen .review-card').map((c,i) =>
