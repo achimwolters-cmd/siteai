@@ -2648,55 +2648,89 @@
     document.getElementById('ki-messages').scrollTop = 999999;
 
     try {
-      // Nur kompakten Seitenkontext senden – NICHT den vollen HTML (zu groß, zu langsam)
-      const pageContext = `Website: Haarwerk Schmidt – Premium Friseursalon Augsburg
+      // Kontext dynamisch aus dem echten DOM lesen – immer vollständig und aktuell
+      const q  = s => document.querySelector(s);
+      const qa = s => Array.from(document.querySelectorAll(s));
+      const t  = el => el?.textContent?.trim().replace(/\s+/g,' ').slice(0,80) || '';
 
-── TEXTE & KONTAKT ──
-- Topbar Telefon: .topbar-item a[href^="tel"]
-- Topbar Adresse: .topbar-item:first-child
-- Topbar Öffnungszeiten: .topbar-item:nth-child(3)
-- Nav Telefon: .nav-tel
-- Hero Überschrift: .hero h1 (TextNode[0]="Ihr Haar in", kursiver Teil = .hero h1 em)
-- Hero Subtext: .hero .hero-content p:first-of-type
-- Hero Stats (Zahlen): .stat-num (4 Stück: 15+, 2.400, 4.9 ★, 6) → textContent ändern
-- Hero Stats (Labels): .stat-label (4 Stück: Jahre Erfahrung, Zufriedene Kunden, …)
-- Leistungen: #leistungen .service-card h3 / p (6 Stück)
-- Team: #team .team-name / .team-role (4 Stück)
-- Preise: #preise .price-table-title / td (4 Tabellen)
-- Bewertungen: #bewertungen .review-text (6 Stück)
-- Kontakt: #kontakt .contact-block h4/p (3 Stück)
-- Öffnungszeiten Tabelle (Kontaktsektion): .hours-table tr → td:first-child=Tag, td:last-child=Uhrzeit
-  Einzelner Tag: document.querySelectorAll('.hours-table tr')[0].querySelector('td:last-child') → Montag
-  Alle 18:30 ersetzen: document.querySelectorAll('.hours-table td:last-child').forEach(td=>{if(td.textContent.includes('18:30'))td.textContent=td.textContent.replace('18:30','20:00')})
-- Footer Telefon: .footer-contact-item a[href^="tel"]
-- Footer Adresse: .footer-contact-item:first-child span:last-child
-- Footer Öffnungszeiten: .footer-contact-item:last-child span:last-child
+      const oeffnungszeiten = qa('.hours-table tr').map((r,i) =>
+        `  ${t(r.cells[0])} → "${t(r.cells[1])}" [.hours-table tr:nth-child(${i+1}) td:last-child]`
+      ).join('\n');
 
-── BUTTONS (Hintergrund/Textfarbe ändern via .style) ──
-- Gold-Haupt-Button (Hero, Promo, About): .btn-primary → style.background / style.color
-- Outline-Button (Hero): .btn-outline → style.background / style.borderColor / style.color
-- Nav-Button oben rechts: .nav-cta → style.background / style.color
-- Mobile-Button: .mobile-menu-cta → style.background / style.color
-- Formular-Absenden (Termin anfragen): .form-submit → style.background / style.color
-- ALLE Haupt-Buttons: document.querySelectorAll('.btn-primary,.nav-cta,.mobile-menu-cta,.form-submit')
+      const leistungen = qa('#leistungen .service-card').map((c,i) =>
+        `  Karte ${i+1}: "${t(c.querySelector('h3'))}" / "${t(c.querySelector('p')).slice(0,50)}" [#leistungen .service-card:nth-child(${i+1}) h3/p]`
+      ).join('\n');
 
-── ÜBERSCHRIFTEN (Farbe ändern via .style.color) ──
-- Alle Sektions-h2: document.querySelectorAll('h2.section-title')
-- Alle h3: document.querySelectorAll('h3')
-- Nur eine Sektion: document.querySelector('#leistungen h2.section-title')
-- Kursiver Gold-Text "besten Händen" in Hero: document.querySelector('.hero h1 em')
-- Promo-Titel: document.querySelector('.promo-title')
+      const team = qa('#team .team-card').map((c,i) =>
+        `  ${i+1}: "${t(c.querySelector('.team-name'))}" – ${t(c.querySelector('.team-role'))} [#team .team-card:nth-child(${i+1}) .team-name/.team-role]`
+      ).join('\n');
 
-── FARBEN via CSS-Variablen (ändert alles auf einmal) ──
-- Akzentfarbe/Buttons: document.documentElement.style.setProperty('--gold','#FARBE')
-- Helles Akzent: document.documentElement.style.setProperty('--gold-l','#FARBE')
-- Dunkel (Nav, Texte): document.documentElement.style.setProperty('--dark','#FARBE')
-- Seitenhintergrund: document.documentElement.style.setProperty('--light','#FARBE')
-Beispiel Blau: setProperty('--gold','#1a6fc4') + setProperty('--gold-l','#3a8fd4')
-Beispiel Rot:  setProperty('--gold','#c0392b') + setProperty('--gold-l','#e74c3c')
-Beispiel Grün: setProperty('--gold','#1a6638') + setProperty('--gold-l','#27ae60')
+      const preise = qa('#preise .price-table').map((tbl,i) =>
+        `  Kategorie ${i+1}: "${t(tbl.querySelector('.price-table-title'))}" – Zeilen: ` +
+        qa.call(tbl,'tr').slice(0,3).map(r=>t(r).slice(0,40)).join(' | ') +
+        ` [#preise .price-table:nth-child(${i+1}) td]`
+      ).join('\n');
 
-── SEKTIONS-IDs: #leistungen #galerie #ueber-uns #team #preise #bewertungen #kontakt`;
+      const bewertungen = qa('#bewertungen .review-card').map((c,i) =>
+        `  ${i+1}: "${t(c.querySelector('.review-text')).slice(0,60)}" [#bewertungen .review-card:nth-child(${i+1}) .review-text]`
+      ).join('\n');
+
+      const stats = qa('.stat-num').map((el,i) =>
+        `  Zahl ${i+1}: "${t(el)}" Label: "${t(el.parentElement?.querySelector('.stat-label'))}" [querySelectorAll('.stat-num')[${i}]]`
+      ).join('\n');
+
+      const pageContext = `Website: Haarwerk Schmidt – Friseursalon Augsburg
+Alle Werte sind AKTUELL aus der Seite gelesen. Selektoren in [eckigen Klammern].
+
+═ KOPFZEILE & NAVIGATION
+  Telefon (oben + überall): "${t(q('.topbar-item a[href^="tel"]'))}" [.topbar-item a[href^="tel"]]
+  Adresse (oben): "${t(q('.topbar-item:first-child'))}" [.topbar-item:first-child]
+  Öffnungszeiten (oben): "${t(q('.topbar-item:nth-child(3)'))}" [.topbar-item:nth-child(3)]
+  Telefon Navigation: "${t(q('.nav-tel'))}" [.nav-tel]
+  Button "Termin buchen" (Navigation): [.nav-cta] – Farbe: style.background/color
+
+═ STARTBEREICH (großes Bild oben)
+  Überschrift Zeile 1: "${t(q('.hero h1'))?.split(/\s{2,}/)[0]}" [.hero h1 – erstes TextNode]
+  Überschrift kursiv/goldfarben: "${t(q('.hero h1 em'))}" [.hero h1 em]
+  Beschreibungstext: "${t(q('.hero-desc'))}" [.hero-desc]
+  Statistiken:
+${stats}
+  Button gold: "${t(q('.btn-primary'))}" [.btn-primary] – Farbe: style.background/color
+  Button outline: "${t(q('.btn-outline'))}" [.btn-outline] – Farbe: style.background/borderColor
+
+═ LEISTUNGEN (Abschnitt mit 6 Servicekarten)
+${leistungen}
+
+═ TEAM (4 Personen)
+${team}
+
+═ PREISLISTE
+${preise}
+
+═ BEWERTUNGEN (6 Kundenstimmen)
+${bewertungen}
+
+═ KONTAKT & ÖFFNUNGSZEITEN
+  Adresse: "${t(q('#kontakt .contact-block:nth-child(1) p'))}" [#kontakt .contact-block:nth-child(1) p]
+  Telefon: "${t(q('#kontakt .contact-block:nth-child(2) p'))}" [#kontakt .contact-block:nth-child(2) p]
+  E-Mail: "${t(q('#kontakt .contact-block:nth-child(3) a'))}" [#kontakt .contact-block:nth-child(3) a]
+  Öffnungszeiten (Tabelle – ALLE Zeilen):
+${oeffnungszeiten}
+
+═ FOOTER
+  Telefon: "${t(q('.footer-contact-item a[href^="tel"]'))}" [.footer-contact-item a[href^="tel"]]
+  Adresse: "${t(q('.footer-contact-item:first-child span:last-child'))}" [.footer-contact-item:first-child span:last-child]
+  Öffnungszeiten: "${t(q('.footer-contact-item:last-child span:last-child'))}" [.footer-contact-item:last-child span:last-child]
+  Beschreibungstext: "${t(q('.footer-about p'))}" [.footer-about p]
+
+═ FARBEN (Akzentfarbe der ganzen Seite)
+  Goldfarbe (Buttons, Icons, Akzente): document.documentElement.style.setProperty('--gold','#FARBE')
+  Helles Gold: setProperty('--gold-l','#FARBE')
+  Dunkelfarbe (Hintergründe, Texte): setProperty('--dark','#FARBE')
+  Farbbeispiele – Blau: #1a6fc4/#3a8fd4 | Rot: #c0392b/#e74c3c | Grün: #1a6638/#27ae60
+  Alle Buttons auf einmal: document.querySelectorAll('.btn-primary,.nav-cta,.mobile-menu-cta,.form-submit')
+  Alle h2-Überschriften: document.querySelectorAll('h2.section-title')
+  Alle h3-Überschriften: document.querySelectorAll('h3')`;
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 25000); // 25s Timeout
