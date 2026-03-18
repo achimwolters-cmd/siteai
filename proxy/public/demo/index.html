@@ -2665,6 +2665,9 @@
 - Preise: #preise .price-table-title / td (4 Tabellen)
 - Bewertungen: #bewertungen .review-text (6 Stück)
 - Kontakt: #kontakt .contact-block h4/p (3 Stück)
+- Öffnungszeiten Tabelle (Kontaktsektion): .hours-table tr → td:first-child=Tag, td:last-child=Uhrzeit
+  Einzelner Tag: document.querySelectorAll('.hours-table tr')[0].querySelector('td:last-child') → Montag
+  Alle 18:30 ersetzen: document.querySelectorAll('.hours-table td:last-child').forEach(td=>{if(td.textContent.includes('18:30'))td.textContent=td.textContent.replace('18:30','20:00')})
 - Footer Telefon: .footer-contact-item a[href^="tel"]
 - Footer Adresse: .footer-contact-item:first-child span:last-child
 - Footer Öffnungszeiten: .footer-contact-item:last-child span:last-child
