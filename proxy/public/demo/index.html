@@ -2658,8 +2658,9 @@ DOM-Struktur (exakte Selektoren):
 - Preise: #preise .price-table (4 Tabellen) mit .price-table-title und td-Zellen
 - Bewertungen: #bewertungen .review-card (6 Stück) mit .review-text
 - Kontakt Adressblock: #kontakt .contact-block (3 Stück mit Icon + h4 + p)
-- Footer Telefon: .footer-contact a[href^="tel"]
-- Footer Adresse: .footer-contact p:first-child
+- Footer Telefon: .footer-contact-item a[href^="tel"]  → aktuell "0821 234 56 78"
+- Footer Adresse: .footer-contact-item:first-child span:last-child  → "Blücherstraße 22\n86165 Augsburg"
+- Footer Öffnungszeiten: .footer-contact-item:last-child span:last-child
 CSS-Variablen: --gold:#b8935a  --gold-l:#d4aa78  --dark:#1a1a1a  --light:#f5f3ef`;
 
       const res = await fetch(`${KI_PROXY}/api/chat`, {
@@ -2668,12 +2669,13 @@ CSS-Variablen: --gold:#b8935a  --gold-l:#d4aa78  --dark:#1a1a1a  --light:#f5f3ef
         body: JSON.stringify({
           system: `Du bist ein Website-Editor. Du bekommst eine Beschreibung einer Website und eine Änderungsanfrage.
 Gib NUR ausführbaren JavaScript-Code zurück – kein Markdown, kein \`\`\`js, keine Erklärung.
-Nutze document.querySelector / querySelectorAll, element.style, element.textContent, element.innerHTML.
+WICHTIG: Nutze IMMER optionales Chaining (?.) damit der Code nie mit "null is not an object" abstürzt.
+Nutze document.querySelector / querySelectorAll, element?.style, element?.textContent, element?.innerHTML.
 Schreibe am Ende eine Kommentarzeile: // ✅ Kurze Beschreibung was geändert wurde
 Beispiele:
-  document.querySelector('#hero h1').childNodes[0].textContent = 'Neuer Titel';
+  const h = document.querySelector('#hero h1'); if(h) h.childNodes[0].textContent = 'Neuer Titel';
   document.querySelectorAll('.btn-primary').forEach(el => el.style.background = '#c0392b');
-  document.querySelector('.team-card:first-child .team-name').textContent = 'Max Müller';`,
+  const tel = document.querySelector('.topbar-item a[href^="tel"]'); if(tel) tel.textContent = '0123 456789';`,
           messages: [
             { role: 'user', content: `Seitenkontext:\n${pageContext}\n\nGewünschte Änderung: ${msg}` }
           ]
