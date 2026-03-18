@@ -2671,8 +2671,12 @@ DOM-Struktur (exakte Selektoren):
 - Footer Öffnungszeiten: .footer-contact-item:last-child span:last-child
 CSS-Variablen: --gold:#b8935a  --gold-l:#d4aa78  --dark:#1a1a1a  --light:#f5f3ef`;
 
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000); // 25s Timeout
+
       const res = await fetch(`${KI_PROXY}/api/chat`, {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json', 'x-client-token': KI_TOKEN },
         body: JSON.stringify({
           system: `Du bist ein Website-Editor. Du bekommst eine Beschreibung einer Website und eine Änderungsanfrage.
@@ -2689,6 +2693,7 @@ Beispiele:
           ]
         })
       });
+      clearTimeout(timeout);
       const data = await res.json();
 
       if (data.error) throw new Error(data.error);
@@ -2710,7 +2715,11 @@ Beispiele:
         document.getElementById('ki-credits-badge').textContent = `${data._credits_remaining} Credits`;
       }
     } catch(err) {
-      addMsg(`❌ Fehler: ${err.message}`, 'error');
+      if (err.name === 'AbortError') {
+        addMsg('⏱️ Zeitüberschreitung – bitte nochmal versuchen.', 'error');
+      } else {
+        addMsg(`❌ Fehler: ${err.message}`, 'error');
+      }
     }
 
     document.getElementById('ki-typing').classList.remove('visible');
