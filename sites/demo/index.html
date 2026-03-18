@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Haarwerk Schmidt – Friseursalon in Augsburg</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: #1a1a1a;
+      background: #fafaf8;
+      line-height: 1.6;
+    }
+
+    /* ── Farben ── */
+    :root {
+      --gold:    #b8935a;
+      --gold-l:  #d4aa78;
+      --dark:    #1a1a1a;
+      --mid:     #3d3d3d;
+      --light:   #f5f3ef;
+      --white:   #ffffff;
+      --border:  #e8e3db;
+    }
+
+    /* ────────────────────────────────
+       NAVIGATION
+    ──────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(250,250,248,0.96);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--dark);
+      letter-spacing: -0.3px;
+    }
+    .nav-logo span { color: var(--gold); }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--mid);
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+
+    .nav-cta {
+      background: var(--gold);
+      color: var(--white);
+      border: none;
+      border-radius: 6px;
+      padding: 9px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: background 0.2s;
+      text-decoration: none;
+    }
+    .nav-cta:hover { background: var(--gold-l); }
+
+    /* ────────────────────────────────
+       HERO
+    ──────────────────────────────── */
+    .hero {
+      min-height: 92vh;
+      display: flex;
+      align-items: center;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2416 100%);
+      color: var(--white);
+      padding: 80px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Decorative circle */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -120px; right: -120px;
+      width: 520px; height: 520px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(184,147,90,0.18) 0%, transparent 70%);
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; left: -80px;
+      width: 380px; height: 380px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(184,147,90,0.10) 0%, transparent 70%);
+    }
+
+    .hero-inner {
+      max-width: 640px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 20px;
+    }
+    .hero-eyebrow::before {
+      content: '';
+      display: block;
+      width: 24px; height: 1px;
+      background: var(--gold);
+    }
+
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.4rem, 5vw, 3.6rem);
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 24px;
+      color: var(--white);
+    }
+    .hero h1 em {
+      font-style: italic;
+      color: var(--gold);
+    }
+
+    .hero p {
+      font-size: 16px;
+      color: rgba(255,255,255,0.72);
+      max-width: 480px;
+      margin-bottom: 36px;
+      line-height: 1.7;
+    }
+
+    .hero-btns {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      background: var(--gold);
+      color: var(--white);
+      border: none;
+      border-radius: 6px;
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: background 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary:hover { background: var(--gold-l); }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--white);
+      border: 1.5px solid rgba(255,255,255,0.35);
+      border-radius: 6px;
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-outline:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 40px;
+      margin-top: 56px;
+      padding-top: 40px;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      flex-wrap: wrap;
+    }
+    .stat-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .stat-label {
+      font-size: 13px;
+      color: rgba(255,255,255,0.55);
+      margin-top: 2px;
+    }
+
+    /* ────────────────────────────────
+       LEISTUNGEN
+    ──────────────────────────────── */
+    .services {
+      padding: 100px 40px;
+      background: var(--white);
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+    .section-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+      font-weight: 700;
+      color: var(--dark);
+      line-height: 1.2;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--light);
+      border-radius: 14px;
+      padding: 36px 28px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px; height: 0;
+      background: var(--gold);
+      transition: height 0.3s;
+    }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.09); }
+    .card:hover::before { height: 100%; }
+
+    .card-icon {
+      width: 48px; height: 48px;
+      background: var(--gold);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      font-size: 22px;
+    }
+
+    .card h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 10px;
+    }
+    .card p {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.65;
+      margin-bottom: 16px;
+    }
+    .card-price {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gold);
+    }
+
+    /* ────────────────────────────────
+       ÜBER UNS
+    ──────────────────────────────── */
+    .about {
+      padding: 100px 40px;
+      background: var(--light);
+    }
+
+    .about-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+
+    .about-visual {
+      background: linear-gradient(135deg, #2d2416, #1a1a1a);
+      border-radius: 20px;
+      aspect-ratio: 4/5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .about-visual::before {
+      content: '✂';
+      font-size: 100px;
+      opacity: 0.08;
+    }
+    .about-badge {
+      position: absolute;
+      bottom: 28px; right: 28px;
+      background: var(--gold);
+      color: var(--white);
+      border-radius: 12px;
+      padding: 16px 20px;
+      text-align: center;
+    }
+    .about-badge-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .about-badge-txt {
+      font-size: 11px;
+      opacity: 0.9;
+      margin-top: 2px;
+    }
+
+    .about-content .section-header { text-align: left; margin-bottom: 24px; }
+
+    .about-content p {
+      font-size: 15px;
+      color: #555;
+      line-height: 1.75;
+      margin-bottom: 16px;
+    }
+
+    .about-list {
+      list-style: none;
+      margin: 24px 0 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .about-list li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--mid);
+    }
+    .about-list li::before {
+      content: '✓';
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px; height: 20px;
+      background: var(--gold);
+      color: white;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* ────────────────────────────────
+       KONTAKT
+    ──────────────────────────────── */
+    .contact {
+      padding: 100px 40px;
+      background: var(--white);
+    }
+
+    .contact-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
+    }
+
+    .contact-info .section-header { text-align: left; margin-bottom: 32px; }
+
+    .contact-blocks {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .contact-block {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .contact-block-icon {
+      width: 44px; height: 44px;
+      background: var(--light);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .contact-block-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 3px;
+    }
+    .contact-block-val {
+      font-size: 15px;
+      color: var(--dark);
+      font-weight: 500;
+    }
+    .contact-block-val a {
+      color: var(--dark);
+      text-decoration: none;
+    }
+    .contact-block-val a:hover { color: var(--gold); }
+
+    .hours-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 16px;
+      margin-top: 4px;
+    }
+    .hours-row { display: contents; }
+    .hours-day  { font-size: 13px; color: #666; }
+    .hours-time { font-size: 13px; color: var(--dark); font-weight: 500; }
+
+    /* Form */
+    .contact-form {
+      background: var(--light);
+      border-radius: 16px;
+      padding: 36px;
+    }
+    .contact-form h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      margin-bottom: 24px;
+      color: var(--dark);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+      letter-spacing: 0.3px;
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      color: var(--dark);
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+    .form-group textarea { resize: vertical; min-height: 90px; }
+
+    .form-submit {
+      width: 100%;
+      background: var(--gold);
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 4px;
+    }
+    .form-submit:hover { background: var(--gold-l); }
+
+    /* ────────────────────────────────
+       FOOTER
+    ──────────────────────────────── */
+    footer {
+      background: var(--dark);
+      color: rgba(255,255,255,0.6);
+      padding: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .footer-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--white);
+    }
+    .footer-logo span { color: var(--gold); }
+    footer p { font-size: 13px; }
+    .footer-links {
+      display: flex;
+      gap: 20px;
+      list-style: none;
+    }
+    .footer-links a {
+      font-size: 13px;
+      color: rgba(255,255,255,0.45);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--gold); }
+
+    /* ────────────────────────────────
+       RESPONSIVE
+    ──────────────────────────────── */
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .nav-links { display: none; }
+      .hero { padding: 60px 24px; min-height: 80vh; }
+      .services, .about, .contact { padding: 64px 24px; }
+      .about-inner, .contact-inner { grid-template-columns: 1fr; gap: 40px; }
+      .about-visual { aspect-ratio: 3/2; }
+      .form-row { grid-template-columns: 1fr; }
+      .hero-stats { gap: 24px; }
+      footer { padding: 28px 24px; flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════
+     NAVIGATION
+═══════════════════════════════ -->
+<nav>
+  <div class="nav-logo">Haarwerk<span>.</span></div>
+  <ul class="nav-links">
+    <li><a href="#leistungen">Leistungen</a></li>
+    <li><a href="#ueber-uns">Über uns</a></li>
+    <li><a href="#kontakt">Kontakt</a></li>
+  </ul>
+  <a href="tel:+498212345678" class="nav-cta">Termin buchen</a>
+</nav>
+
+<!-- ═══════════════════════════════
+     HERO
+═══════════════════════════════ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">Friseursalon Augsburg</div>
+    <h1>Ihr Haar in<br><em>besten Händen</em></h1>
+    <p>Professionelle Haarpflege, kreative Schnitte und Colorationen – individuell auf Sie abgestimmt. Seit über 15 Jahren Ihr Vertrauenssalon in Augsburg-Lechhausen.</p>
+    <div class="hero-btns">
+      <a href="tel:+498212345678" class="btn-primary">Jetzt anrufen</a>
+      <a href="#leistungen" class="btn-outline">Unsere Leistungen</a>
+    </div>
+    <div class="hero-stats">
+      <div>
+        <div class="stat-num">15+</div>
+        <div class="stat-label">Jahre Erfahrung</div>
+      </div>
+      <div>
+        <div class="stat-num">2.400</div>
+        <div class="stat-label">Zufriedene Kunden</div>
+      </div>
+      <div>
+        <div class="stat-num">4.9 ★</div>
+        <div class="stat-label">Google Bewertung</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     LEISTUNGEN
+═══════════════════════════════ -->
+<section class="services" id="leistungen">
+  <div class="section-header">
+    <div class="section-eyebrow">Was wir anbieten</div>
+    <h2 class="section-title">Unsere Leistungen</h2>
+  </div>
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-icon">✂️</div>
+      <h3>Damenschnitt</h3>
+      <p>Vom klassischen Bob bis zum modernen Stufenschnitt – wir setzen Ihren Wunschstil präzise um.</p>
+      <div class="card-price">ab 45 €</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">💈</div>
+      <h3>Herrenschnitt</h3>
+      <p>Klassischer Haarschnitt, Fade oder Undercut – mit Nassrasur und Bartpflege auf Wunsch.</p>
+      <div class="card-price">ab 28 €</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🎨</div>
+      <h3>Coloration</h3>
+      <p>Strähnen, Balayage, Ombré oder Vollcoloration – wir zaubern Ihre Traumfarbe mit hochwertigen Produkten.</p>
+      <div class="card-price">ab 65 €</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">💆</div>
+      <h3>Haarpflege</h3>
+      <p>Intensive Pflegekuren, Keratinbehandlung und professionelle Haarkur für glänzendes, gesundes Haar.</p>
+      <div class="card-price">ab 35 €</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     ÜBER UNS
+═══════════════════════════════ -->
+<section class="about" id="ueber-uns">
+  <div class="about-inner">
+    <div class="about-visual">
+      <div class="about-badge">
+        <div class="about-badge-num">15</div>
+        <div class="about-badge-txt">Jahre in Augsburg</div>
+      </div>
+    </div>
+    <div class="about-content">
+      <div class="section-header">
+        <div class="section-eyebrow">Wer wir sind</div>
+        <h2 class="section-title">Leidenschaft<br>für schönes Haar</h2>
+      </div>
+      <p>Haarwerk Schmidt wurde 2009 von Petra Schmidt gegründet – mit einer einfachen Überzeugung: Jeder Mensch verdient einen Friseur, dem er wirklich vertrauen kann.</p>
+      <p>In unserem familiären Salon in Augsburg-Lechhausen nehmen wir uns Zeit für Sie. Wir hören zu, beraten ehrlich und arbeiten ausschließlich mit hochwertigen Produkten der Marken Wella und Olaplex.</p>
+      <ul class="about-list">
+        <li>Ausgebildetes Team mit regelmäßigen Weiterbildungen</li>
+        <li>Nur hochwertige, schonenende Produkte</li>
+        <li>Entspannte Atmosphäre ohne Zeitdruck</li>
+        <li>Kostenlose Farbberatung beim ersten Termin</li>
+      </ul>
+      <a href="tel:+498212345678" class="btn-primary">Termin vereinbaren</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     KONTAKT
+═══════════════════════════════ -->
+<section class="contact" id="kontakt">
+  <div class="contact-inner">
+    <div class="contact-info">
+      <div class="section-header">
+        <div class="section-eyebrow">So finden Sie uns</div>
+        <h2 class="section-title">Kontakt &amp;<br>Öffnungszeiten</h2>
+      </div>
+      <div class="contact-blocks">
+        <div class="contact-block">
+          <div class="contact-block-icon">📍</div>
+          <div>
+            <div class="contact-block-label">Adresse</div>
+            <div class="contact-block-val">Blücherstraße 22<br>86165 Augsburg-Lechhausen</div>
+          </div>
+        </div>
+        <div class="contact-block">
+          <div class="contact-block-icon">📞</div>
+          <div>
+            <div class="contact-block-label">Telefon</div>
+            <div class="contact-block-val"><a href="tel:+498212345678">0821 234 56 78</a></div>
+          </div>
+        </div>
+        <div class="contact-block">
+          <div class="contact-block-icon">✉️</div>
+          <div>
+            <div class="contact-block-label">E-Mail</div>
+            <div class="contact-block-val"><a href="mailto:info@haarwerk-schmidt.de">info@haarwerk-schmidt.de</a></div>
+          </div>
+        </div>
+        <div class="contact-block">
+          <div class="contact-block-icon">🕐</div>
+          <div>
+            <div class="contact-block-label">Öffnungszeiten</div>
+            <div class="contact-block-val">
+              <div class="hours-grid">
+                <span class="hours-day">Mo – Fr</span>
+                <span class="hours-time">9:00 – 18:30 Uhr</span>
+                <span class="hours-day">Samstag</span>
+                <span class="hours-time">8:30 – 15:00 Uhr</span>
+                <span class="hours-day">Sonntag</span>
+                <span class="hours-time">Geschlossen</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="contact-form">
+      <h3>Termin anfragen</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-name">Vorname</label>
+          <input id="f-name" type="text" placeholder="Max" />
+        </div>
+        <div class="form-group">
+          <label for="f-last">Nachname</label>
+          <input id="f-last" type="text" placeholder="Mustermann" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="f-phone">Telefon</label>
+        <input id="f-phone" type="tel" placeholder="0821 …" />
+      </div>
+      <div class="form-group">
+        <label for="f-service">Gewünschte Leistung</label>
+        <select id="f-service">
+          <option value="">Bitte wählen …</option>
+          <option>Damenschnitt</option>
+          <option>Herrenschnitt</option>
+          <option>Coloration</option>
+          <option>Haarpflege</option>
+          <option>Sonstiges</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="f-msg">Nachricht (optional)</label>
+        <textarea id="f-msg" placeholder="Haben Sie besondere Wünsche?"></textarea>
+      </div>
+      <button class="form-submit" onclick="alert('Vielen Dank! Wir melden uns bald bei Ihnen.')">Anfrage senden</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     FOOTER
+═══════════════════════════════ -->
+<footer>
+  <div class="footer-logo">Haarwerk<span>.</span></div>
+  <p>© 2026 Haarwerk Schmidt – Friseursalon Augsburg</p>
+  <ul class="footer-links">
+    <li><a href="#">Impressum</a></li>
+    <li><a href="#">Datenschutz</a></li>
+  </ul>
+</footer>
+
+</body>
+</html>
