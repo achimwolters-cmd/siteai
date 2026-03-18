@@ -2609,7 +2609,12 @@
       const res  = await fetch(`${KI_PROXY}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-client-token': KI_TOKEN },
-        body: JSON.stringify({ html, message: msg })
+        body: JSON.stringify({
+          system: 'Du bist ein Website-Editor. Du bekommst den vollständigen HTML-Code einer Website und eine Änderungsanfrage vom Nutzer. Führe die gewünschte Änderung präzise durch und gib NUR den vollständigen, geänderten HTML-Code zurück – ohne Erklärungen, ohne Markdown-Blöcke, ohne ```html. Nur reiner HTML-Code beginnend mit <!DOCTYPE html>.',
+          messages: [
+            { role: 'user', content: `Aktueller HTML-Code der Website:\n\n${html}\n\nGewünschte Änderung: ${msg}` }
+          ]
+        })
       });
       const data = await res.json();
 
