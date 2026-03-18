@@ -2698,7 +2698,12 @@ Beispiele:
 
       if (data.error) throw new Error(data.error);
 
-      const jsCode = (data.content?.[0]?.text || '').trim();
+      // Markdown-Code-Fences entfernen (```javascript ... ``` oder ``` ... ```)
+      const jsCode = (data.content?.[0]?.text || '')
+        .trim()
+        .replace(/^```[\w]*\n?/, '')
+        .replace(/\n?```$/, '')
+        .trim();
 
       // Prüfen ob Antwort JavaScript oder natürliche Sprache ist
       const looksLikeJS = /^\s*(const|let|var|document|window|\/\/|\[|if\s*\()/.test(jsCode);
