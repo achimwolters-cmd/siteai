@@ -2298,5 +2298,353 @@
   });
 </script>
 
+<!-- ══════════════════════════════════════
+     KI-EDITOR WIDGET
+══════════════════════════════════════ -->
+<style>
+  /* ── Floating Button ── */
+  #ki-fab {
+    position: fixed;
+    bottom: 28px; right: 28px;
+    z-index: 9999;
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, #b8935a, #9a7840);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(184,147,90,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    color: white;
+  }
+  #ki-fab:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(184,147,90,0.7); }
+  #ki-fab.open { border-radius: 12px; width: 48px; height: 48px; font-size: 18px; }
+
+  /* ── Panel ── */
+  #ki-panel {
+    position: fixed;
+    bottom: 96px; right: 28px;
+    z-index: 9998;
+    width: 360px;
+    max-height: 72vh;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 16px 60px rgba(0,0,0,0.18);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: scale(0.9) translateY(16px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s;
+    transform-origin: bottom right;
+  }
+  #ki-panel.open {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* Panel Header */
+  .ki-header {
+    background: linear-gradient(135deg, #1a1a1a, #2d2416);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .ki-header-icon {
+    width: 34px; height: 34px;
+    background: rgba(184,147,90,0.25);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .ki-header-title { font-size: 14px; font-weight: 700; color: #fff; font-family: 'Inter', sans-serif; }
+  .ki-header-sub { font-size: 11px; color: rgba(255,255,255,0.5); font-family: 'Inter', sans-serif; }
+  .ki-credits {
+    margin-left: auto;
+    background: rgba(184,147,90,0.2);
+    color: #d4aa78;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-family: 'Inter', sans-serif;
+    white-space: nowrap;
+  }
+
+  /* Messages */
+  .ki-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #f8f7f5;
+  }
+  .ki-messages::-webkit-scrollbar { width: 4px; }
+  .ki-messages::-webkit-scrollbar-track { background: transparent; }
+  .ki-messages::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+
+  .ki-msg {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 1.55;
+    font-family: 'Inter', sans-serif;
+  }
+  .ki-msg.bot {
+    background: #ffffff;
+    color: #1a1a1a;
+    align-self: flex-start;
+    border: 1px solid #e8e3db;
+    border-bottom-left-radius: 4px;
+  }
+  .ki-msg.user {
+    background: linear-gradient(135deg, #b8935a, #9a7840);
+    color: #fff;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+  }
+  .ki-msg.error { background: #fff0f0; color: #c00; border: 1px solid #fcc; align-self: flex-start; }
+
+  /* Typing Indicator */
+  .ki-typing {
+    display: none;
+    align-self: flex-start;
+    background: #fff;
+    border: 1px solid #e8e3db;
+    border-radius: 14px;
+    border-bottom-left-radius: 4px;
+    padding: 12px 16px;
+    gap: 5px;
+    align-items: center;
+  }
+  .ki-typing.visible { display: flex; }
+  .ki-dot {
+    width: 7px; height: 7px;
+    background: #b8935a;
+    border-radius: 50%;
+    animation: ki-bounce 1.2s infinite;
+  }
+  .ki-dot:nth-child(2) { animation-delay: 0.2s; }
+  .ki-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes ki-bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+  /* Chips */
+  .ki-chips {
+    padding: 10px 16px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex-shrink: 0;
+    background: #f8f7f5;
+  }
+  .ki-chip {
+    background: #fff;
+    border: 1px solid #e8e3db;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: #555;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .ki-chip:hover { background: #b8935a; border-color: #b8935a; color: #fff; }
+
+  /* Input */
+  .ki-input-row {
+    padding: 12px 14px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    border-top: 1px solid #e8e3db;
+    background: #fff;
+    flex-shrink: 0;
+  }
+  .ki-textarea {
+    flex: 1;
+    background: #f5f3ef;
+    border: 1.5px solid #e8e3db;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    resize: none;
+    min-height: 38px;
+    max-height: 100px;
+    color: #1a1a1a;
+    line-height: 1.45;
+    transition: border-color 0.2s;
+  }
+  .ki-textarea:focus { outline: none; border-color: #b8935a; }
+  .ki-send {
+    width: 38px; height: 38px;
+    background: #b8935a;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, transform 0.15s;
+    color: white;
+    font-size: 16px;
+  }
+  .ki-send:hover:not(:disabled) { background: #9a7840; transform: scale(1.05); }
+  .ki-send:disabled { background: #ccc; cursor: not-allowed; }
+
+  @media (max-width: 480px) {
+    #ki-panel { width: calc(100vw - 32px); right: 16px; bottom: 88px; }
+    #ki-fab { right: 16px; bottom: 16px; }
+  }
+</style>
+
+<!-- FAB Button -->
+<button id="ki-fab" onclick="toggleKI()" title="KI-Editor öffnen">✨</button>
+
+<!-- Panel -->
+<div id="ki-panel">
+  <div class="ki-header">
+    <div class="ki-header-icon">✨</div>
+    <div>
+      <div class="ki-header-title">KI-Editor</div>
+      <div class="ki-header-sub">Änderungen per Text</div>
+    </div>
+    <div class="ki-credits" id="ki-credits-badge">… Credits</div>
+  </div>
+
+  <div class="ki-messages" id="ki-messages">
+    <div class="ki-msg bot">👋 Hallo! Ich bin Ihr KI-Assistent. Beschreiben Sie einfach, was Sie ändern möchten – z.B. <em>„Mach die Überschrift im Hero blau"</em> oder <em>„Füge eine neue Leistung hinzu"</em>.</div>
+    <div class="ki-typing" id="ki-typing">
+      <div class="ki-dot"></div><div class="ki-dot"></div><div class="ki-dot"></div>
+    </div>
+  </div>
+
+  <div class="ki-chips" id="ki-chips">
+    <div class="ki-chip" onclick="kiChip(this)">Farbe der Überschrift ändern</div>
+    <div class="ki-chip" onclick="kiChip(this)">Neuen Abschnitt hinzufügen</div>
+    <div class="ki-chip" onclick="kiChip(this)">Telefonnummer ändern</div>
+    <div class="ki-chip" onclick="kiChip(this)">Preise aktualisieren</div>
+    <div class="ki-chip" onclick="kiChip(this)">Öffnungszeiten ändern</div>
+  </div>
+
+  <div class="ki-input-row">
+    <textarea class="ki-textarea" id="ki-input" placeholder="Was soll geändert werden?" rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();kiSend();}"
+      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+    <button class="ki-send" id="ki-send-btn" onclick="kiSend()">➤</button>
+  </div>
+</div>
+
+<script>
+  // ══ KI WIDGET CONFIG ══════════════════════
+  const KI_PROXY   = 'https://siteai-production.up.railway.app';
+  const KI_TOKEN   = 'sat_vl3f1zk715r3rkhfbl0brn';
+  // ══════════════════════════════════════════
+
+  let kiOpen = false;
+
+  function toggleKI() {
+    kiOpen = !kiOpen;
+    document.getElementById('ki-panel').classList.toggle('open', kiOpen);
+    document.getElementById('ki-fab').classList.toggle('open', kiOpen);
+    document.getElementById('ki-fab').textContent = kiOpen ? '✕' : '✨';
+    if (kiOpen) {
+      loadCredits();
+      document.getElementById('ki-input').focus();
+    }
+  }
+
+  // Credits laden
+  async function loadCredits() {
+    try {
+      const r = await fetch(`${KI_PROXY}/api/status`, { headers: { 'x-client-token': KI_TOKEN } });
+      const d = await r.json();
+      document.getElementById('ki-credits-badge').textContent = `${d.credits ?? '?'} Credits`;
+    } catch(e) {}
+  }
+
+  function kiChip(el) {
+    document.getElementById('ki-input').value = el.textContent;
+    document.getElementById('ki-input').focus();
+  }
+
+  function addMsg(text, type) {
+    const msgs = document.getElementById('ki-messages');
+    const typing = document.getElementById('ki-typing');
+    const div = document.createElement('div');
+    div.className = `ki-msg ${type}`;
+    div.innerHTML = text;
+    msgs.insertBefore(div, typing);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  async function kiSend() {
+    const input = document.getElementById('ki-input');
+    const btn   = document.getElementById('ki-send-btn');
+    const msg   = input.value.trim();
+    if (!msg) return;
+
+    addMsg(msg, 'user');
+    input.value = '';
+    input.style.height = 'auto';
+    btn.disabled = true;
+    document.getElementById('ki-chips').style.display = 'none';
+    document.getElementById('ki-typing').classList.add('visible');
+    document.getElementById('ki-messages').scrollTop = 999999;
+
+    try {
+      const html = document.documentElement.outerHTML;
+      const res  = await fetch(`${KI_PROXY}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-client-token': KI_TOKEN },
+        body: JSON.stringify({ html, message: msg })
+      });
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+
+      // HTML in Response extrahieren
+      const newHtml = data.content?.[0]?.text || '';
+      const match = newHtml.match(/<!DOCTYPE[\s\S]*<\/html>/i) || newHtml.match(/<html[\s\S]*<\/html>/i);
+
+      if (match) {
+        // Kommentar extrahieren
+        const commentMatch = newHtml.match(/<!--\s*✅([^>]+)-->/);
+        const comment = commentMatch ? commentMatch[1].trim() : 'Änderung angewendet!';
+
+        // Seite aktualisieren
+        document.open();
+        document.write(match[0]);
+        document.close();
+        // Credits aktualisieren
+        if (data._credits_remaining !== undefined) {
+          document.getElementById('ki-credits-badge').textContent = `${data._credits_remaining} Credits`;
+        }
+        addMsg(`✅ ${comment}`, 'bot');
+      } else {
+        addMsg('✅ ' + (newHtml.length > 200 ? newHtml.substring(0, 200) + '…' : newHtml), 'bot');
+      }
+    } catch(err) {
+      addMsg(`❌ Fehler: ${err.message}`, 'error');
+    }
+
+    document.getElementById('ki-typing').classList.remove('visible');
+    btn.disabled = false;
+    loadCredits();
+  }
+</script>
+
 </body>
 </html>
