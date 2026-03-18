@@ -23,6 +23,9 @@ if (!fs.existsSync(CLIENTS_FILE) && process.env.CLIENTS_SEED) {
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
+// Statische Demo-Seiten unter /demo/* ausliefern
+app.use(express.static(path.join(__dirname, 'public')));
+
 // ---------- helpers ----------
 
 function loadClients() {
