@@ -2656,9 +2656,10 @@
 - Topbar Adresse: .topbar-item:first-child
 - Topbar Öffnungszeiten: .topbar-item:nth-child(3)
 - Nav Telefon: .nav-tel
-- Hero Überschrift: #hero h1 (TextNode[0]="Ihr Haar in", kursiver Teil "besten Händen" = .hero h1 em)
-- Hero Subtext: #hero .hero-content p:first-of-type
-- Hero Stats: #hero .stat-number (4×: 15+, 2.400, 4.9, 6)
+- Hero Überschrift: .hero h1 (TextNode[0]="Ihr Haar in", kursiver Teil = .hero h1 em)
+- Hero Subtext: .hero .hero-content p:first-of-type
+- Hero Stats (Zahlen): .stat-num (4 Stück: 15+, 2.400, 4.9 ★, 6) → textContent ändern
+- Hero Stats (Labels): .stat-label (4 Stück: Jahre Erfahrung, Zufriedene Kunden, …)
 - Leistungen: #leistungen .service-card h3 / p (6 Stück)
 - Team: #team .team-name / .team-role (4 Stück)
 - Preise: #preise .price-table-title / td (4 Tabellen)
