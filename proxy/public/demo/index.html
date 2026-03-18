@@ -2721,12 +2721,12 @@ Beispiele:
 
       if (data.error) throw new Error(data.error);
 
-      // Markdown-Code-Fences + lose "javascript"-Zeile entfernen
+      // Alle Markdown-Code-Fences entfernen (egal wo sie stehen)
       const jsCode = (data.content?.[0]?.text || '')
         .trim()
-        .replace(/^```[\w]*\s*\n?/, '')   // ```javascript\n  oder  ```\n
-        .replace(/\n?```\s*$/, '')         // schließendes ```
-        .replace(/^javascript\s*\n/, '')   // "javascript" allein auf erster Zeile
+        .replace(/^```[\w]*\s*\n?/, '')   // öffnendes ```javascript\n
+        .replace(/```[\w]*\s*/g, '')       // alle restlichen ``` (auch mitten im Code)
+        .replace(/^javascript\s*\n/, '')   // loses "javascript" auf erster Zeile
         .trim();
 
       // Prüfen ob Antwort JavaScript oder natürliche Sprache ist
