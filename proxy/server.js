@@ -128,6 +128,38 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// Save site HTML
+app.post('/api/save', (req, res) => {
+  const token = req.headers['x-client-token'];
+  if (!token) return res.status(400).json({ error: 'Missing x-client-token header' });
+
+  const clients = loadClients();
+  const client = clients[token];
+  if (!client) return res.status(401).json({ error: 'Invalid token' });
+  if (!client.active) return res.status(403).json({ error: 'Account deactivated' });
+
+  const { html, site } = req.body;
+  if (!html || typeof html !== 'string') {
+    return res.status(400).json({ error: 'Missing html' });
+  }
+
+  // Nur erlaubte Seiten (Sicherheit)
+  const siteName = (site || 'demo').replace(/[^a-z0-9-]/g, '');
+  const siteDir  = path.join(__dirname, 'public', siteName);
+  if (!fs.existsSync(siteDir)) {
+    return res.status(400).json({ error: 'Unknown site' });
+  }
+
+  try {
+    fs.writeFileSync(path.join(siteDir, 'index.html'), html, 'utf8');
+    console.log(`[SiteAI] "${siteName}" gespeichert von ${client.name}`);
+    res.json({ ok: true, message: 'Seite gespeichert!' });
+  } catch(err) {
+    console.error('Save error:', err);
+    res.status(500).json({ error: 'Speichern fehlgeschlagen', details: err.message });
+  }
+});
+
 // ---------- admin endpoints ----------
 
 // List all clients

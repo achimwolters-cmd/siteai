@@ -2504,6 +2504,35 @@
   .ki-send:hover:not(:disabled) { background: #9a7840; transform: scale(1.05); }
   .ki-send:disabled { background: #ccc; cursor: not-allowed; }
 
+  /* Speichern-Bar */
+  .ki-save-bar {
+    padding: 10px 14px;
+    background: #f0faf4;
+    border-top: 1px solid #c6e8d3;
+    flex-shrink: 0;
+  }
+  .ki-save-btn {
+    width: 100%;
+    background: #2a7d4f;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+  .ki-save-btn:hover:not(:disabled) { background: #1e5c3a; transform: scale(1.01); }
+  .ki-save-btn:disabled { background: #8bbfa3; cursor: not-allowed; }
+  .ki-save-btn.saving { background: #8bbfa3; }
+  .ki-save-btn.saved  { background: #1a6638; }
+
   @media (max-width: 480px) {
     #ki-panel { width: calc(100vw - 32px); right: 16px; bottom: 88px; }
     #ki-fab { right: 16px; bottom: 16px; }
@@ -2537,6 +2566,12 @@
     <div class="ki-chip" onclick="kiChip(this)">Telefonnummer ändern</div>
     <div class="ki-chip" onclick="kiChip(this)">Preise aktualisieren</div>
     <div class="ki-chip" onclick="kiChip(this)">Öffnungszeiten ändern</div>
+  </div>
+
+  <div class="ki-save-bar">
+    <button class="ki-save-btn" id="ki-save-btn" onclick="kiSave()">
+      💾 Änderungen veröffentlichen
+    </button>
   </div>
 
   <div class="ki-input-row">
@@ -2607,19 +2642,25 @@
     try {
       // Nur kompakten Seitenkontext senden – NICHT den vollen HTML (zu groß, zu langsam)
       const pageContext = `Website: Haarwerk Schmidt – Premium Friseursalon Augsburg
-Sektionen im DOM:
-- <header class="header"> mit Nav-Links: Leistungen, Galerie, Team, Preise, Bewertungen, Kontakt
-- <section id="hero"> Hero mit <h1> "Ihr Haar in" + <em class="gold-text"> "besten Händen"
-- <section id="leistungen"> 6 Service-Cards (.service-card) mit h3-Titeln
-- <section id="galerie"> 5 .gallery-item mit Bildern
-- <section id="ueber-uns"> Über-uns-Text + 3 Fotos
-- <section id="team"> 4 .team-card: Petra Schmidt (Inhaberin), Lisa Maier (Stylistin), Sara Özdemir (Color), Markus Bauer (Barbier)
-- <section id="preise"> Preistabellen (.price-table) für Damen, Herren, Kinder, Pflege
-- <section id="bewertungen"> 6 .review-card
-- <section id="kontakt"> Kontaktformular + Karte
-- <footer class="footer"> mit Links und Copyright
-CSS-Variablen: --gold:#b8935a  --gold-l:#d4aa78  --dark:#1a1a1a  --light:#f5f3ef
-Kontakt: Tel. 0821 234 56 78 · Blücherstraße 22, 86165 Augsburg`;
+
+DOM-Struktur (exakte Selektoren):
+- Topbar Telefon: .topbar-item a[href^="tel"]  → aktuell "0821 234 56 78"
+- Topbar Adresse: .topbar-item:first-child  → "📍 Blücherstraße 22, 86165 Augsburg"
+- Topbar Öffnungszeiten: .topbar-item:nth-child(3)  → "🕐 Mo–Fr 9–18:30 · Sa 8:30–15:00"
+- Nav Telefon: .nav-tel  → "✂ 0821 234 56 78"
+- Hero Überschrift Zeile 1: #hero h1 (erstes TextNode) → "Ihr Haar in"
+- Hero Überschrift gold: #hero h1 .gold-text  → "besten Händen"
+- Hero Subtext: #hero .hero-content p:first-of-type
+- Hero Stats: #hero .stat-number (4 Stück: 15+, 2.400, 4.9, 6)
+- Leistungen: #leistungen .service-card (6 Stück) mit h3 und p
+- Galerie: #galerie .gallery-item img (5 Bilder)
+- Team: #team .team-card (4 Stück) mit .team-name und .team-role
+- Preise: #preise .price-table (4 Tabellen) mit .price-table-title und td-Zellen
+- Bewertungen: #bewertungen .review-card (6 Stück) mit .review-text
+- Kontakt Adressblock: #kontakt .contact-block (3 Stück mit Icon + h4 + p)
+- Footer Telefon: .footer-contact a[href^="tel"]
+- Footer Adresse: .footer-contact p:first-child
+CSS-Variablen: --gold:#b8935a  --gold-l:#d4aa78  --dark:#1a1a1a  --light:#f5f3ef`;
 
       const res = await fetch(`${KI_PROXY}/api/chat`, {
         method: 'POST',
@@ -2665,6 +2706,40 @@ Beispiele:
     document.getElementById('ki-typing').classList.remove('visible');
     btn.disabled = false;
     loadCredits();
+  }
+
+  async function kiSave() {
+    const btn = document.getElementById('ki-save-btn');
+    btn.disabled = true;
+    btn.classList.add('saving');
+    btn.textContent = '⏳ Wird gespeichert…';
+
+    try {
+      const html = document.documentElement.outerHTML;
+      const res  = await fetch(`${KI_PROXY}/api/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-client-token': KI_TOKEN },
+        body: JSON.stringify({ html, site: 'demo' })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Unbekannter Fehler');
+
+      btn.classList.remove('saving');
+      btn.classList.add('saved');
+      btn.textContent = '✅ Veröffentlicht!';
+      addMsg('✅ Seite erfolgreich gespeichert und veröffentlicht!', 'bot');
+
+      setTimeout(() => {
+        btn.classList.remove('saved');
+        btn.disabled = false;
+        btn.innerHTML = '💾 Änderungen veröffentlichen';
+      }, 3000);
+    } catch(err) {
+      btn.classList.remove('saving');
+      btn.disabled = false;
+      btn.innerHTML = '💾 Änderungen veröffentlichen';
+      addMsg(`❌ Speichern fehlgeschlagen: ${err.message}`, 'error');
+    }
   }
 </script>
 
