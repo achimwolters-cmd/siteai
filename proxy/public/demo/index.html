@@ -2744,13 +2744,16 @@ Beispiele:
 
       const html = document.documentElement.outerHTML;
 
-      // Panel-State wiederherstellen (bleibt geschlossen, aber visuell konsistent)
+      const saveCtrl = new AbortController();
+      const saveTimeout = setTimeout(() => saveCtrl.abort(), 20000);
 
       const res  = await fetch(`${KI_PROXY}/api/save`, {
         method: 'POST',
+        signal: saveCtrl.signal,
         headers: { 'Content-Type': 'application/json', 'x-client-token': KI_TOKEN },
         body: JSON.stringify({ html, site: 'demo' })
       });
+      clearTimeout(saveTimeout);
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Unbekannter Fehler');
 
@@ -2768,7 +2771,10 @@ Beispiele:
       btn.classList.remove('saving');
       btn.disabled = false;
       btn.innerHTML = '💾 Änderungen veröffentlichen';
-      addMsg(`❌ Speichern fehlgeschlagen: ${err.message}`, 'error');
+      const msg2 = err.name === 'AbortError'
+        ? '⏱️ Zeitüberschreitung beim Speichern – bitte nochmal versuchen.'
+        : `❌ Speichern fehlgeschlagen: ${err.message}`;
+      addMsg(msg2, 'error');
     }
   }
 </script>
