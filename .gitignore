@@ -1,0 +1,4 @@
+node_modules/
+proxy/.env
+proxy/clients.json
+.DS_Store
