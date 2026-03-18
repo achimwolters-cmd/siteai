@@ -2590,6 +2590,14 @@
 
   let kiOpen = false;
 
+  // Sicherstellen dass Panel beim Laden immer geschlossen ist
+  // (falls gespeicherte HTML die open-Klasse enthält)
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('ki-panel').classList.remove('open');
+    document.getElementById('ki-fab').classList.remove('open');
+    document.getElementById('ki-fab').textContent = '✨';
+  });
+
   function toggleKI() {
     kiOpen = !kiOpen;
     document.getElementById('ki-panel').classList.toggle('open', kiOpen);
@@ -2717,7 +2725,18 @@ Beispiele:
     btn.textContent = '⏳ Wird gespeichert…';
 
     try {
+      // Panel-Klassen vor dem Snapshot entfernen → gespeicherte HTML startet immer geschlossen
+      const panel = document.getElementById('ki-panel');
+      const fab   = document.getElementById('ki-fab');
+      panel.classList.remove('open');
+      fab.classList.remove('open');
+      fab.textContent = '✨';
+      kiOpen = false;
+
       const html = document.documentElement.outerHTML;
+
+      // Panel-State wiederherstellen (bleibt geschlossen, aber visuell konsistent)
+
       const res  = await fetch(`${KI_PROXY}/api/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-client-token': KI_TOKEN },
