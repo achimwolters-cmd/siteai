@@ -768,6 +768,8 @@
 
     function makeMixedEditable(el) {
       if (!el || el.closest('#ki-panel,#ki-fab')) return;
+      // Elternelement selbst NICHT klickbar – nur die Teilbereiche
+      el.classList.remove('ki-editable');
       el.childNodes.forEach(node => {
         if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
           const span = document.createElement('span');
