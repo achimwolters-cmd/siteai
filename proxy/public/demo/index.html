@@ -3100,6 +3100,13 @@
     panel.classList.remove('open');
     fab.classList.remove('open');
     fab.textContent = '✨';
+
+    // Alle Links auf der Seite deaktivieren (außer KI-Widget)
+    document.querySelectorAll('a[href]').forEach(a => {
+      if (a.closest('#ki-panel,#ki-fab')) return;
+      a.addEventListener('click', e => e.preventDefault());
+    });
+
     initInlineEditing();
     initColorEditing();
     initButtonEditing();
