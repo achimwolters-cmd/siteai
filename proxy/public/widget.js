@@ -306,6 +306,16 @@
     border-radius: 3px;
     transition: outline 0.15s ease;
   }
+  /* ki-text-node Spans erben IMMER vom Elternelement – keine fremden CSS-Regeln */
+  span.ki-text-node {
+    font-family: inherit !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    color: inherit !important;
+    letter-spacing: inherit !important;
+    line-height: inherit !important;
+    font-style: inherit !important;
+  }
   .ki-editable:hover {
     outline: 2px dashed #b8935a;
     outline-offset: 4px;
