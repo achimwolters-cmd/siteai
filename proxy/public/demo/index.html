@@ -2538,6 +2538,65 @@
     #ki-fab { right: 16px; bottom: 16px; }
   }
 
+  /* ── Flächen-Farb-Editor ── */
+  .ki-colorable {
+    cursor: pointer !important;
+    position: relative;
+  }
+  .ki-colorable::before {
+    content: '🎨';
+    position: absolute;
+    top: 10px; right: 10px;
+    background: rgba(255,255,255,0.85);
+    border-radius: 50%;
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 10;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .ki-colorable:hover::before { opacity: 1; }
+
+  #ki-color-popup {
+    position: fixed;
+    z-index: 99999;
+    background: #fff;
+    border: 2px solid #b8935a;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    padding: 16px;
+    width: 240px;
+    font-family: inherit;
+  }
+  #ki-color-popup .ki-cp-label {
+    font-size: 11px; font-weight: 700; color: #b8935a;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
+  }
+  #ki-color-popup input[type=color] {
+    width: 100%; height: 48px; border: none; border-radius: 8px;
+    cursor: pointer; padding: 2px; background: none;
+  }
+  #ki-color-popup .ki-cp-swatches {
+    display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; margin: 10px 0;
+  }
+  #ki-color-popup .ki-cp-swatch {
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+    border: 2px solid transparent; transition: transform 0.15s;
+  }
+  #ki-color-popup .ki-cp-swatch:hover { transform: scale(1.2); border-color: #333; }
+  #ki-color-popup .ki-cp-actions { display: flex; gap: 8px; margin-top: 10px; }
+  #ki-color-popup .ki-cp-cancel {
+    flex:1; padding:8px; border:1px solid #ddd; border-radius:8px;
+    background:#f5f5f5; cursor:pointer; font-size:13px;
+  }
+  #ki-color-popup .ki-cp-confirm {
+    flex:2; padding:8px; border:none; border-radius:8px;
+    background:#b8935a; color:#fff; cursor:pointer; font-size:13px; font-weight:600;
+  }
+
   /* ── Inline-Editing ── */
   .ki-editable {
     cursor: pointer !important;
@@ -2669,6 +2728,114 @@
 
   let kiOpen = false;
 
+  // ── Flächen-Farb-Editor ───────────────────────────────────────────────────
+  const SWATCHES = ['#1a1a1a','#2d2416','#b8935a','#ffffff','#1a6fc4','#c0392b','#1a6638','#e67e22','#8e44ad','#2c3e50','#f5f0eb','#e8d5b7','#34495e','#7f8c8d'];
+  let _cpActive = null;
+
+  function _cpClose() {
+    if (_cpActive) {
+      _cpActive.popup.remove();
+      document.removeEventListener('click', _cpOutside);
+      _cpActive = null;
+    }
+  }
+  function _cpOutside(e) {
+    if (_cpActive && !_cpActive.popup.contains(e.target)) _cpClose();
+  }
+
+  function _cpOpen(el, prop, e) {
+    e.stopPropagation();
+    _cpClose(); _ilClose();
+
+    const current = getComputedStyle(el)[prop] || '#ffffff';
+    // rgb(r,g,b) → #hex
+    const toHex = c => {
+      const m = c.match(/\d+/g);
+      if (!m) return c;
+      return '#' + m.slice(0,3).map(n => parseInt(n).toString(16).padStart(2,'0')).join('');
+    };
+    const startHex = toHex(current);
+
+    const popup = document.createElement('div');
+    popup.id = 'ki-color-popup';
+
+    const propLabel = prop === 'backgroundColor' ? 'Hintergrundfarbe' : 'Farbe';
+    popup.innerHTML = `
+      <div class="ki-cp-label">🎨 ${propLabel} ändern</div>
+      <input type="color" value="${startHex.slice(0,7)}">
+      <div class="ki-cp-swatches">${SWATCHES.map(s=>`<div class="ki-cp-swatch" style="background:${s}" data-color="${s}" title="${s}"></div>`).join('')}</div>
+      <div class="ki-cp-actions">
+        <button class="ki-cp-cancel">Abbrechen</button>
+        <button class="ki-cp-confirm">✓ Übernehmen</button>
+      </div>`;
+
+    // Position
+    const x = Math.min(e.clientX, window.innerWidth  - 258);
+    const y = e.clientY + 12 + window.scrollY < window.innerHeight - 220
+      ? e.clientY + 12 + window.scrollY
+      : e.clientY - 220 + window.scrollY;
+    popup.style.left = x + 'px';
+    popup.style.top  = y + 'px';
+    document.body.appendChild(popup);
+
+    const picker = popup.querySelector('input[type=color]');
+
+    // Live-Vorschau beim Ziehen
+    picker.addEventListener('input', () => { el.style[prop] = picker.value; });
+
+    // Swatches
+    popup.querySelectorAll('.ki-cp-swatch').forEach(sw => {
+      sw.addEventListener('click', ev => {
+        ev.stopPropagation();
+        const c = sw.dataset.color;
+        picker.value = c;
+        el.style[prop] = c;
+      });
+    });
+
+    const confirm = () => {
+      const chosen = picker.value;
+      el.style[prop] = chosen;
+      addMsg(`🎨 ${propLabel} → ${chosen}`, 'bot');
+      _cpClose();
+    };
+
+    popup.querySelector('.ki-cp-confirm').addEventListener('click', confirm);
+    popup.querySelector('.ki-cp-cancel').addEventListener('click', () => {
+      el.style[prop] = startHex; // Zurücksetzen
+      _cpClose();
+    });
+
+    _cpActive = { popup, el };
+    setTimeout(() => document.addEventListener('click', _cpOutside), 100);
+  }
+
+  function initColorEditing() {
+    // Hintergrundflächen: [Selektor, CSS-Eigenschaft]
+    const colorTargets = [
+      ['.hero-content',     'backgroundColor'],
+      ['.navbar',           'backgroundColor'],
+      ['.topbar',           'backgroundColor'],
+      ['.footer',           'backgroundColor'],
+      ['#leistungen',       'backgroundColor'],
+      ['#galerie',          'backgroundColor'],
+      ['#ueber',            'backgroundColor'],
+      ['#team',             'backgroundColor'],
+      ['#preise',           'backgroundColor'],
+      ['#bewertungen',      'backgroundColor'],
+      ['#kontakt',          'backgroundColor'],
+      ['.promo-banner',     'backgroundColor'],
+      ['.btn-primary',      'backgroundColor'],
+      ['.nav-cta',          'backgroundColor'],
+    ];
+    colorTargets.forEach(([sel, prop]) => {
+      const el = document.querySelector(sel);
+      if (!el) return;
+      el.classList.add('ki-colorable');
+      el.addEventListener('click', e => _cpOpen(el, prop, e));
+    });
+  }
+
   // ── Inline-Editor ──────────────────────────────────────────────────────────
   let _ilActive = null;
 
@@ -2775,11 +2942,12 @@
       return;
     }
 
-    // Gültiger Token → Panel geschlossen starten + Inline-Editing aktivieren
+    // Gültiger Token → Panel geschlossen starten + Editing aktivieren
     panel.classList.remove('open');
     fab.classList.remove('open');
     fab.textContent = '✨';
     initInlineEditing();
+    initColorEditing();
   });
 
   function toggleKI() {
