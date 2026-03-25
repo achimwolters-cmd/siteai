@@ -2644,6 +2644,58 @@
     msgs.scrollTop = msgs.scrollHeight;
   }
 
+  // ── Text direkt im DOM suchen und ersetzen (ohne Selektoren) ──────────────
+  function replaceTextInDOM(findText, replaceText) {
+    let count = 0;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode: n => n.parentElement?.closest('#ki-panel,#ki-fab,script,style,noscript')
+        ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+    });
+    const nodes = [];
+    let node;
+    while ((node = walker.nextNode())) nodes.push(node);
+    for (const n of nodes) {
+      if (n.textContent.includes(findText)) {
+        n.textContent = n.textContent.replaceAll(findText, replaceText);
+        count++;
+      }
+    }
+    return count;
+  }
+
+  // ── Änderungen aus JSON-Array anwenden ─────────────────────────────────────
+  function applyChanges(changes) {
+    let ok = 0, fail = [];
+    for (const c of changes) {
+      try {
+        if (c.type === 'text') {
+          const n = replaceTextInDOM(c.find, c.replace);
+          if (n > 0) ok++; else fail.push(`"${c.find}" nicht gefunden`);
+        } else if (c.type === 'style') {
+          const els = document.querySelectorAll(c.selector);
+          if (els.length) { els.forEach(el => el.style[c.prop] = c.value); ok++; }
+          else fail.push(`Selektor "${c.selector}" nicht gefunden`);
+        } else if (c.type === 'cssvar') {
+          document.documentElement.style.setProperty(c.name, c.value); ok++;
+        }
+      } catch(e) { fail.push(e.message); }
+    }
+    return { ok, fail };
+  }
+
+  // ── Sichtbaren Seitentext als Kontext aufbauen ─────────────────────────────
+  function buildPageContext() {
+    const skip = el => el.closest('#ki-panel,#ki-fab');
+    const parts = [];
+    document.querySelectorAll('.topbar, nav, section, footer').forEach(sec => {
+      if (skip(sec)) return;
+      const heading = sec.querySelector('h1,h2')?.textContent?.trim() || sec.id || sec.className.split(' ')[0];
+      const text = (sec.innerText || '').replace(/\n{3,}/g,'\n\n').trim().slice(0, 600);
+      if (text.length > 10) parts.push(`=== ${heading} ===\n${text}`);
+    });
+    return parts.join('\n\n').slice(0, 4000);
+  }
+
   async function kiSend() {
     const input = document.getElementById('ki-input');
     const btn   = document.getElementById('ki-send-btn');
@@ -2659,163 +2711,76 @@
     document.getElementById('ki-messages').scrollTop = 999999;
 
     try {
-      // Kontext dynamisch aus dem echten DOM lesen – immer vollständig und aktuell
-      const q  = s => document.querySelector(s);
-      const qa = s => Array.from(document.querySelectorAll(s));
-      const t  = el => el?.textContent?.trim().replace(/\s+/g,' ').slice(0,80) || '';
-
-      const oeffnungszeiten = qa('.hours-table tr').map((r,i) =>
-        `  ${t(r.cells[0])} → "${t(r.cells[1])}" [.hours-table tr:nth-child(${i+1}) td:last-child]`
-      ).join('\n');
-
-      const leistungen = qa('#leistungen .service-card').map((c,i) =>
-        `  Karte ${i+1}: "${t(c.querySelector('h3'))}" / "${t(c.querySelector('p')).slice(0,50)}" [#leistungen .service-card:nth-child(${i+1}) h3/p]`
-      ).join('\n');
-
-      const team = qa('#team .team-card').map((c,i) =>
-        `  ${i+1}: "${t(c.querySelector('.team-name'))}" – ${t(c.querySelector('.team-role'))} [#team .team-card:nth-child(${i+1}) .team-name/.team-role]`
-      ).join('\n');
-
-      const preise = qa('#preise .price-category').map((cat,i) =>
-        `  Kategorie ${i+1}: "${t(cat.querySelector('.price-cat-name'))}" [#preise .price-category:nth-child(${i+1}) .price-cat-name]\n` +
-        qa.call(cat,'.price-row').map((row,j) =>
-          `    Zeile ${j+1}: "${t(row.querySelector('.price-name'))}" → "${t(row.querySelector('.price-val'))}" [#preise .price-category:nth-child(${i+1}) .price-row:nth-child(${j+1}) .price-val]`
-        ).join('\n')
-      ).join('\n');
-
-      const bewertungen = qa('#bewertungen .review-card').map((c,i) =>
-        `  ${i+1}: "${t(c.querySelector('.review-text')).slice(0,60)}" [#bewertungen .review-card:nth-child(${i+1}) .review-text]`
-      ).join('\n');
-
-      const stats = qa('.stat-num').map((el,i) =>
-        `  Zahl ${i+1}: "${t(el)}" Label: "${t(el.parentElement?.querySelector('.stat-label'))}" [querySelectorAll('.stat-num')[${i}]]`
-      ).join('\n');
-
-      const pageContext = `Website: Haarwerk Schmidt – Friseursalon Augsburg
-Alle Werte sind AKTUELL aus der Seite gelesen. Selektoren in [eckigen Klammern].
-
-═ KOPFZEILE & NAVIGATION
-  Telefon (oben + überall): "${t(q('.topbar-item a[href^="tel"]'))}" [.topbar-item a[href^="tel"]]
-  Adresse (oben): "${t(q('.topbar-item:first-child'))}" [.topbar-item:first-child]
-  Öffnungszeiten (oben): "${t(q('.topbar-item:nth-child(3)'))}" [.topbar-item:nth-child(3)]
-  Telefon Navigation: "${t(q('.nav-tel'))}" [.nav-tel]
-  Button "Termin buchen" (Navigation): [.nav-cta] – Farbe: style.background/color
-
-═ STARTBEREICH (großes Bild oben)
-  Überschrift Zeile 1: "${t(q('.hero h1'))?.split(/\s{2,}/)[0]}" [.hero h1 – erstes TextNode]
-  Überschrift kursiv/goldfarben: "${t(q('.hero h1 em'))}" [.hero h1 em]
-  Beschreibungstext: "${t(q('.hero-desc'))}" [.hero-desc]
-  Statistiken:
-${stats}
-  Button gold: "${t(q('.btn-primary'))}" [.btn-primary] – Farbe: style.background/color
-  Button outline: "${t(q('.btn-outline'))}" [.btn-outline] – Farbe: style.background/borderColor
-
-═ LEISTUNGEN (Abschnitt mit 6 Servicekarten)
-${leistungen}
-
-═ TEAM (4 Personen)
-${team}
-
-═ PREISLISTE
-${preise}
-
-═ BEWERTUNGEN (6 Kundenstimmen)
-${bewertungen}
-
-═ KONTAKT & ÖFFNUNGSZEITEN
-  Adresse: "${t(q('#kontakt .contact-block:nth-child(1) .cb-val'))}" [#kontakt .contact-block:nth-child(1) .cb-val]
-  Telefon: "${t(q('#kontakt .contact-block:nth-child(2) .cb-val a'))}" [#kontakt .contact-block:nth-child(2) .cb-val a]
-  E-Mail: "${t(q('#kontakt .contact-block:nth-child(3) .cb-val a'))}" [#kontakt .contact-block:nth-child(3) .cb-val a]
-  Öffnungszeiten (Tabelle – ALLE Zeilen):
-${oeffnungszeiten}
-
-═ FOOTER
-  Beschreibungstext (z.B. "seit 2009"): "${t(q('.footer-desc'))}" [.footer-desc]
-  Kleiner Text oben im Startbereich (Eyebrow): "${t(q('.hero-eyebrow'))}" [.hero-eyebrow]
-  Adresse: "${t(q('.footer-contact-item:nth-child(1) span:last-child'))}" [.footer-contact-item:nth-child(1) span:last-child]
-  Telefon: "${t(q('.footer-contact-item:nth-child(2) a'))}" [.footer-contact-item:nth-child(2) a]
-  E-Mail: "${t(q('.footer-contact-item:nth-child(3) a'))}" [.footer-contact-item:nth-child(3) a]
-  Öffnungszeiten: "${t(q('.footer-contact-item:nth-child(4) span:last-child'))}" [.footer-contact-item:nth-child(4) span:last-child]
-
-═ HINTERGRÜNDE & FARBEN
-  Hero-Hintergrund links (dunkler Bereich): document.querySelector('.hero-content').style.background = '#FARBE'
-  Hero-Hintergrund komplett: document.querySelector('.hero').style.background = '#FARBE'
-  Navigation Hintergrund: document.querySelector('.navbar').style.background = '#FARBE'
-  Topbar Hintergrund: document.querySelector('.topbar').style.background = '#FARBE'
-  Footer Hintergrund: document.querySelector('.footer').style.background = '#FARBE'
-  Seitenabschnitt-Hintergrund (z.B. Leistungen): document.querySelector('#leistungen').style.background = '#FARBE'
-
-═ AKZENTFARBEN (global, ändert alles auf einmal)
-  Goldfarbe (Buttons, Icons, Akzente): document.documentElement.style.setProperty('--gold','#FARBE')
-  Helles Gold: document.documentElement.style.setProperty('--gold-l','#FARBE')
-  Dunkelfarbe (Hintergründe, Texte): document.documentElement.style.setProperty('--dark','#FARBE')
-  Alle Buttons auf einmal: document.querySelectorAll('.btn-primary,.nav-cta,.mobile-menu-cta,.form-submit').forEach(b=>b.style.background='#FARBE')
-  Farbbeispiele – Blau: #1a6fc4 | Rot: #c0392b | Grün: #1a6638 | Orange: #e67e22 | Lila: #8e44ad
-  Alle h2-Überschriften: document.querySelectorAll('h2.section-title')
-  Alle h3-Überschriften: document.querySelectorAll('h3')`;
+      const pageContext = buildPageContext();
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 25000); // 25s Timeout
+      const timeout = setTimeout(() => controller.abort(), 25000);
 
       const res = await fetch(`${KI_PROXY}/api/chat`, {
         method: 'POST',
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json', 'x-client-token': KI_TOKEN },
         body: JSON.stringify({
-          system: `Du bist ein Website-Editor. Du bekommst eine Beschreibung einer Website und eine Änderungsanfrage vom Kunden.
-Gib NUR ausführbaren JavaScript-Code zurück – kein Markdown, keine Erklärung, kein Text davor oder danach.
+          system: `Du bist ein Website-Editor. Du bekommst den sichtbaren Text einer Website und eine Änderungsanfrage.
+Antworte NUR mit einem JSON-Array – kein Markdown, keine Erklärung, kein Text außerhalb des Arrays.
+
+ÄNDERUNGSTYPEN:
+1. Text ändern (funktioniert für JEDEN Text auf der Seite):
+   {"type":"text","find":"EXAKTER TEXT wie er auf der Seite steht","replace":"NEUER TEXT","desc":"was wurde geändert"}
+
+2. Farbe / Stil ändern:
+   {"type":"style","selector":"CSS-SELEKTOR","prop":"CSS-Eigenschaft (camelCase)","value":"Wert","desc":"was wurde geändert"}
+
+3. Globale Akzentfarbe (ändert Buttons, Icons, Akzente auf einmal):
+   {"type":"cssvar","name":"--gold","value":"#FARBE","desc":"was wurde geändert"}
+
+BEKANNTE STIL-SELEKTOREN:
+- Hero-Hintergrund links (dunkler Bereich): .hero-content → background
+- Navigation Hintergrund: .navbar → background
+- Topbar Hintergrund: .topbar → background
+- Footer Hintergrund: .footer → background
+- Alle Abschnitts-Überschriften: h2.section-title → color
+- Alle Buttons: .btn-primary → background / color
+- Nav-Button "Termin buchen": .nav-cta → background / color
+- Abschnitt Leistungen: #leistungen → background
+- Abschnitt Team: #team → background
+
+FARBBEISPIELE: Blau #1a6fc4 | Rot #c0392b | Grün #1a6638 | Orange #e67e22 | Lila #8e44ad
 
 REGELN:
-1. Nutze IMMER optionales Chaining (?.) – der Code darf nie abstürzen.
-2. Wenn der Nutzer einen bestimmten Text nennt (z.B. "Seit über 15 Jahren ändern in..."), suche GENAU diesen Text im Seitenkontext und ändere NUR dieses eine Element. Ändere KEINEN anderen Text der zufällig ähnlich klingt.
-3. Wenn du den exakten Selektor nicht kennst, suche per textContent: Array.from(document.querySelectorAll('p,h1,h2,h3,h4,span,div')).find(el => el.childNodes.length <= 2 && el.textContent.includes('SUCHTEXT'))
-4. Ändere immer NUR das was der Nutzer explizit verlangt – nie mehr.
-5. Für Farben: element.style.color / element.style.background / document.documentElement.style.setProperty('--gold','#FARBE')
-6. Schreibe am Ende: // ✅ Kurze Beschreibung was geändert wurde
-
-Beispiele:
-  // Text ändern wenn Selektor bekannt:
-  const el = document.querySelector('.hero-desc'); if(el) el.textContent = 'Neuer Text';
-  // Text ändern wenn nur der Inhalt bekannt:
-  const el = Array.from(document.querySelectorAll('p,span,div')).find(e => e.childNodes.length <= 2 && e.textContent.includes('Seit über 15 Jahren'));
-  if(el) el.textContent = 'seit gestern';
-  // Farbe ändern:
-  document.querySelectorAll('h2.section-title').forEach(el => el.style.color = '#1a6fc4');`,
-          messages: [
-            { role: 'user', content: `Seitenkontext:\n${pageContext}\n\nGewünschte Änderung: ${msg}` }
-          ]
+- "find" muss EXAKT dem Text auf der Seite entsprechen (nicht kürzen, nicht paraphrasieren)
+- Ändere NUR was der Nutzer verlangt
+- Bei unklarer Anfrage: [{"type":"question","desc":"Rückfrage an den Nutzer"}]`,
+          messages: [{ role: 'user', content: `Seiteninhalt:\n${pageContext}\n\nGewünschte Änderung: ${msg}` }]
         })
       });
       clearTimeout(timeout);
       const data = await res.json();
-
       if (data.error) throw new Error(data.error);
 
-      // Alle Markdown-Code-Fences entfernen (egal wo sie stehen)
-      const jsCode = (data.content?.[0]?.text || '')
-        .trim()
-        .replace(/^```[\w]*\s*\n?/, '')   // öffnendes ```javascript\n
-        .replace(/```[\w]*\s*/g, '')       // alle restlichen ``` (auch mitten im Code)
-        .replace(/^javascript\s*\n/, '')   // loses "javascript" auf erster Zeile
-        .trim();
+      // JSON aus Antwort extrahieren
+      let raw = (data.content?.[0]?.text || '').trim()
+        .replace(/^```[\w]*\s*\n?/, '').replace(/\n?```[\w]*\s*$/g, '').trim();
 
-      // Prüfen ob Antwort JavaScript oder natürliche Sprache ist
-      const looksLikeJS = /^\s*(const|let|var|document|window|\/\/|\[|if\s*\()/.test(jsCode);
-
-      if (!looksLikeJS) {
-        // Claude hat eine Rückfrage geliefert → als Chat-Nachricht anzeigen
-        addMsg(jsCode, 'bot');
-      } else {
-        try {
-          // eslint-disable-next-line no-eval
-          eval(jsCode);
-          const commentMatch = jsCode.match(/\/\/\s*✅(.+)/);
-          const comment = commentMatch ? commentMatch[1].trim() : 'Änderung angewendet!';
-          addMsg(`✅ ${comment}`, 'bot');
-        } catch(evalErr) {
-          addMsg(`⚠️ Konnte nicht angewendet werden: ${evalErr.message}<br><small>${jsCode.substring(0,120)}…</small>`, 'error');
-        }
+      let changes;
+      try { changes = JSON.parse(raw); } catch(e) {
+        // Kein gültiges JSON → als Textnachricht anzeigen
+        addMsg(raw || 'Keine Antwort erhalten.', 'bot');
+        return;
       }
+
+      // Rückfrage-Typ
+      if (changes[0]?.type === 'question') {
+        addMsg(changes[0].desc, 'bot');
+        return;
+      }
+
+      // Änderungen anwenden
+      const { ok, fail } = applyChanges(changes);
+      const descs = changes.filter(c=>c.desc && c.type!=='question').map(c=>c.desc).join(', ');
+
+      if (ok > 0) addMsg(`✅ ${descs || ok + ' Änderung(en) vorgenommen'}`, 'bot');
+      if (fail.length) addMsg(`⚠️ Nicht angewendet: ${fail.join('; ')}`, 'error');
 
       if (data._credits_remaining !== undefined) {
         document.getElementById('ki-credits-badge').textContent = `${data._credits_remaining} Credits`;
