@@ -2537,6 +2537,85 @@
     #ki-panel { width: calc(100vw - 32px); right: 16px; bottom: 88px; }
     #ki-fab { right: 16px; bottom: 16px; }
   }
+
+  /* ── Inline-Editing ── */
+  .ki-editable {
+    cursor: pointer !important;
+    border-radius: 3px;
+    transition: outline 0.15s ease;
+  }
+  .ki-editable:hover {
+    outline: 2px dashed #b8935a;
+    outline-offset: 4px;
+  }
+  .ki-editable:hover::after {
+    content: ' ✏️';
+    font-size: 0.75em;
+    opacity: 0.7;
+  }
+  #ki-inline-popup {
+    position: fixed;
+    z-index: 99999;
+    background: #fff;
+    border: 2px solid #b8935a;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    padding: 14px;
+    width: 300px;
+    font-family: inherit;
+  }
+  #ki-inline-popup .ki-il-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #b8935a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  #ki-inline-popup textarea {
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 58px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  #ki-inline-popup textarea:focus { border-color: #b8935a; }
+  #ki-inline-popup .ki-il-hint {
+    font-size: 11px;
+    color: #aaa;
+    margin: 5px 0 8px;
+  }
+  #ki-inline-popup .ki-il-actions {
+    display: flex;
+    gap: 8px;
+  }
+  #ki-inline-popup .ki-il-cancel {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #f5f5f5;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  #ki-inline-popup .ki-il-confirm {
+    flex: 2;
+    padding: 8px;
+    border: none;
+    border-radius: 8px;
+    background: #b8935a;
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  #ki-inline-popup .ki-il-confirm:hover { background: #a07840; }
 </style>
 
 <!-- FAB Button -->
@@ -2590,23 +2669,100 @@
 
   let kiOpen = false;
 
-  // Zugriff nur mit ?edit=TOKEN in der URL – sonst Widget komplett ausblenden
+  // ── Inline-Editor ──────────────────────────────────────────────────────────
+  let _ilActive = null;
+
+  function _ilClose() {
+    if (_ilActive) {
+      _ilActive.popup.remove();
+      document.removeEventListener('click', _ilOutside);
+      _ilActive = null;
+    }
+  }
+
+  function _ilOutside(e) {
+    if (_ilActive && !_ilActive.popup.contains(e.target)) _ilClose();
+  }
+
+  function _ilOpen(el) {
+    _ilClose();
+    const original = el.textContent.trim();
+    const rect     = el.getBoundingClientRect();
+
+    const popup = document.createElement('div');
+    popup.id = 'ki-inline-popup';
+
+    // Vertikale Position: unter oder über dem Element
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow > 160
+      ? rect.bottom + window.scrollY + 8
+      : rect.top  + window.scrollY - 168;
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - 316));
+
+    popup.style.top  = top  + 'px';
+    popup.style.left = left + 'px';
+
+    popup.innerHTML = `
+      <div class="ki-il-label">✏️ Text bearbeiten</div>
+      <textarea>${original}</textarea>
+      <div class="ki-il-hint">Enter = übernehmen &nbsp;·&nbsp; Shift+Enter = neue Zeile</div>
+      <div class="ki-il-actions">
+        <button class="ki-il-cancel">Abbrechen</button>
+        <button class="ki-il-confirm">✓ Übernehmen</button>
+      </div>`;
+
+    document.body.appendChild(popup);
+    _ilActive = { popup, el, original };
+
+    const ta = popup.querySelector('textarea');
+    ta.focus(); ta.select();
+
+    const confirm = () => {
+      const newText = ta.value.trim();
+      if (newText && newText !== original) {
+        replaceTextInDOM(original, newText);
+        addMsg(`✏️ "${original.slice(0,40)}" → "${newText.slice(0,40)}"`, 'bot');
+      }
+      _ilClose();
+    };
+
+    popup.querySelector('.ki-il-confirm').addEventListener('click', confirm);
+    popup.querySelector('.ki-il-cancel').addEventListener('click', _ilClose);
+    ta.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirm(); }
+      if (e.key === 'Escape') _ilClose();
+    });
+
+    setTimeout(() => document.addEventListener('click', _ilOutside), 100);
+  }
+
+  function initInlineEditing() {
+    const targets = 'h1,h2,h3,h4,p,td,.stat-num,.stat-label,.team-name,.team-role,.price-name,.price-val,.price-cat-name,.review-text,.review-author,.topbar-item a,.nav-tel,.footer-desc,.hero-eyebrow,.hero-desc,.cb-val,.promo-title,.promo-desc,.footer-logo';
+    document.querySelectorAll(targets).forEach(el => {
+      if (el.closest('#ki-panel,#ki-fab')) return;
+      if (!el.textContent.trim() || el.children.length > 3) return;
+      el.classList.add('ki-editable');
+      el.addEventListener('click', e => { e.stopPropagation(); _ilOpen(el); });
+    });
+  }
+
+  // ── Zugriff nur mit ?edit=TOKEN ────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
     const urlToken = new URLSearchParams(window.location.search).get('edit');
     const fab   = document.getElementById('ki-fab');
     const panel = document.getElementById('ki-panel');
 
     if (urlToken !== KI_TOKEN) {
-      // Kein gültiger Token → Widget für Besucher unsichtbar
       fab.style.display   = 'none';
       panel.style.display = 'none';
       return;
     }
 
-    // Gültiger Token → Panel sauber geschlossen starten
+    // Gültiger Token → Panel geschlossen starten + Inline-Editing aktivieren
     panel.classList.remove('open');
     fab.classList.remove('open');
     fab.textContent = '✨';
+    initInlineEditing();
   });
 
   function toggleKI() {
