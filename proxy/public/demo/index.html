@@ -3060,8 +3060,34 @@
   }
 
   function initInlineEditing() {
-    const targets = [
-      'h1','h2','h3','h4',
+    // Hilfsfunktion: Element direkt editierbar machen
+    function makeEditable(el) {
+      if (!el || !el.textContent.trim()) return;
+      if (el.closest('#ki-panel,#ki-fab,script,style')) return;
+      el.classList.add('ki-editable');
+      el.addEventListener('click', e => { e.stopPropagation(); _ilOpen(el); });
+    }
+
+    // Elemente mit gemischtem Inhalt (Text + Kind-Elemente wie em, strong):
+    // → Textknotne in <span> einwickeln, Kind-Elemente direkt editierbar machen
+    function makeMixedEditable(el) {
+      if (!el || el.closest('#ki-panel,#ki-fab')) return;
+      el.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+          const span = document.createElement('span');
+          span.className = 'ki-editable ki-text-node';
+          span.textContent = node.textContent;
+          el.replaceChild(span, node);
+          span.addEventListener('click', e => { e.stopPropagation(); _ilOpen(span); });
+        } else if (node.nodeType === Node.ELEMENT_NODE && node.textContent.trim()) {
+          makeEditable(node); // z.B. <em>, <strong>
+        }
+      });
+    }
+
+    // Einfache Blatt-Elemente direkt editierbar
+    const simpleTargets = [
+      'h2','h3','h4',
       'p.section-subtitle','p.hero-desc','.footer-desc',
       '.eyebrow','.hero-eyebrow',
       'td',
@@ -3077,11 +3103,16 @@
       '.section-title'
     ].join(',');
 
-    document.querySelectorAll(targets).forEach(el => {
-      if (el.closest('#ki-panel,#ki-fab,script,style')) return;
-      if (!el.textContent.trim()) return;
-      el.classList.add('ki-editable');
-      el.addEventListener('click', e => { e.stopPropagation(); _ilOpen(el); });
+    document.querySelectorAll(simpleTargets).forEach(el => makeEditable(el));
+
+    // h1 speziell behandeln: gemischter Inhalt (Text + em)
+    document.querySelectorAll('h1').forEach(el => {
+      if (el.closest('#ki-panel,#ki-fab')) return;
+      if (el.children.length > 0) {
+        makeMixedEditable(el); // Teile einzeln editierbar
+      } else {
+        makeEditable(el);      // Kein Kind-Element → normal
+      }
     });
   }
 
