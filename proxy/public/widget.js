@@ -473,6 +473,13 @@
 
 <!-- Panel -->
 <div id="ki-panel">
+  <div id="ki-versions-panel" style="display:none;position:absolute;inset:0;background:white;border-radius:20px;z-index:10;flex-direction:column;overflow:hidden;">
+    <div style="padding:16px;background:#1a1a1a;display:flex;align-items:center;justify-content:space-between;">
+      <span style="color:white;font-weight:700;">🕐 Versionshistorie</span>
+      <button onclick="kiHideVersions()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div id="ki-versions-list" style="flex:1;overflow-y:auto;padding:16px;"></div>
+  </div>
   <div class="ki-header">
     <div class="ki-header-icon">✨</div>
     <div>
@@ -480,6 +487,8 @@
       <div class="ki-header-sub">Änderungen per Text</div>
     </div>
     <div class="ki-credits" id="ki-credits-badge">… Credits</div>
+    <button id="ki-undo-btn" onclick="kiUndo()" title="Letzte Änderung rückgängig" disabled style="background:none;border:none;cursor:pointer;font-size:18px;opacity:0.4;padding:4px 8px;">↩️</button>
+    <button id="ki-versions-btn" onclick="kiShowVersions()" title="Versionshistorie" style="background:none;border:none;cursor:pointer;font-size:18px;padding:4px 8px;">🕐</button>
   </div>
 
   <div class="ki-messages" id="ki-messages">
@@ -516,6 +525,28 @@
 
   // ── Widget-Logik ──────────────────────────────────────────────────────────
   let kiOpen = false;
+
+  // ── Undo-Stack ────────────────────────────────────────────────────────────
+  const _undoStack = [];
+  function _pushUndo() {
+    const panel = document.getElementById('ki-panel');
+    const fab   = document.getElementById('ki-fab');
+    panel.classList.remove('open');
+    fab.classList.remove('open');
+    fab.textContent = '✨';
+    _undoStack.push(document.documentElement.outerHTML);
+    if (_undoStack.length > 20) _undoStack.shift();
+    _updateUndoBtn();
+  }
+  function _updateUndoBtn() {
+    const btn = document.getElementById('ki-undo-btn');
+    if (btn) { btn.disabled = _undoStack.length === 0; btn.style.opacity = _undoStack.length ? '1' : '0.4'; }
+  }
+  window.kiUndo = function() {
+    if (!_undoStack.length) return;
+    const html = _undoStack.pop();
+    document.open(); document.write(html); document.close();
+  };
 
   // ── Flächen-Farb-Editor ───────────────────────────────────────────────────
   const SWATCHES = ['#1a1a1a','#2d2416','#b8935a','#ffffff','#1a6fc4','#c0392b','#1a6638','#e67e22','#8e44ad','#2c3e50','#f5f0eb','#e8d5b7','#34495e','#7f8c8d'];
@@ -580,6 +611,7 @@
 
     const confirm = () => {
       const chosen = picker.value;
+      _pushUndo();
       el.style[prop] = chosen;
       addMsg(`🎨 ${propLabel} → ${chosen}`, 'bot');
       _cpClose();
@@ -685,6 +717,7 @@
 
     const confirm = () => {
       const newText = ta.value.trim();
+      _pushUndo();
       if (newText && newText !== original) {
         el.textContent = newText;
         addMsg(`✏️ "${original.slice(0,40)}" → "${newText.slice(0,40)}"`, 'bot');
@@ -744,6 +777,7 @@
 
     const confirm = () => {
       const txt = popup.querySelector('input[type=text]').value.trim();
+      _pushUndo();
       if (txt) el.textContent = txt;
       el.style.background = bgPicker.value;
       el.style.color = fgPicker.value;
@@ -939,6 +973,7 @@
   }
 
   function applyChanges(changes) {
+    _pushUndo();
     let ok = 0, fail = [];
     for (const c of changes) {
       try {
@@ -1089,6 +1124,63 @@ REGELN:
     document.getElementById('ki-chips').style.display = '';
     btn.disabled = false;
     window.loadCredits();
+  };
+
+  window.kiShowVersions = async function() {
+    const panel = document.getElementById('ki-versions-panel');
+    const list  = document.getElementById('ki-versions-list');
+    panel.style.display = 'flex';
+    list.innerHTML = '<p style="color:#888;text-align:center;padding:20px;">Lade Versionen…</p>';
+
+    try {
+      const r = await fetch(`${KI_PROXY}/api/versions?site=demo`, {
+        headers: { 'x-client-token': KI_TOKEN }
+      });
+      const d = await r.json();
+      if (!d.versions.length) {
+        list.innerHTML = '<p style="color:#888;text-align:center;padding:20px;">Noch keine gespeicherten Versionen.<br>Nach dem ersten Veröffentlichen erscheinen sie hier.</p>';
+        return;
+      }
+      list.innerHTML = d.versions.map((v, i) => `
+        <div style="padding:12px;border:1px solid #eee;border-radius:10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-weight:600;font-size:14px;">${i === 0 ? '⭐ Neueste' : `Version ${d.versions.length - i}`}</div>
+            <div style="font-size:12px;color:#888;">${v.label}</div>
+          </div>
+          <button onclick="kiRestoreVersion('${v.filename}')" style="background:#b8935a;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;">Wiederherstellen</button>
+        </div>
+      `).join('');
+    } catch(e) {
+      list.innerHTML = '<p style="color:#c00;text-align:center;padding:20px;">Fehler beim Laden der Versionen.</p>';
+    }
+  };
+
+  window.kiHideVersions = function() {
+    document.getElementById('ki-versions-panel').style.display = 'none';
+  };
+
+  window.kiRestoreVersion = async function(filename) {
+    if (!confirm('Diese Version wirklich wiederherstellen? Die aktuelle Seite wird überschrieben.')) return;
+    const btn = event.target;
+    btn.textContent = '⏳…'; btn.disabled = true;
+    try {
+      const r = await fetch(`${KI_PROXY}/api/restore`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-client-token': KI_TOKEN },
+        body: JSON.stringify({ filename, site: 'demo' })
+      });
+      const d = await r.json();
+      if (d.ok) {
+        alert('✅ Version wiederhergestellt! Seite wird neu geladen…');
+        window.location.reload();
+      } else {
+        btn.textContent = 'Wiederherstellen'; btn.disabled = false;
+        alert('Fehler: ' + (d.error || 'Unbekannt'));
+      }
+    } catch(e) {
+      btn.textContent = 'Wiederherstellen'; btn.disabled = false;
+      alert('Netzwerkfehler');
+    }
   };
 
   window.kiSave = async function() {

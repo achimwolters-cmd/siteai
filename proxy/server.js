@@ -151,13 +151,89 @@ app.post('/api/save', (req, res) => {
   }
 
   try {
-    fs.writeFileSync(path.join(siteDir, 'index.html'), html, 'utf8');
+    const filePath = path.join(siteDir, 'index.html');
+
+    // Aktuelle Version archivieren (max. 5 Versionen)
+    const versionsDir = path.join(__dirname, 'public', 'versions');
+    if (!fs.existsSync(versionsDir)) fs.mkdirSync(versionsDir, { recursive: true });
+
+    if (fs.existsSync(filePath)) {
+      const ts = new Date().toISOString().replace(/:/g, '-').replace(/\..+/, '');
+      const vFile = path.join(versionsDir, `${siteName}_${ts}.html`);
+      fs.copyFileSync(filePath, vFile);
+
+      // Nur letzte 5 behalten
+      const allVersions = fs.readdirSync(versionsDir)
+        .filter(f => f.startsWith(siteName + '_') && f.endsWith('.html'))
+        .sort();
+      while (allVersions.length > 5) {
+        fs.unlinkSync(path.join(versionsDir, allVersions.shift()));
+      }
+    }
+
+    fs.writeFileSync(filePath, html, 'utf8');
     console.log(`[SiteAI] "${siteName}" gespeichert von ${client.name}`);
     res.json({ ok: true, message: 'Seite gespeichert!' });
   } catch(err) {
     console.error('Save error:', err);
     res.status(500).json({ error: 'Speichern fehlgeschlagen', details: err.message });
   }
+});
+
+// GET /api/versions?site=demo  – Versionen auflisten
+app.get('/api/versions', (req, res) => {
+  const token = req.headers['x-client-token'];
+  const clients = loadClients();
+  const client = clients[token];
+  if (!client) return res.status(401).json({ error: 'Invalid token' });
+
+  const site = req.query.site || 'demo';
+  const versionsDir = path.join(__dirname, 'public', 'versions');
+  if (!fs.existsSync(versionsDir)) return res.json({ versions: [] });
+
+  const versions = fs.readdirSync(versionsDir)
+    .filter(f => f.startsWith(site + '_') && f.endsWith('.html'))
+    .sort().reverse().slice(0, 5)
+    .map(f => {
+      const ts = f.replace(site + '_', '').replace('.html', '');
+      // ts format: 2026-03-25T14-32-15  → lesbares Datum
+      const [datePart, timePart] = ts.split('T');
+      const [y, mo, d] = datePart.split('-');
+      const [h, mi, s] = (timePart || '00-00-00').split('-');
+      const label = `${d}.${mo}.${y} ${h}:${mi} Uhr`;
+      return { filename: f, label };
+    });
+
+  res.json({ versions });
+});
+
+// POST /api/restore  – Version wiederherstellen
+app.post('/api/restore', (req, res) => {
+  const token = req.headers['x-client-token'];
+  const clients = loadClients();
+  const client = clients[token];
+  if (!client) return res.status(401).json({ error: 'Invalid token' });
+
+  const { filename, site } = req.body;
+  if (!filename || filename.includes('..') || !filename.endsWith('.html')) {
+    return res.status(400).json({ error: 'Ungültiger Dateiname' });
+  }
+
+  const versionsDir = path.join(__dirname, 'public', 'versions');
+  const versionFile = path.join(versionsDir, filename);
+  const siteName    = (site || 'demo').replace(/[^a-z0-9-]/g, '');
+  const siteFile    = path.join(__dirname, 'public', siteName, 'index.html');
+
+  if (!fs.existsSync(versionFile)) return res.status(404).json({ error: 'Version nicht gefunden' });
+
+  // Aktuelle Version zuerst archivieren
+  const ts = new Date().toISOString().replace(/:/g, '-').replace(/\..+/, '');
+  if (fs.existsSync(siteFile)) {
+    fs.copyFileSync(siteFile, path.join(versionsDir, `${siteName}_${ts}.html`));
+  }
+
+  fs.copyFileSync(versionFile, siteFile);
+  res.json({ ok: true, message: 'Version wiederhergestellt' });
 });
 
 // ---------- admin endpoints ----------
