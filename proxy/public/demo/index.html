@@ -2966,9 +2966,10 @@
     const [fgPicker, bgPicker] = popup.querySelectorAll('input[type=color]');
     ta.focus(); ta.select();
 
-    // Live-Farbvorschau
-    fgPicker.addEventListener('input', () => el.style.color = fgPicker.value);
-    bgPicker.addEventListener('input', () => el.style.backgroundColor = bgPicker.value);
+    // Nur anwenden wenn der Nutzer die Farbe wirklich geändert hat
+    let fgChanged = false, bgChanged = false;
+    fgPicker.addEventListener('input', () => { fgChanged = true; el.style.color = fgPicker.value; });
+    bgPicker.addEventListener('input', () => { bgChanged = true; el.style.backgroundColor = bgPicker.value; });
 
     const confirm = () => {
       const newText = ta.value.trim();
@@ -2976,8 +2977,8 @@
         el.textContent = newText;
         addMsg(`✏️ "${original.slice(0,40)}" → "${newText.slice(0,40)}"`, 'bot');
       }
-      el.style.color = fgPicker.value;
-      el.style.backgroundColor = bgPicker.value;
+      if (fgChanged) el.style.color = fgPicker.value;
+      if (bgChanged) el.style.backgroundColor = bgPicker.value;
       _ilClose();
     };
 
