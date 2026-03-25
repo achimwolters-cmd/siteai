@@ -959,14 +959,35 @@
 
   function buildPageContext() {
     const skip = el => el.closest('#ki-panel,#ki-fab');
+    const t    = el => el?.textContent?.trim().replace(/\s+/g,' ') || '';
     const parts = [];
+
+    // Alle Sektionen als Fließtext (außer Preise – die separat)
     document.querySelectorAll('.topbar, nav, section, footer').forEach(sec => {
-      if (skip(sec)) return;
+      if (skip(sec) || sec.id === 'preise') return;
       const heading = sec.querySelector('h1,h2')?.textContent?.trim() || sec.id || sec.className.split(' ')[0];
-      const text = (sec.innerText || '').replace(/\n{3,}/g,'\n\n').trim().slice(0, 600);
+      const text = (sec.innerText || '').replace(/\n{3,}/g,'\n\n').trim().slice(0, 500);
       if (text.length > 10) parts.push(`=== ${heading} ===\n${text}`);
     });
-    return parts.join('\n\n').slice(0, 4000);
+
+    // Preisliste strukturiert – jedes Element einzeln damit Claude exakte find-Strings kennt
+    const preisSection = document.querySelector('#preise');
+    if (preisSection) {
+      let out = '=== Preisliste ===\nWICHTIG: Preiszeilen bestehen aus EINZELNEN Elementen. "find" immer nur einen Teil ändern!\n';
+      document.querySelectorAll('#preise .price-category').forEach((cat, ci) => {
+        out += `\nKategorie ${ci+1}: "${t(cat.querySelector('.price-cat-name'))}"\n`;
+        cat.querySelectorAll('.price-row').forEach(row => {
+          const name = t(row.querySelector('.price-name'));
+          const from = t(row.querySelector('.price-from'));
+          const val  = t(row.querySelector('.price-val'));
+          out += `  Leistung: "${name}"${from ? ` | Zusatz: "${from}"` : ''} | Preis: "${val}"\n`;
+          out += `  → Preisänderung: find="${val}" | Namensänderung: find="${name}"\n`;
+        });
+      });
+      parts.push(out);
+    }
+
+    return parts.join('\n\n').slice(0, 5000);
   }
 
   window.kiSend = async function() {
@@ -1022,7 +1043,9 @@ FARBBEISPIELE: Blau #1a6fc4 | Rot #c0392b | Grün #1a6638 | Orange #e67e22 | Lil
 
 REGELN:
 - "find" muss EXAKT dem Text auf der Seite entsprechen (nicht kürzen, nicht paraphrasieren)
+- Preiszeilen bestehen aus EINZELNEN Elementen: Leistungsname, Zusatz und Preis sind getrennt. Preis ändern → find=exakter Preistext z.B. "ab 45 €". Niemals Name+Zusatz+Preis kombinieren!
 - Ändere NUR was der Nutzer verlangt
+- Mehrere Änderungen → mehrere Einträge im Array
 - Bei unklarer Anfrage: [{"type":"question","desc":"Rückfrage an den Nutzer"}]`,
           messages: [{ role: 'user', content: `Seiteninhalt:\n${pageContext}\n\nGewünschte Änderung: ${msg}` }]
         })
