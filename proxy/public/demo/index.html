@@ -2737,12 +2737,20 @@ ${oeffnungszeiten}
   E-Mail: "${t(q('.footer-contact-item:nth-child(3) a'))}" [.footer-contact-item:nth-child(3) a]
   Öffnungszeiten: "${t(q('.footer-contact-item:nth-child(4) span:last-child'))}" [.footer-contact-item:nth-child(4) span:last-child]
 
-═ FARBEN (Akzentfarbe der ganzen Seite)
+═ HINTERGRÜNDE & FARBEN
+  Hero-Hintergrund links (dunkler Bereich): document.querySelector('.hero-content').style.background = '#FARBE'
+  Hero-Hintergrund komplett: document.querySelector('.hero').style.background = '#FARBE'
+  Navigation Hintergrund: document.querySelector('.navbar').style.background = '#FARBE'
+  Topbar Hintergrund: document.querySelector('.topbar').style.background = '#FARBE'
+  Footer Hintergrund: document.querySelector('.footer').style.background = '#FARBE'
+  Seitenabschnitt-Hintergrund (z.B. Leistungen): document.querySelector('#leistungen').style.background = '#FARBE'
+
+═ AKZENTFARBEN (global, ändert alles auf einmal)
   Goldfarbe (Buttons, Icons, Akzente): document.documentElement.style.setProperty('--gold','#FARBE')
-  Helles Gold: setProperty('--gold-l','#FARBE')
-  Dunkelfarbe (Hintergründe, Texte): setProperty('--dark','#FARBE')
-  Farbbeispiele – Blau: #1a6fc4/#3a8fd4 | Rot: #c0392b/#e74c3c | Grün: #1a6638/#27ae60
-  Alle Buttons auf einmal: document.querySelectorAll('.btn-primary,.nav-cta,.mobile-menu-cta,.form-submit')
+  Helles Gold: document.documentElement.style.setProperty('--gold-l','#FARBE')
+  Dunkelfarbe (Hintergründe, Texte): document.documentElement.style.setProperty('--dark','#FARBE')
+  Alle Buttons auf einmal: document.querySelectorAll('.btn-primary,.nav-cta,.mobile-menu-cta,.form-submit').forEach(b=>b.style.background='#FARBE')
+  Farbbeispiele – Blau: #1a6fc4 | Rot: #c0392b | Grün: #1a6638 | Orange: #e67e22 | Lila: #8e44ad
   Alle h2-Überschriften: document.querySelectorAll('h2.section-title')
   Alle h3-Überschriften: document.querySelectorAll('h3')`;
 
