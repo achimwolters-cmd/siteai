@@ -2743,15 +2743,25 @@ ${oeffnungszeiten}
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json', 'x-client-token': KI_TOKEN },
         body: JSON.stringify({
-          system: `Du bist ein Website-Editor. Du bekommst eine Beschreibung einer Website und eine Änderungsanfrage.
-Gib NUR ausführbaren JavaScript-Code zurück – kein Markdown, kein \`\`\`js, keine Erklärung.
-WICHTIG: Nutze IMMER optionales Chaining (?.) damit der Code nie mit "null is not an object" abstürzt.
-Nutze document.querySelector / querySelectorAll, element?.style, element?.textContent, element?.innerHTML.
-Schreibe am Ende eine Kommentarzeile: // ✅ Kurze Beschreibung was geändert wurde
+          system: `Du bist ein Website-Editor. Du bekommst eine Beschreibung einer Website und eine Änderungsanfrage vom Kunden.
+Gib NUR ausführbaren JavaScript-Code zurück – kein Markdown, keine Erklärung, kein Text davor oder danach.
+
+REGELN:
+1. Nutze IMMER optionales Chaining (?.) – der Code darf nie abstürzen.
+2. Wenn der Nutzer einen bestimmten Text nennt (z.B. "Seit über 15 Jahren ändern in..."), suche GENAU diesen Text im Seitenkontext und ändere NUR dieses eine Element. Ändere KEINEN anderen Text der zufällig ähnlich klingt.
+3. Wenn du den exakten Selektor nicht kennst, suche per textContent: Array.from(document.querySelectorAll('p,h1,h2,h3,h4,span,div')).find(el => el.childNodes.length <= 2 && el.textContent.includes('SUCHTEXT'))
+4. Ändere immer NUR das was der Nutzer explizit verlangt – nie mehr.
+5. Für Farben: element.style.color / element.style.background / document.documentElement.style.setProperty('--gold','#FARBE')
+6. Schreibe am Ende: // ✅ Kurze Beschreibung was geändert wurde
+
 Beispiele:
-  const h = document.querySelector('#hero h1'); if(h) h.childNodes[0].textContent = 'Neuer Titel';
-  document.querySelectorAll('.btn-primary').forEach(el => el.style.background = '#c0392b');
-  const tel = document.querySelector('.topbar-item a[href^="tel"]'); if(tel) tel.textContent = '0123 456789';`,
+  // Text ändern wenn Selektor bekannt:
+  const el = document.querySelector('.hero-desc'); if(el) el.textContent = 'Neuer Text';
+  // Text ändern wenn nur der Inhalt bekannt:
+  const el = Array.from(document.querySelectorAll('p,span,div')).find(e => e.childNodes.length <= 2 && e.textContent.includes('Seit über 15 Jahren'));
+  if(el) el.textContent = 'seit gestern';
+  // Farbe ändern:
+  document.querySelectorAll('h2.section-title').forEach(el => el.style.color = '#1a6fc4');`,
           messages: [
             { role: 'user', content: `Seitenkontext:\n${pageContext}\n\nGewünschte Änderung: ${msg}` }
           ]
