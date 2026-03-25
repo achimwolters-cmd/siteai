@@ -789,7 +789,7 @@
       '.hero-image-tag-name','.hero-image-tag-role','.hero-image-tag-stars',
       '.stat-num','.stat-label',
       '.eyebrow','.section-title','.section-subtitle',
-      '.service-card h3','.service-card p','.service-price','.service-duration',
+      '.service-card h3','.service-card p','.service-duration',
       '.promo-tag','.promo-desc',
       '.about-badge-num','.about-badge-txt','.about-text p',
       '.team-name','.team-role','.team-desc',
@@ -806,7 +806,7 @@
 
     document.querySelectorAll(simpleTargets).forEach(el => makeEditable(el));
 
-    document.querySelectorAll('h1, .promo-title, .strip-item').forEach(el => {
+    document.querySelectorAll('h1, .promo-title, .strip-item, .service-price').forEach(el => {
       if (el.closest('#ki-panel,#ki-fab')) return;
       if (el.children.length > 0) {
         makeMixedEditable(el);
