@@ -2896,8 +2896,10 @@
       ['#bewertungen',   'background', 'Bewertungen-Bereich'],
       ['#kontakt',       'background', 'Kontakt-Bereich'],
       ['.promo-banner',  'background', 'Promo-Banner'],
-      ['.btn-primary',   'background', 'Gold-Button'],
-      ['.nav-cta',       'background', 'Nav-Button'],
+      ['.btn-primary',        'background', 'Gold-Button'],
+      ['.nav-cta',            'background', 'Nav-Button'],
+      ['.contact-form-wrap',  'background', 'Formular-Hintergrund'],
+      ['.services-strip',     'background', 'Leistungsstreifen'],
     ];
     colorTargets.forEach(([sel, prop, label]) => {
       const el = document.querySelector(sel);
@@ -3087,32 +3089,73 @@
 
     // Einfache Blatt-Elemente direkt editierbar
     const simpleTargets = [
+      // Headings
       'h2','h3','h4',
-      'p.section-subtitle','p.hero-desc','.footer-desc',
-      '.eyebrow','.hero-eyebrow',
-      'td',
+      // Topbar
+      '.topbar-item',
+      // Navigation
+      '.nav-links a','.nav-tel',
+      // Hero
+      '.hero-eyebrow','.hero-desc',
+      '.hero-image-tag-name','.hero-image-tag-role','.hero-image-tag-stars',
       '.stat-num','.stat-label',
-      '.team-name','.team-role',
-      '.price-name','.price-val','.price-from','.price-cat-name',
-      '.service-card h3','.service-card p','.service-price',
-      '.review-text','.review-author',
-      '.topbar-item a','.nav-tel',
-      '.cb-val',
-      '.promo-title','.promo-desc',
+      // Allgemein
+      '.eyebrow','.section-title','.section-subtitle',
+      // Leistungskarten
+      '.service-card h3','.service-card p','.service-price','.service-duration',
+      // Promo
+      '.promo-tag','.promo-desc',
+      // Über uns
+      '.about-badge-num','.about-badge-txt','.about-text p',
+      // Team
+      '.team-name','.team-role','.team-desc',
+      // Preise
+      '.price-cat-name','.price-name','.price-val','.price-from',
+      // Bewertungen
+      '.review-stars','.review-text','.review-name','.review-date','.review-source',
+      // Kontaktsektion
+      '.contact-form-wrap h3','.form-subtitle',
+      '.form-group label',
+      '.cb-val','.hours-table td',
+      // Footer
+      '.footer-desc','.footer-col h4','.footer-col ul a',
+      '.footer-contact-item a','.footer-contact-item span:last-child',
+      '.footer-bottom p','.footer-legal a',
       '.footer-logo span',
-      '.section-title'
     ].join(',');
 
     document.querySelectorAll(simpleTargets).forEach(el => makeEditable(el));
 
-    // h1 speziell behandeln: gemischter Inhalt (Text + em)
-    document.querySelectorAll('h1').forEach(el => {
+    // Gemischte Inhalte (Text + Kind-Elemente mit eigener Formatierung)
+    document.querySelectorAll('h1, .promo-title, .strip-item').forEach(el => {
       if (el.closest('#ki-panel,#ki-fab')) return;
       if (el.children.length > 0) {
-        makeMixedEditable(el); // Teile einzeln editierbar
+        makeMixedEditable(el);
       } else {
-        makeEditable(el);      // Kein Kind-Element → normal
+        makeEditable(el);
       }
+    });
+
+    // Formular-Platzhalter editierbar machen
+    document.querySelectorAll('.form-group input, .form-group textarea, .form-group select').forEach(input => {
+      if (!input.placeholder && input.tagName !== 'SELECT') return;
+      input.classList.add('ki-editable');
+      input.addEventListener('focus', e => {
+        e.preventDefault(); e.stopPropagation(); input.blur();
+        const label = input.closest('.form-group')?.querySelector('label')?.textContent || 'Feld';
+        const orig  = input.placeholder || '';
+        const popup = document.createElement('div');
+        popup.id = 'ki-inline-popup';
+        const r = input.getBoundingClientRect();
+        popup.style.cssText = `position:fixed;z-index:99999;left:${Math.min(r.left,window.innerWidth-320)}px;top:${r.top-110}px;width:300px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.18);padding:14px;border:2px solid #b8935a;`;
+        popup.innerHTML = `<div style="font-size:12px;color:#b8935a;font-weight:700;margin-bottom:8px;">✏️ Platzhalter: ${label}</div><input class="ki-il-inp" value="${orig}" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:8px;font-size:14px;box-sizing:border-box;" /><div style="display:flex;gap:8px;margin-top:8px;"><button class="ki-il-cancel" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;cursor:pointer;background:#f5f5f5;">Abbrechen</button><button class="ki-il-ok" style="flex:1;padding:8px;background:#b8935a;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">✓ OK</button></div>`;
+        document.body.appendChild(popup);
+        const inp = popup.querySelector('.ki-il-inp'); inp.focus(); inp.select();
+        popup.querySelector('.ki-il-ok').onclick = () => { input.placeholder = inp.value; popup.remove(); };
+        popup.querySelector('.ki-il-cancel').onclick = () => popup.remove();
+        inp.addEventListener('keydown', e => { if(e.key==='Enter'){input.placeholder=inp.value;popup.remove();} if(e.key==='Escape')popup.remove(); });
+        setTimeout(() => document.addEventListener('click', function h(e){ if(!popup.contains(e.target)){popup.remove();document.removeEventListener('click',h);} }), 100);
+      });
     });
   }
 
