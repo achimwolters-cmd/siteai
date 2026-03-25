@@ -2596,6 +2596,7 @@
   }
 
   /* ── Inline-Editing ── */
+  /* ── Inline-Text-Editing ── */
   .ki-editable {
     cursor: pointer !important;
     border-radius: 3px;
@@ -2609,6 +2610,78 @@
     content: ' ✏️';
     font-size: 0.75em;
     opacity: 0.7;
+  }
+
+  /* ── Button-Editing ── */
+  .ki-btn-editable { position: relative !important; }
+  .ki-btn-badge {
+    position: absolute;
+    top: -9px; right: -9px;
+    background: #fff;
+    border: 2px solid #b8935a;
+    border-radius: 50%;
+    width: 22px; height: 22px;
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 20;
+  }
+  .ki-btn-editable:hover .ki-btn-badge { opacity: 1; }
+
+  /* ── Button + Text-Farb-Popup (gemeinsam genutzt) ── */
+  #ki-btn-popup {
+    position: fixed;
+    z-index: 99999;
+    background: #fff;
+    border: 2px solid #b8935a;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    padding: 14px;
+    width: 270px;
+    font-family: inherit;
+  }
+  #ki-btn-popup .ki-bp-label {
+    font-size: 11px; font-weight: 700; color: #b8935a;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
+  }
+  #ki-btn-popup input[type=text] {
+    width: 100%; border: 1px solid #ddd; border-radius: 8px;
+    padding: 8px; font-size: 14px; font-family: inherit;
+    box-sizing: border-box; margin-bottom: 10px;
+  }
+  #ki-btn-popup input[type=text]:focus { outline: none; border-color: #b8935a; }
+  #ki-btn-popup .ki-bp-colors {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;
+  }
+  #ki-btn-popup .ki-bp-color-row label {
+    font-size: 11px; color: #888; display: block; margin-bottom: 3px;
+  }
+  #ki-btn-popup .ki-bp-color-row input[type=color] {
+    width: 100%; height: 36px; border: 1px solid #ddd; border-radius: 8px;
+    cursor: pointer; padding: 2px; background: none;
+  }
+  #ki-btn-popup .ki-bp-actions { display: flex; gap: 8px; }
+  #ki-btn-popup .ki-bp-cancel {
+    flex:1; padding:8px; border:1px solid #ddd; border-radius:8px;
+    background:#f5f5f5; cursor:pointer; font-size:13px;
+  }
+  #ki-btn-popup .ki-bp-confirm {
+    flex:2; padding:8px; border:none; border-radius:8px;
+    background:#b8935a; color:#fff; cursor:pointer; font-size:13px; font-weight:600;
+  }
+
+  /* ── Farb-Zeile im Text-Inline-Editor ── */
+  .ki-il-colors {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0;
+  }
+  .ki-il-color-row label {
+    font-size: 11px; color: #888; display: block; margin-bottom: 3px;
+  }
+  .ki-il-color-row input[type=color] {
+    width: 100%; height: 32px; border: 1px solid #ddd; border-radius: 6px;
+    cursor: pointer; padding: 2px; background: none;
   }
   #ki-inline-popup {
     position: fixed;
@@ -2872,10 +2945,16 @@
     popup.style.top  = top  + 'px';
     popup.style.left = left + 'px';
 
+    const cs = getComputedStyle(el);
+    const toHex = c => { const m = c.match(/\d+/g); return m ? '#'+m.slice(0,3).map(n=>parseInt(n).toString(16).padStart(2,'0')).join('') : '#ffffff'; };
     popup.innerHTML = `
       <div class="ki-il-label">✏️ Text bearbeiten</div>
       <textarea>${original}</textarea>
       <div class="ki-il-hint">Enter = übernehmen &nbsp;·&nbsp; Shift+Enter = neue Zeile</div>
+      <div class="ki-il-colors">
+        <div class="ki-il-color-row"><label>🔤 Textfarbe</label><input type="color" value="${toHex(cs.color).slice(0,7)}"></div>
+        <div class="ki-il-color-row"><label>🖍 Hintergrund</label><input type="color" value="${toHex(cs.backgroundColor).slice(0,7)}"></div>
+      </div>
       <div class="ki-il-actions">
         <button class="ki-il-cancel">Abbrechen</button>
         <button class="ki-il-confirm">✓ Übernehmen</button>
@@ -2885,15 +2964,21 @@
     _ilActive = { popup, el, original };
 
     const ta = popup.querySelector('textarea');
+    const [fgPicker, bgPicker] = popup.querySelectorAll('input[type=color]');
     ta.focus(); ta.select();
+
+    // Live-Farbvorschau
+    fgPicker.addEventListener('input', () => el.style.color = fgPicker.value);
+    bgPicker.addEventListener('input', () => el.style.backgroundColor = bgPicker.value);
 
     const confirm = () => {
       const newText = ta.value.trim();
       if (newText && newText !== original) {
-        // Direkt am Element setzen (funktioniert auch bei gemischten Tags wie h1+em)
         el.textContent = newText;
         addMsg(`✏️ "${original.slice(0,40)}" → "${newText.slice(0,40)}"`, 'bot');
       }
+      el.style.color = fgPicker.value;
+      el.style.backgroundColor = bgPicker.value;
       _ilClose();
     };
 
@@ -2905,6 +2990,72 @@
     });
 
     setTimeout(() => document.addEventListener('click', _ilOutside), 100);
+  }
+
+  // ── Button-Editor ─────────────────────────────────────────────────────────
+  let _bpActive = null;
+
+  function _bpClose() {
+    if (_bpActive) { _bpActive.popup.remove(); document.removeEventListener('click', _bpOutside); _bpActive = null; }
+  }
+  function _bpOutside(e) { if (_bpActive && !_bpActive.popup.contains(e.target)) _bpClose(); }
+
+  function _bpOpen(el, e) {
+    e.stopPropagation(); e.preventDefault();
+    _bpClose(); _ilClose(); _cpClose();
+    const cs = getComputedStyle(el);
+    const toHex = c => { const m = c.match(/\d+/g); return m ? '#'+m.slice(0,3).map(n=>parseInt(n).toString(16).padStart(2,'0')).join('') : '#ffffff'; };
+
+    const popup = document.createElement('div');
+    popup.id = 'ki-btn-popup';
+    const x = Math.min(e.clientX, window.innerWidth - 288);
+    const y = e.clientY + 12 + window.scrollY < window.innerHeight - 200
+      ? e.clientY + 12 + window.scrollY : e.clientY - 210 + window.scrollY;
+    popup.style.left = x+'px'; popup.style.top = y+'px';
+
+    popup.innerHTML = `
+      <div class="ki-bp-label">🔘 Button bearbeiten</div>
+      <input type="text" value="${el.textContent.trim()}" placeholder="Button-Text">
+      <div class="ki-bp-colors">
+        <div class="ki-bp-color-row"><label>Hintergrund</label><input type="color" value="${toHex(cs.backgroundColor).slice(0,7)}"></div>
+        <div class="ki-bp-color-row"><label>Textfarbe</label><input type="color" value="${toHex(cs.color).slice(0,7)}"></div>
+      </div>
+      <div class="ki-bp-actions">
+        <button class="ki-bp-cancel">Abbrechen</button>
+        <button class="ki-bp-confirm">✓ Übernehmen</button>
+      </div>`;
+    document.body.appendChild(popup);
+
+    const [bgPicker, fgPicker] = popup.querySelectorAll('input[type=color]');
+    bgPicker.addEventListener('input', () => el.style.background = bgPicker.value);
+    fgPicker.addEventListener('input', () => el.style.color = fgPicker.value);
+
+    const confirm = () => {
+      const txt = popup.querySelector('input[type=text]').value.trim();
+      if (txt) el.textContent = txt;
+      el.style.background = bgPicker.value;
+      el.style.color = fgPicker.value;
+      addMsg(`🔘 Button geändert: "${txt}" bg:${bgPicker.value} fg:${fgPicker.value}`, 'bot');
+      _bpClose();
+    };
+    popup.querySelector('.ki-bp-confirm').addEventListener('click', confirm);
+    popup.querySelector('.ki-bp-cancel').addEventListener('click', _bpClose);
+    popup.querySelector('input[type=text]').addEventListener('keydown', e => { if(e.key==='Enter') confirm(); if(e.key==='Escape') _bpClose(); });
+    _bpActive = { popup, el };
+    setTimeout(() => document.addEventListener('click', _bpOutside), 100);
+  }
+
+  function initButtonEditing() {
+    document.querySelectorAll('.btn-primary,.btn-outline,.nav-cta,.mobile-menu-cta,.form-submit').forEach(btn => {
+      if (btn.closest('#ki-panel,#ki-fab')) return;
+      btn.classList.add('ki-btn-editable');
+      // Edit-Badge
+      const badge = document.createElement('span');
+      badge.className = 'ki-btn-badge'; badge.textContent = '✏️';
+      btn.appendChild(badge);
+      // Links deaktivieren + Editor öffnen
+      btn.addEventListener('click', e => _bpOpen(btn, e));
+    });
   }
 
   function initInlineEditing() {
@@ -2951,6 +3102,7 @@
     fab.textContent = '✨';
     initInlineEditing();
     initColorEditing();
+    initButtonEditing();
   });
 
   function toggleKI() {
