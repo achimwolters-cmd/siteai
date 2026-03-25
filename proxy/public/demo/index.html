@@ -2590,12 +2590,23 @@
 
   let kiOpen = false;
 
-  // Sicherstellen dass Panel beim Laden immer geschlossen ist
-  // (falls gespeicherte HTML die open-Klasse enthält)
+  // Zugriff nur mit ?edit=TOKEN in der URL – sonst Widget komplett ausblenden
   document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('ki-panel').classList.remove('open');
-    document.getElementById('ki-fab').classList.remove('open');
-    document.getElementById('ki-fab').textContent = '✨';
+    const urlToken = new URLSearchParams(window.location.search).get('edit');
+    const fab   = document.getElementById('ki-fab');
+    const panel = document.getElementById('ki-panel');
+
+    if (urlToken !== KI_TOKEN) {
+      // Kein gültiger Token → Widget für Besucher unsichtbar
+      fab.style.display   = 'none';
+      panel.style.display = 'none';
+      return;
+    }
+
+    // Gültiger Token → Panel sauber geschlossen starten
+    panel.classList.remove('open');
+    fab.classList.remove('open');
+    fab.textContent = '✨';
   });
 
   function toggleKI() {
