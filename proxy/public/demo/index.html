@@ -3108,6 +3108,14 @@
       a.addEventListener('click', e => e.preventDefault());
     });
 
+    // Alle Links im Edit-Modus global sperren (Capturing-Phase, vor allem anderen)
+    document.addEventListener('click', e => {
+      const a = e.target.closest('a[href]');
+      if (a && !a.closest('#ki-panel') && !a.closest('#ki-fab')) {
+        e.preventDefault();
+      }
+    }, true);
+
     initInlineEditing();
     initColorEditing();
     initButtonEditing();
