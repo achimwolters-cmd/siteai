@@ -2720,7 +2720,8 @@
     const confirm = () => {
       const newText = ta.value.trim();
       if (newText && newText !== original) {
-        replaceTextInDOM(original, newText);
+        // Direkt am Element setzen (funktioniert auch bei gemischten Tags wie h1+em)
+        el.textContent = newText;
         addMsg(`✏️ "${original.slice(0,40)}" → "${newText.slice(0,40)}"`, 'bot');
       }
       _ilClose();
@@ -2737,10 +2738,26 @@
   }
 
   function initInlineEditing() {
-    const targets = 'h1,h2,h3,h4,p,td,.stat-num,.stat-label,.team-name,.team-role,.price-name,.price-val,.price-cat-name,.review-text,.review-author,.topbar-item a,.nav-tel,.footer-desc,.hero-eyebrow,.hero-desc,.cb-val,.promo-title,.promo-desc,.footer-logo';
+    const targets = [
+      'h1','h2','h3','h4',
+      'p.section-subtitle','p.hero-desc','.footer-desc',
+      '.eyebrow','.hero-eyebrow',
+      'td',
+      '.stat-num','.stat-label',
+      '.team-name','.team-role',
+      '.price-name','.price-val','.price-from','.price-cat-name',
+      '.service-card h3','.service-card p','.service-price',
+      '.review-text','.review-author',
+      '.topbar-item a','.nav-tel',
+      '.cb-val',
+      '.promo-title','.promo-desc',
+      '.footer-logo span',
+      '.section-title'
+    ].join(',');
+
     document.querySelectorAll(targets).forEach(el => {
-      if (el.closest('#ki-panel,#ki-fab')) return;
-      if (!el.textContent.trim() || el.children.length > 3) return;
+      if (el.closest('#ki-panel,#ki-fab,script,style')) return;
+      if (!el.textContent.trim()) return;
       el.classList.add('ki-editable');
       el.addEventListener('click', e => { e.stopPropagation(); _ilOpen(el); });
     });
