@@ -2841,10 +2841,11 @@
       </div>`;
 
     // Position
+    // position:fixed → viewport-relativ, kein scrollY
     const x = Math.min(e.clientX, window.innerWidth  - 258);
-    const y = e.clientY + 12 + window.scrollY < window.innerHeight - 220
-      ? e.clientY + 12 + window.scrollY
-      : e.clientY - 220 + window.scrollY;
+    const y = e.clientY + 12 < window.innerHeight - 220
+      ? e.clientY + 12
+      : e.clientY - 220;
     popup.style.left = x + 'px';
     popup.style.top  = y + 'px';
     document.body.appendChild(popup);
@@ -2935,11 +2936,9 @@
     const popup = document.createElement('div');
     popup.id = 'ki-inline-popup';
 
-    // Vertikale Position: unter oder über dem Element
+    // position:fixed → Koordinaten sind viewport-relativ, kein scrollY nötig
     const spaceBelow = window.innerHeight - rect.bottom;
-    const top = spaceBelow > 160
-      ? rect.bottom + window.scrollY + 8
-      : rect.top  + window.scrollY - 168;
+    const top  = spaceBelow > 170 ? rect.bottom + 8 : rect.top - 175;
     const left = Math.max(8, Math.min(rect.left, window.innerWidth - 316));
 
     popup.style.top  = top  + 'px';
@@ -3008,9 +3007,10 @@
 
     const popup = document.createElement('div');
     popup.id = 'ki-btn-popup';
+    // position:fixed → viewport-relativ, kein scrollY
     const x = Math.min(e.clientX, window.innerWidth - 288);
-    const y = e.clientY + 12 + window.scrollY < window.innerHeight - 200
-      ? e.clientY + 12 + window.scrollY : e.clientY - 210 + window.scrollY;
+    const y = e.clientY + 12 < window.innerHeight - 200
+      ? e.clientY + 12 : e.clientY - 210;
     popup.style.left = x+'px'; popup.style.top = y+'px';
 
     popup.innerHTML = `
