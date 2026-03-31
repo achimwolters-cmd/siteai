@@ -922,13 +922,11 @@
       a.style.cursor = 'default';
     });
 
-    // Sicherheitsnetz: onclick-Navigation und restliche Links abfangen
+    // Sicherheitsnetz: nur echte Navigation verhindern, Editor-Klicks durchlassen
     document.addEventListener('click', e => {
-      const a = e.target.closest('a');
-      if (a && !a.closest('#ki-panel') && !a.closest('#ki-fab')) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      if (e.target.closest('#ki-panel,#ki-fab,.ki-color-popup,#ki-btn-popup,#ki-inline-popup,#ki-color-popup')) return;
+      const a = e.target.closest('a[href]');
+      if (a) e.preventDefault();
     }, true);
 
     initInlineEditing();
