@@ -13,8 +13,8 @@
     bottom: 28px; right: 28px;
     z-index: 9999;
     width: 62px; height: 62px;
-    background: #3d8a96;
-    border: 3px solid rgba(255,255,255,0.3);
+    background: #ffffff;
+    border: 3px solid #3d8a96;
     border-radius: 50%;
     cursor: pointer;
     box-shadow: 0 4px 20px rgba(61,138,150,0.55);
