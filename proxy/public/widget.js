@@ -12,21 +12,20 @@
     position: fixed;
     bottom: 28px; right: 28px;
     z-index: 9999;
-    width: 56px; height: 56px;
-    background: linear-gradient(135deg, #b8935a, #9a7840);
+    width: 62px; height: 62px;
+    background: #ffffff;
     border: none;
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 4px 20px rgba(184,147,90,0.55);
+    box-shadow: 0 4px 20px rgba(52,130,145,0.45);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
     transition: transform 0.2s, box-shadow 0.2s;
-    color: white;
+    padding: 6px;
   }
-  #ki-fab:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(184,147,90,0.7); }
-  #ki-fab.open { border-radius: 12px; width: 48px; height: 48px; font-size: 18px; }
+  #ki-fab:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(52,130,145,0.65); }
+  #ki-fab.open { border-radius: 50%; width: 62px; height: 62px; }
 
   /* ── Panel ── */
   #ki-panel {
@@ -469,7 +468,29 @@
   // ── HTML injizieren ───────────────────────────────────────────────────────
   const widgetHTML = `
 <!-- FAB Button -->
-<button id="ki-fab" onclick="toggleKI()" title="Ailima öffnen">✨</button>
+<button id="ki-fab" onclick="toggleKI()" title="Ailima öffnen">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="46" height="46">
+  <!-- WiFi Signal -->
+  <path d="M50 8 Q65 8 75 18" stroke="#3d8a96" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M50 8 Q72 8 82 22" stroke="#3d8a96" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.6"/>
+  <path d="M50 8 Q60 8 67 15" stroke="#3d8a96" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+  <!-- Antenna dot -->
+  <circle cx="50" cy="22" r="3.5" fill="#3d8a96"/>
+  <!-- Body -->
+  <ellipse cx="50" cy="62" rx="34" ry="36" fill="#3d8a96"/>
+  <!-- Eyes -->
+  <ellipse cx="38" cy="55" rx="9" ry="11" fill="#1f5f6a"/>
+  <ellipse cx="62" cy="55" rx="9" ry="11" fill="#1f5f6a"/>
+  <ellipse cx="35.5" cy="52" rx="3.5" ry="4.5" fill="white"/>
+  <ellipse cx="59.5" cy="52" rx="3.5" ry="4.5" fill="white"/>
+  <!-- Smile -->
+  <path d="M32 72 Q50 84 68 72" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- Left arm -->
+  <ellipse cx="18" cy="76" rx="8" ry="6" fill="#3d8a96" transform="rotate(-20 18 76)"/>
+  <!-- Right arm -->
+  <ellipse cx="82" cy="76" rx="8" ry="6" fill="#3d8a96" transform="rotate(20 82 76)"/>
+</svg>
+</button>
 
 <!-- Panel -->
 <div id="ki-panel">
@@ -481,7 +502,21 @@
     <div id="ki-versions-list" style="flex:1;overflow-y:auto;padding:16px;"></div>
   </div>
   <div class="ki-header">
-    <div class="ki-header-icon">✨</div>
+    <div class="ki-header-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="32" height="32">
+        <path d="M50 8 Q65 8 75 18" stroke="#3d8a96" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M50 8 Q60 8 67 15" stroke="#3d8a96" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+        <circle cx="50" cy="22" r="3.5" fill="#3d8a96"/>
+        <ellipse cx="50" cy="62" rx="34" ry="36" fill="#3d8a96"/>
+        <ellipse cx="38" cy="55" rx="9" ry="11" fill="#1f5f6a"/>
+        <ellipse cx="62" cy="55" rx="9" ry="11" fill="#1f5f6a"/>
+        <ellipse cx="35.5" cy="52" rx="3.5" ry="4.5" fill="white"/>
+        <ellipse cx="59.5" cy="52" rx="3.5" ry="4.5" fill="white"/>
+        <path d="M32 72 Q50 84 68 72" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <ellipse cx="18" cy="76" rx="8" ry="6" fill="#3d8a96" transform="rotate(-20 18 76)"/>
+        <ellipse cx="82" cy="76" rx="8" ry="6" fill="#3d8a96" transform="rotate(20 82 76)"/>
+      </svg>
+    </div>
     <div>
       <div class="ki-header-title">Ailima</div>
       <div class="ki-header-sub">Änderungen per Text</div>
