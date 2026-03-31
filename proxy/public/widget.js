@@ -13,11 +13,11 @@
     bottom: 28px; right: 28px;
     z-index: 9999;
     width: 62px; height: 62px;
-    background: #ffffff;
-    border: none;
+    background: #3d8a96;
+    border: 3px solid rgba(255,255,255,0.3);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 4px 20px rgba(52,130,145,0.45);
+    box-shadow: 0 4px 20px rgba(61,138,150,0.55);
     display: flex;
     align-items: center;
     justify-content: center;
