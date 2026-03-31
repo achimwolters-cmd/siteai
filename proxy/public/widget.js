@@ -69,7 +69,7 @@
     font-size: 16px;
     flex-shrink: 0;
   }
-  .ki-header-icon img { width: 40px; height: 40px; }
+  .ki-header-icon img { width: 36px; height: auto; }
   .ki-header-title { font-size: 14px; font-weight: 700; color: #fff; font-family: 'Inter', sans-serif; }
   .ki-header-sub { font-size: 11px; color: rgba(255,255,255,0.5); font-family: 'Inter', sans-serif; }
   .ki-credits {
@@ -471,7 +471,7 @@
   const widgetHTML = `
 <!-- FAB Button -->
 <button id="ki-fab" onclick="toggleKI()" title="Ailima öffnen">
-<img src="/eddi.png" width="46" height="46" style="display:block;" alt="Eddi"/>
+<img src="/eddi.png" style="width:46px;height:auto;display:block;" alt="Eddi"/>
 </button>
 
 <!-- Panel -->
@@ -484,7 +484,7 @@
     <div id="ki-versions-list" style="flex:1;overflow-y:auto;padding:16px;"></div>
   </div>
   <div class="ki-header">
-    <div class="ki-header-icon"><img src="/eddi.png" width="32" height="32" alt="Eddi"/></div>
+    <div class="ki-header-icon"><img src="/eddi.png" style="width:36px;height:auto;display:block;" alt="Eddi"/></div>
     <div>
       <div class="ki-header-title">Ailima</div>
       <div class="ki-header-sub">Änderungen per Text</div>
