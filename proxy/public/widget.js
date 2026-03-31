@@ -938,8 +938,11 @@
   window.toggleKI = function() {
     kiOpen = !kiOpen;
     document.getElementById('ki-panel').classList.toggle('open', kiOpen);
-    document.getElementById('ki-fab').classList.toggle('open', kiOpen);
-    document.getElementById('ki-fab').textContent = kiOpen ? '✕' : '✨';
+    const fab = document.getElementById('ki-fab');
+    fab.classList.toggle('open', kiOpen);
+    fab.innerHTML = kiOpen
+      ? '<span style="font-size:22px;color:#3d8a96;font-weight:700;">✕</span>'
+      : '<img src="/eddi.png" style="width:46px;height:auto;display:block;" alt="Eddi"/>';
     if (kiOpen) {
       loadCredits();
       document.getElementById('ki-input').focus();
