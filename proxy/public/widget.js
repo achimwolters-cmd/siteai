@@ -764,9 +764,14 @@
       ? e.clientY + 12 : e.clientY - 210;
     popup.style.left = x+'px'; popup.style.top = y+'px';
 
+    // Button-Text ohne Badge-Spans lesen
+    const btnText = Array.from(el.childNodes)
+      .filter(n => !n.classList?.contains('ki-btn-badge'))
+      .map(n => n.textContent).join('').trim();
+
     popup.innerHTML = `
       <div class="ki-bp-label">🔘 Button bearbeiten</div>
-      <input type="text" value="${el.textContent.trim()}" placeholder="Button-Text">
+      <input type="text" value="${btnText}" placeholder="Button-Text">
       <div class="ki-bp-colors">
         <div class="ki-bp-color-row"><label>Hintergrund</label><input type="color" value="${toHex(cs.backgroundColor).slice(0,7)}"></div>
         <div class="ki-bp-color-row"><label>Textfarbe</label><input type="color" value="${toHex(cs.color).slice(0,7)}"></div>
@@ -784,7 +789,12 @@
     const confirm = () => {
       const txt = popup.querySelector('input[type=text]').value.trim();
       _pushUndo();
-      if (txt) el.textContent = txt;
+      if (txt) {
+        // Badge-Span sichern, Text setzen, Badge wieder anhängen
+        const badge = el.querySelector('.ki-btn-badge');
+        el.textContent = txt;
+        if (badge) el.appendChild(badge);
+      }
       el.style.background = bgPicker.value;
       el.style.color = fgPicker.value;
       addMsg(`🔘 Button geändert: "${txt}" bg:${bgPicker.value} fg:${fgPicker.value}`, 'bot');
