@@ -54,7 +54,7 @@
 
   /* Panel Header */
   .ki-header {
-    background: linear-gradient(135deg, #1a1a1a, #2d2416);
+    background: linear-gradient(135deg, #1a454d, #0f2e33);
     padding: 16px 18px;
     display: flex;
     align-items: center;
@@ -112,7 +112,7 @@
     border-bottom-left-radius: 4px;
   }
   .ki-msg.user {
-    background: linear-gradient(135deg, #b8935a, #9a7840);
+    background: linear-gradient(135deg, #3d8a96, #2a6670);
     color: #fff;
     align-self: flex-end;
     border-bottom-right-radius: 4px;
@@ -134,7 +134,7 @@
   .ki-typing.visible { display: flex; }
   .ki-dot {
     width: 7px; height: 7px;
-    background: #b8935a;
+    background: #3d8a96;
     border-radius: 50%;
     animation: ki-bounce 1.2s infinite;
   }
@@ -163,7 +163,7 @@
     transition: background 0.15s, border-color 0.15s, color 0.15s;
     white-space: nowrap;
   }
-  .ki-chip:hover { background: #b8935a; border-color: #b8935a; color: #fff; }
+  .ki-chip:hover { background: #3d8a96; border-color: #3d8a96; color: #fff; }
 
   /* Input */
   .ki-input-row {
@@ -190,10 +190,10 @@
     line-height: 1.45;
     transition: border-color 0.2s;
   }
-  .ki-textarea:focus { outline: none; border-color: #b8935a; }
+  .ki-textarea:focus { outline: none; border-color: #3d8a96; }
   .ki-send {
     width: 38px; height: 38px;
-    background: #b8935a;
+    background: #3d8a96;
     border: none;
     border-radius: 10px;
     cursor: pointer;
@@ -205,7 +205,7 @@
     color: white;
     font-size: 16px;
   }
-  .ki-send:hover:not(:disabled) { background: #9a7840; transform: scale(1.05); }
+  .ki-send:hover:not(:disabled) { background: #2a6670; transform: scale(1.05); }
   .ki-send:disabled { background: #ccc; cursor: not-allowed; }
 
   /* Speichern-Bar */
@@ -266,7 +266,7 @@
     position: fixed;
     z-index: 99999;
     background: #fff;
-    border: 2px solid #b8935a;
+    border: 2px solid #3d8a96;
     border-radius: 14px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     padding: 16px;
@@ -274,7 +274,7 @@
     font-family: inherit;
   }
   #ki-color-popup .ki-cp-label {
-    font-size: 11px; font-weight: 700; color: #b8935a;
+    font-size: 11px; font-weight: 700; color: #3d8a96;
     text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
   }
   #ki-color-popup input[type=color] {
@@ -296,7 +296,7 @@
   }
   #ki-color-popup .ki-cp-confirm {
     flex:2; padding:8px; border:none; border-radius:8px;
-    background:#b8935a; color:#fff; cursor:pointer; font-size:13px; font-weight:600;
+    background:#3d8a96; color:#fff; cursor:pointer; font-size:13px; font-weight:600;
   }
 
   /* ── Inline-Editing ── */
@@ -316,7 +316,7 @@
     font-style: inherit !important;
   }
   .ki-editable:hover {
-    outline: 2px dashed #b8935a;
+    outline: 2px dashed #3d8a96;
     outline-offset: 4px;
   }
   .ki-editable:hover::after {
@@ -331,7 +331,7 @@
     position: absolute;
     top: -9px; right: -9px;
     background: #fff;
-    border: 2px solid #b8935a;
+    border: 2px solid #3d8a96;
     border-radius: 50%;
     width: 22px; height: 22px;
     font-size: 11px;
@@ -348,7 +348,7 @@
     position: fixed;
     z-index: 99999;
     background: #fff;
-    border: 2px solid #b8935a;
+    border: 2px solid #3d8a96;
     border-radius: 14px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     padding: 14px;
@@ -356,7 +356,7 @@
     font-family: inherit;
   }
   #ki-btn-popup .ki-bp-label {
-    font-size: 11px; font-weight: 700; color: #b8935a;
+    font-size: 11px; font-weight: 700; color: #3d8a96;
     text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
   }
   #ki-btn-popup input[type=text] {
@@ -364,7 +364,7 @@
     padding: 8px; font-size: 14px; font-family: inherit;
     box-sizing: border-box; margin-bottom: 10px;
   }
-  #ki-btn-popup input[type=text]:focus { outline: none; border-color: #b8935a; }
+  #ki-btn-popup input[type=text]:focus { outline: none; border-color: #3d8a96; }
   #ki-btn-popup .ki-bp-colors {
     display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;
   }
@@ -382,7 +382,7 @@
   }
   #ki-btn-popup .ki-bp-confirm {
     flex:2; padding:8px; border:none; border-radius:8px;
-    background:#b8935a; color:#fff; cursor:pointer; font-size:13px; font-weight:600;
+    background:#3d8a96; color:#fff; cursor:pointer; font-size:13px; font-weight:600;
   }
 
   /* ── Farb-Zeile im Text-Inline-Editor ── */
@@ -400,7 +400,7 @@
     position: fixed;
     z-index: 99999;
     background: #fff;
-    border: 2px solid #b8935a;
+    border: 2px solid #3d8a96;
     border-radius: 14px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.18);
     padding: 14px;
@@ -410,7 +410,7 @@
   #ki-inline-popup .ki-il-label {
     font-size: 11px;
     font-weight: 700;
-    color: #b8935a;
+    color: #3d8a96;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 8px;
@@ -428,7 +428,7 @@
     outline: none;
     transition: border-color 0.15s;
   }
-  #ki-inline-popup textarea:focus { border-color: #b8935a; }
+  #ki-inline-popup textarea:focus { border-color: #3d8a96; }
   #ki-inline-popup .ki-il-hint {
     font-size: 11px;
     color: #aaa;
@@ -452,7 +452,7 @@
     padding: 8px;
     border: none;
     border-radius: 8px;
-    background: #b8935a;
+    background: #3d8a96;
     color: #fff;
     cursor: pointer;
     font-size: 13px;
@@ -469,54 +469,20 @@
   const widgetHTML = `
 <!-- FAB Button -->
 <button id="ki-fab" onclick="toggleKI()" title="Ailima öffnen">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="46" height="46">
-  <!-- WiFi Signal -->
-  <path d="M50 8 Q65 8 75 18" stroke="#3d8a96" stroke-width="5" fill="none" stroke-linecap="round"/>
-  <path d="M50 8 Q72 8 82 22" stroke="#3d8a96" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.6"/>
-  <path d="M50 8 Q60 8 67 15" stroke="#3d8a96" stroke-width="5.5" fill="none" stroke-linecap="round"/>
-  <!-- Antenna dot -->
-  <circle cx="50" cy="22" r="3.5" fill="#3d8a96"/>
-  <!-- Body -->
-  <ellipse cx="50" cy="62" rx="34" ry="36" fill="#3d8a96"/>
-  <!-- Eyes -->
-  <ellipse cx="38" cy="55" rx="9" ry="11" fill="#1f5f6a"/>
-  <ellipse cx="62" cy="55" rx="9" ry="11" fill="#1f5f6a"/>
-  <ellipse cx="35.5" cy="52" rx="3.5" ry="4.5" fill="white"/>
-  <ellipse cx="59.5" cy="52" rx="3.5" ry="4.5" fill="white"/>
-  <!-- Smile -->
-  <path d="M32 72 Q50 84 68 72" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
-  <!-- Left arm -->
-  <ellipse cx="18" cy="76" rx="8" ry="6" fill="#3d8a96" transform="rotate(-20 18 76)"/>
-  <!-- Right arm -->
-  <ellipse cx="82" cy="76" rx="8" ry="6" fill="#3d8a96" transform="rotate(20 82 76)"/>
-</svg>
+<img src="/eddi.png" width="46" height="46" style="display:block;" alt="Eddi"/>
 </button>
 
 <!-- Panel -->
 <div id="ki-panel">
   <div id="ki-versions-panel" style="display:none;position:absolute;inset:0;background:white;border-radius:20px;z-index:10;flex-direction:column;overflow:hidden;">
-    <div style="padding:16px;background:#1a1a1a;display:flex;align-items:center;justify-content:space-between;">
+    <div style="padding:16px;background:#1a454d;display:flex;align-items:center;justify-content:space-between;">
       <span style="color:white;font-weight:700;">🕐 Versionshistorie</span>
       <button onclick="kiHideVersions()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;">✕</button>
     </div>
     <div id="ki-versions-list" style="flex:1;overflow-y:auto;padding:16px;"></div>
   </div>
   <div class="ki-header">
-    <div class="ki-header-icon">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="32" height="32">
-        <path d="M50 8 Q65 8 75 18" stroke="#3d8a96" stroke-width="5" fill="none" stroke-linecap="round"/>
-        <path d="M50 8 Q60 8 67 15" stroke="#3d8a96" stroke-width="5.5" fill="none" stroke-linecap="round"/>
-        <circle cx="50" cy="22" r="3.5" fill="#3d8a96"/>
-        <ellipse cx="50" cy="62" rx="34" ry="36" fill="#3d8a96"/>
-        <ellipse cx="38" cy="55" rx="9" ry="11" fill="#1f5f6a"/>
-        <ellipse cx="62" cy="55" rx="9" ry="11" fill="#1f5f6a"/>
-        <ellipse cx="35.5" cy="52" rx="3.5" ry="4.5" fill="white"/>
-        <ellipse cx="59.5" cy="52" rx="3.5" ry="4.5" fill="white"/>
-        <path d="M32 72 Q50 84 68 72" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
-        <ellipse cx="18" cy="76" rx="8" ry="6" fill="#3d8a96" transform="rotate(-20 18 76)"/>
-        <ellipse cx="82" cy="76" rx="8" ry="6" fill="#3d8a96" transform="rotate(20 82 76)"/>
-      </svg>
-    </div>
+    <div class="ki-header-icon"><img src="/eddi.png" width="32" height="32" alt="Eddi"/></div>
     <div>
       <div class="ki-header-title">Ailima</div>
       <div class="ki-header-sub">Änderungen per Text</div>
@@ -584,7 +550,7 @@
   };
 
   // ── Flächen-Farb-Editor ───────────────────────────────────────────────────
-  const SWATCHES = ['#1a1a1a','#2d2416','#b8935a','#ffffff','#1a6fc4','#c0392b','#1a6638','#e67e22','#8e44ad','#2c3e50','#f5f0eb','#e8d5b7','#34495e','#7f8c8d'];
+  const SWATCHES = ['#1a1a1a','#2d2416','#3d8a96','#ffffff','#1a6fc4','#c0392b','#1a6638','#e67e22','#8e44ad','#2c3e50','#f5f0eb','#e8d5b7','#34495e','#7f8c8d'];
   let _cpActive = null;
 
   function _cpClose() {
@@ -906,8 +872,8 @@
         const popup = document.createElement('div');
         popup.id = 'ki-inline-popup';
         const r = input.getBoundingClientRect();
-        popup.style.cssText = `position:fixed;z-index:99999;left:${Math.min(r.left,window.innerWidth-320)}px;top:${r.top-110}px;width:300px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.18);padding:14px;border:2px solid #b8935a;`;
-        popup.innerHTML = `<div style="font-size:12px;color:#b8935a;font-weight:700;margin-bottom:8px;">✏️ Platzhalter: ${label}</div><input class="ki-il-inp" value="${orig}" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:8px;font-size:14px;box-sizing:border-box;" /><div style="display:flex;gap:8px;margin-top:8px;"><button class="ki-il-cancel" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;cursor:pointer;background:#f5f5f5;">Abbrechen</button><button class="ki-il-ok" style="flex:1;padding:8px;background:#b8935a;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">✓ OK</button></div>`;
+        popup.style.cssText = `position:fixed;z-index:99999;left:${Math.min(r.left,window.innerWidth-320)}px;top:${r.top-110}px;width:300px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.18);padding:14px;border:2px solid #3d8a96;`;
+        popup.innerHTML = `<div style="font-size:12px;color:#3d8a96;font-weight:700;margin-bottom:8px;">✏️ Platzhalter: ${label}</div><input class="ki-il-inp" value="${orig}" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:8px;font-size:14px;box-sizing:border-box;" /><div style="display:flex;gap:8px;margin-top:8px;"><button class="ki-il-cancel" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;cursor:pointer;background:#f5f5f5;">Abbrechen</button><button class="ki-il-ok" style="flex:1;padding:8px;background:#3d8a96;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">✓ OK</button></div>`;
         document.body.appendChild(popup);
         const inp = popup.querySelector('.ki-il-inp'); inp.focus(); inp.select();
         popup.querySelector('.ki-il-ok').onclick = () => { input.placeholder = inp.value; popup.remove(); };
@@ -1182,7 +1148,7 @@ REGELN:
             <div style="font-weight:600;font-size:14px;">${i === 0 ? '⭐ Neueste' : `Version ${d.versions.length - i}`}</div>
             <div style="font-size:12px;color:#888;">${v.label}</div>
           </div>
-          <button onclick="kiRestoreVersion('${v.filename}')" style="background:#b8935a;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;">Wiederherstellen</button>
+          <button onclick="kiRestoreVersion('${v.filename}')" style="background:#3d8a96;color:white;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;">Wiederherstellen</button>
         </div>
       `).join('');
     } catch(e) {
