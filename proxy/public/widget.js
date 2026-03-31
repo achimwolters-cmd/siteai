@@ -536,7 +536,6 @@
     const fab   = document.getElementById('ki-fab');
     panel.classList.remove('open');
     fab.classList.remove('open');
-    fab.textContent = '✨';
     _undoStack.push(document.documentElement.outerHTML);
     if (_undoStack.length > 20) _undoStack.shift();
     _updateUndoBtn();
