@@ -62,12 +62,14 @@
     flex-shrink: 0;
   }
   .ki-header-icon {
-    width: 34px; height: 34px;
-    background: rgba(184,147,90,0.25);
+    width: 48px; height: 48px;
+    background: #ffffff;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 16px;
+    flex-shrink: 0;
   }
+  .ki-header-icon img { width: 40px; height: 40px; }
   .ki-header-title { font-size: 14px; font-weight: 700; color: #fff; font-family: 'Inter', sans-serif; }
   .ki-header-sub { font-size: 11px; color: rgba(255,255,255,0.5); font-family: 'Inter', sans-serif; }
   .ki-credits {
