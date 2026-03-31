@@ -552,7 +552,7 @@
   };
 
   // ── Flächen-Farb-Editor ───────────────────────────────────────────────────
-  const SWATCHES = ['#1a1a1a','#2d2416','#3d8a96','#ffffff','#1a6fc4','#c0392b','#1a6638','#e67e22','#8e44ad','#2c3e50','#f5f0eb','#e8d5b7','#34495e','#7f8c8d'];
+  const SWATCHES = ['transparent','#1a1a1a','#2d2416','#3d8a96','#ffffff','#1a6fc4','#c0392b','#1a6638','#e67e22','#8e44ad','#2c3e50','#f5f0eb','#e8d5b7','#34495e','#7f8c8d'];
   let _cpActive = null;
 
   function _cpClose() {
@@ -585,7 +585,10 @@
     popup.innerHTML = `
       <div class="ki-cp-label">🎨 ${propLabel} ändern</div>
       <input type="color" value="${startHex.slice(0,7)}">
-      <div class="ki-cp-swatches">${SWATCHES.map(s=>`<div class="ki-cp-swatch" style="background:${s}" data-color="${s}" title="${s}"></div>`).join('')}</div>
+      <div class="ki-cp-swatches">${SWATCHES.map(s => s === 'transparent'
+        ? `<div class="ki-cp-swatch ki-cp-transparent" data-color="transparent" title="Kein Hintergrund / Transparent" style="background:linear-gradient(45deg,#ccc 25%,white 25%,white 75%,#ccc 75%,#ccc),linear-gradient(45deg,#ccc 25%,white 25%,white 75%,#ccc 75%,#ccc);background-size:8px 8px;background-position:0 0,4px 4px;"></div>`
+        : `<div class="ki-cp-swatch" style="background:${s}" data-color="${s}" title="${s}"></div>`
+      ).join('')}</div>
       <div class="ki-cp-actions">
         <button class="ki-cp-cancel">Abbrechen</button>
         <button class="ki-cp-confirm">✓ Übernehmen</button>
@@ -900,17 +903,21 @@
 
     panel.classList.remove('open');
     fab.classList.remove('open');
-    fab.textContent = '✨';
 
+    // Alle Links auf der Seite deaktivieren (kein Navigieren im Edit-Modus)
     document.querySelectorAll('a[href]').forEach(a => {
       if (a.closest('#ki-panel,#ki-fab')) return;
-      a.addEventListener('click', e => e.preventDefault());
+      a.setAttribute('data-ki-href', a.getAttribute('href'));
+      a.removeAttribute('href');
+      a.style.cursor = 'default';
     });
 
+    // Sicherheitsnetz: onclick-Navigation und restliche Links abfangen
     document.addEventListener('click', e => {
-      const a = e.target.closest('a[href]');
+      const a = e.target.closest('a');
       if (a && !a.closest('#ki-panel') && !a.closest('#ki-fab')) {
         e.preventDefault();
+        e.stopPropagation();
       }
     }, true);
 
@@ -1210,6 +1217,12 @@ REGELN:
       // Editor-Klassen entfernen
       clone.querySelectorAll('.ki-editable, .ki-colorable, .ki-btn-editable').forEach(el => {
         el.classList.remove('ki-editable', 'ki-colorable', 'ki-btn-editable');
+      });
+      // Deaktivierte Links wiederherstellen
+      clone.querySelectorAll('[data-ki-href]').forEach(a => {
+        a.setAttribute('href', a.getAttribute('data-ki-href'));
+        a.removeAttribute('data-ki-href');
+        a.style.cursor = '';
       });
       const html = '<!DOCTYPE html>\n' + clone.outerHTML;
 
