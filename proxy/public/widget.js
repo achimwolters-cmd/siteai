@@ -469,7 +469,7 @@
   // ── HTML injizieren ───────────────────────────────────────────────────────
   const widgetHTML = `
 <!-- FAB Button -->
-<button id="ki-fab" onclick="toggleKI()" title="KI-Editor öffnen">✨</button>
+<button id="ki-fab" onclick="toggleKI()" title="Ailima öffnen">✨</button>
 
 <!-- Panel -->
 <div id="ki-panel">
@@ -483,7 +483,7 @@
   <div class="ki-header">
     <div class="ki-header-icon">✨</div>
     <div>
-      <div class="ki-header-title">KI-Editor</div>
+      <div class="ki-header-title">Ailima</div>
       <div class="ki-header-sub">Änderungen per Text</div>
     </div>
     <div class="ki-credits" id="ki-credits-badge">… Credits</div>
