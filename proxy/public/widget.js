@@ -1197,10 +1197,21 @@ REGELN:
       const fab   = document.getElementById('ki-fab');
       panel.classList.remove('open');
       fab.classList.remove('open');
-      fab.textContent = '✨';
       kiOpen = false;
 
-      const html = document.documentElement.outerHTML;
+      // Saubere Kopie des DOM erstellen – Editor-UI entfernen
+      const clone = document.documentElement.cloneNode(true);
+      // Editor-Elemente entfernen
+      clone.querySelectorAll('.ki-btn-badge, .ki-color-btn, #ki-panel, #ki-fab').forEach(el => el.remove());
+      // ki-text-node spans durch ihren Textinhalt ersetzen
+      clone.querySelectorAll('span.ki-text-node').forEach(span => {
+        span.replaceWith(document.createTextNode(span.textContent));
+      });
+      // Editor-Klassen entfernen
+      clone.querySelectorAll('.ki-editable, .ki-colorable, .ki-btn-editable').forEach(el => {
+        el.classList.remove('ki-editable', 'ki-colorable', 'ki-btn-editable');
+      });
+      const html = '<!DOCTYPE html>\n' + clone.outerHTML;
 
       const saveCtrl = new AbortController();
       const saveTimeout = setTimeout(() => saveCtrl.abort(), 20000);
