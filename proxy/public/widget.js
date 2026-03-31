@@ -219,7 +219,7 @@
   }
   .ki-save-btn {
     width: 100%;
-    background: #2a7d4f;
+    background: #3d8a96;
     color: #fff;
     border: none;
     border-radius: 10px;
@@ -234,10 +234,10 @@
     justify-content: center;
     gap: 7px;
   }
-  .ki-save-btn:hover:not(:disabled) { background: #1e5c3a; transform: scale(1.01); }
-  .ki-save-btn:disabled { background: #8bbfa3; cursor: not-allowed; }
-  .ki-save-btn.saving { background: #8bbfa3; }
-  .ki-save-btn.saved  { background: #1a6638; }
+  .ki-save-btn:hover:not(:disabled) { background: #2a6670; transform: scale(1.01); }
+  .ki-save-btn:disabled { background: #a0cdd4; cursor: not-allowed; }
+  .ki-save-btn.saving { background: #a0cdd4; }
+  .ki-save-btn.saved  { background: #2a6670; }
 
   @media (max-width: 480px) {
     #ki-panel { width: calc(100vw - 32px); right: 16px; bottom: 88px; }
