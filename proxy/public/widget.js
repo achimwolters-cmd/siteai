@@ -3,6 +3,7 @@
   const scriptTag = document.currentScript || document.querySelector('script[data-token]');
   const KI_TOKEN  = scriptTag.getAttribute('data-token');
   const KI_PROXY  = scriptTag.getAttribute('data-proxy') || window.location.origin;
+  const KI_DEMO   = scriptTag.getAttribute('data-demo') === 'true';
   // ══════════════════════════════════════════
 
   // ── CSS injizieren ────────────────────────────────────────────────────────
@@ -509,7 +510,7 @@
     <div class="ki-chip" onclick="kiChip(this)">Öffnungszeiten ändern</div>
   </div>
 
-  <div class="ki-save-bar">
+  <div class="ki-save-bar" ${KI_DEMO ? 'style="display:none"' : ''}>
     <button class="ki-save-btn" id="ki-save-btn" onclick="kiSave()">
       💾 Änderungen veröffentlichen
     </button>
