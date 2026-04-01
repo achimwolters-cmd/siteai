@@ -144,29 +144,69 @@
       padding: 5px 12px; font-size: 12px; color: #999;
       margin: 0 12px;
     }
-    .hero-browser-img { width: 100%; aspect-ratio: 16/10; object-fit: cover; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    @keyframes float2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+    /* Mockup inside browser */
+    .mock-site { padding: 0; background: #f9fafb; }
+    .mock-hero-bar {
+      background: linear-gradient(135deg, #2a6670, #3d8a96);
+      padding: 28px 20px 32px;
+    }
+    .mock-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .mock-logo { width: 60px; height: 10px; background: rgba(255,255,255,0.6); border-radius: 4px; }
+    .mock-nav-links { display: flex; gap: 10px; }
+    .mock-nav-link { width: 36px; height: 8px; background: rgba(255,255,255,0.35); border-radius: 3px; }
+    .mock-nav-cta { width: 52px; height: 22px; background: rgba(255,255,255,0.25); border-radius: 50px; }
+    .mock-hero-text { }
+    .mock-h1 { width: 70%; height: 14px; background: rgba(255,255,255,0.85); border-radius: 4px; margin-bottom: 8px; }
+    .mock-h1b { width: 55%; height: 14px; background: rgba(255,255,255,0.85); border-radius: 4px; margin-bottom: 12px; }
+    .mock-sub { width: 80%; height: 8px; background: rgba(255,255,255,0.4); border-radius: 3px; margin-bottom: 6px; }
+    .mock-sub2 { width: 60%; height: 8px; background: rgba(255,255,255,0.4); border-radius: 3px; margin-bottom: 18px; }
+    .mock-btn { width: 90px; height: 28px; background: rgba(255,255,255,0.9); border-radius: 50px; }
+    .mock-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+    .mock-cards { display: flex; gap: 8px; }
+    .mock-card { flex: 1; height: 52px; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+    .mock-line { height: 8px; background: #e8edf0; border-radius: 3px; }
+    .mock-line.short { width: 60%; }
+    .mock-line.med { width: 80%; }
+    .mock-image { height: 64px; background: linear-gradient(135deg, #dff0f4, #c5e4ea); border-radius: 8px; }
+
+    /* Floating chat bubble */
+    .hero-chat {
+      position: absolute; bottom: 28px; left: -20px;
+      background: #fff; border-radius: 16px;
+      padding: 14px 18px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+      max-width: 260px;
+      animation: float2 4s ease-in-out infinite;
+    }
+    .hero-chat-msg { font-size: 13px; font-weight: 500; color: var(--dark); margin-bottom: 8px; }
+    .hero-chat-msg span { color: var(--teal); }
+    .hero-chat-reply { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #22c55e; font-weight: 600; }
+
+    /* Second floating tag */
+    .hero-tag {
+      position: absolute; top: 28px; left: -16px;
+      background: #fff; border-radius: 12px;
+      padding: 10px 14px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+      display: flex; align-items: center; gap: 10px;
+      animation: float 3.5s ease-in-out infinite;
+    }
+    .hero-tag-icon { font-size: 20px; }
+    .hero-tag-text { font-size: 12px; font-weight: 700; color: var(--dark); }
+    .hero-tag-sub { font-size: 11px; color: var(--mid); }
+
     .hero-widget-badge {
-      position: absolute; bottom: 24px; right: 24px;
+      position: absolute; bottom: 28px; right: -16px;
       background: #fff; border-radius: 50%;
-      width: 64px; height: 64px;
+      width: 60px; height: 60px;
       box-shadow: 0 8px 32px rgba(61,138,150,0.4);
       display: flex; align-items: center; justify-content: center;
       animation: float 3s ease-in-out infinite;
     }
-    .hero-widget-badge img { width: 46px; height: auto; }
-    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-    .hero-tag {
-      position: absolute; top: 40px; left: -24px;
-      background: #fff; border-radius: 12px;
-      padding: 12px 16px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-      display: flex; align-items: center; gap: 10px;
-      animation: float 3.5s ease-in-out infinite;
-      animation-delay: 0.5s;
-    }
-    .hero-tag-icon { font-size: 22px; }
-    .hero-tag-text { font-size: 13px; font-weight: 600; color: var(--dark); }
-    .hero-tag-sub { font-size: 11px; color: var(--mid); }
+    .hero-widget-badge img { width: 42px; height: auto; }
 
     /* ── LOGOS (Vertrauen) ── */
     .trust {
@@ -521,10 +561,42 @@
             <div class="hero-browser-dot"></div>
             <div class="hero-browser-url">meinfriseursalon.de</div>
           </div>
-          <img class="hero-browser-img" src="https://images.unsplash.com/photo-1560066984-138daaa28104?w=800&q=80" alt="Friseur Website" />
+          <div class="mock-site">
+            <div class="mock-hero-bar">
+              <div class="mock-nav">
+                <div class="mock-logo"></div>
+                <div class="mock-nav-links">
+                  <div class="mock-nav-link"></div>
+                  <div class="mock-nav-link"></div>
+                  <div class="mock-nav-cta"></div>
+                </div>
+              </div>
+              <div class="mock-hero-text">
+                <div class="mock-h1"></div>
+                <div class="mock-h1b"></div>
+                <div class="mock-sub"></div>
+                <div class="mock-sub2"></div>
+                <div class="mock-btn"></div>
+              </div>
+            </div>
+            <div class="mock-body">
+              <div class="mock-image"></div>
+              <div class="mock-cards">
+                <div class="mock-card"></div>
+                <div class="mock-card"></div>
+                <div class="mock-card"></div>
+              </div>
+              <div class="mock-line med"></div>
+              <div class="mock-line short"></div>
+            </div>
+          </div>
         </div>
         <div class="hero-widget-badge">
           <img src="/eddi.png" alt="Ailima Widget" />
+        </div>
+        <div class="hero-chat">
+          <div class="hero-chat-msg">💬 <span>"Mach den Button grün und ändere die Öffnungszeiten"</span></div>
+          <div class="hero-chat-reply">✅ Erledigt in 2 Sekunden</div>
         </div>
       </div>
     </div>
