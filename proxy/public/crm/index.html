@@ -197,7 +197,7 @@
           <th>Kanal</th>
           <th>Notizen</th>
           <th>Follow-up</th>
-          <th>Von</th>
+          <th>Erfasst von</th>
           <th>Aktualisiert</th>
           <th></th>
         </tr>
@@ -276,6 +276,10 @@
       <div>
         <label>Follow-up Datum</label>
         <input type="date" id="f-followup" />
+      </div>
+      <div class="full">
+        <label>Website</label>
+        <input type="text" id="f-website" placeholder="https://www.beispiel.de" />
       </div>
       <div class="full">
         <label>Notizen</label>
@@ -397,14 +401,16 @@ function renderTable() {
     const fuLabel = l.followUp ? new Date(l.followUp).toLocaleDateString('de-DE') : '–';
     const updLabel = l.updatedAt ? new Date(l.updatedAt).toLocaleDateString('de-DE') : '–';
     const updBy = l.updatedByName || l.updatedBy || '';
+    const websiteUrl = l.website ? (l.website.startsWith('http') ? l.website : 'https://' + l.website) : '';
+    const websiteLabel = l.website ? l.website.replace(/^https?:\/\//, '') : '';
     return `<tr>
-      <td><div class="td-company">${esc(l.company)}</div><div class="td-contact">${esc(l.industry||'')}</div></td>
-      <td><div>${esc(l.contact||'–')}</div><div class="td-contact">${esc(l.email||'')}</div></td>
+      <td><div class="td-company">${esc(l.company)}</div><div class="td-contact">${esc(l.industry||'')}</div>${websiteLabel ? `<div><a href="${esc(websiteUrl)}" target="_blank" style="font-size:12px;color:var(--teal);text-decoration:none;" title="${esc(websiteUrl)}">🌐 ${esc(websiteLabel)}</a></div>` : ''}</td>
+      <td><div>${esc(l.contact||'–')}</div><div class="td-contact">${esc(l.email||'')}</div><div class="td-contact">${esc(l.phone||'')}</div></td>
       <td><span class="badge badge-${l.status}">${STATUS_LABELS[l.status]||l.status}</span></td>
       <td>${CHANNEL_LABELS[l.channel]||l.channel||'–'}</td>
       <td class="td-notes" title="${esc(l.notes||'')}">${esc(l.notes||'–')}</td>
       <td class="td-followup ${fu}">${fuLabel}</td>
-      <td><span class="avatar ${avClass}" title="${esc(l.createdByName||l.createdBy)}">${initials}</span></td>
+      <td><div style="display:flex;align-items:center;gap:6px"><span class="avatar ${avClass}">${initials}</span><span style="font-size:12px;color:var(--mid)">${esc(l.createdByName||l.createdBy||'')}</span></div></td>
       <td class="td-date">${updLabel}<br><span style="font-size:11px;color:#aaa">${esc(updBy)}</span></td>
       <td><div class="td-actions">
         <button class="btn-edit" onclick="openEdit('${l.id}')">Bearbeiten</button>
@@ -427,7 +433,7 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 function openModal(id) {
   editingId = null;
   document.getElementById('modal-title').textContent = 'Neuer Kontakt';
-  ['company','contact','email','phone','notes','followup'].forEach(f => document.getElementById('f-'+f).value = '');
+  ['company','contact','email','phone','website','notes','followup'].forEach(f => document.getElementById('f-'+f).value = '');
   document.getElementById('f-status').value = 'neu';
   document.getElementById('f-channel').value = 'email';
   document.getElementById('f-industry').value = '';
@@ -447,6 +453,7 @@ function openEdit(id) {
   document.getElementById('f-industry').value = l.industry || '';
   document.getElementById('f-status').value = l.status || 'neu';
   document.getElementById('f-channel').value = l.channel || 'email';
+  document.getElementById('f-website').value = l.website || '';
   document.getElementById('f-notes').value = l.notes || '';
   document.getElementById('f-followup').value = l.followUp || '';
   document.getElementById('modal').classList.add('open');
@@ -462,6 +469,7 @@ async function saveLead() {
     contact:  document.getElementById('f-contact').value.trim(),
     email:    document.getElementById('f-email').value.trim(),
     phone:    document.getElementById('f-phone').value.trim(),
+    website:  document.getElementById('f-website').value.trim(),
     industry: document.getElementById('f-industry').value,
     status:   document.getElementById('f-status').value,
     channel:  document.getElementById('f-channel').value,
@@ -482,8 +490,8 @@ async function deleteLead(id) {
 }
 
 function exportCSV() {
-  const rows = [['Firma','Ansprechpartner','E-Mail','Telefon','Branche','Status','Kanal','Notizen','Follow-up','Erstellt von','Aktualisiert']];
-  allLeads.forEach(l => rows.push([l.company,l.contact,l.email,l.phone,l.industry,l.status,l.channel,l.notes,l.followUp,l.createdByName||l.createdBy,l.updatedAt?.slice(0,10)]));
+  const rows = [['Firma','Ansprechpartner','E-Mail','Telefon','Website','Branche','Status','Kanal','Notizen','Follow-up','Erfasst von','Aktualisiert']];
+  allLeads.forEach(l => rows.push([l.company,l.contact,l.email,l.phone,l.website,l.industry,l.status,l.channel,l.notes,l.followUp,l.createdByName||l.createdBy,l.updatedAt?.slice(0,10)]));
   const csv = rows.map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
