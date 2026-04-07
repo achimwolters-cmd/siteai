@@ -75,6 +75,8 @@
     .bulk-count{font-weight:700;color:#5db0be;font-size:14px;margin-right:4px}
     .bulk-sep{color:rgba(255,255,255,0.2);margin:0 4px}
     .btn-bulk{padding:8px 18px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s}
+    .btn-bulk-mail{background:#fff;color:#0f2229}
+    .btn-bulk-mail:hover{background:#e8f4fd;color:var(--teal)}
     .btn-bulk-status{background:#f6c443;color:#5a3e00}
     .btn-bulk-status:hover{background:#e6b030}
     .btn-bulk-followup{background:#5db0be;color:#fff}
@@ -235,11 +237,13 @@
   <div class="bulk-bar" id="bulk-bar">
     <span><span class="bulk-count" id="bulk-count">0</span> ausgewählt</span>
     <span class="bulk-sep">|</span>
+    <button class="btn-bulk btn-bulk-mail" onclick="bulkOpenMail()">✉ Alle anmailen</button>
     <button class="btn-bulk btn-bulk-status" onclick="bulkSetStatus('angeschrieben')">📧 Angeschrieben</button>
     <button class="btn-bulk btn-bulk-followup" onclick="bulkSetFollowUp()">📅 Follow-up +7 Tage</button>
     <span class="bulk-sep">|</span>
     <button class="btn-bulk-clear" onclick="clearSelection()">Auswahl aufheben</button>
     <span class="bulk-spinner" id="bulk-spinner" style="display:none">⏳ Wird gespeichert…</span>
+    <span class="bulk-spinner" id="bulk-mail-status" style="display:none"></span>
   </div>
 
   <div class="table-wrap">
@@ -652,6 +656,29 @@ async function bulkSetFollowUp() {
   document.getElementById('bulk-spinner').style.display = 'none';
   renderStats();
   renderTable();
+}
+
+async function bulkOpenMail() {
+  const leads = [...selectedIds]
+    .map(id => allLeads.find(l => l.id === id))
+    .filter(l => l && l.email);
+  if (!leads.length) { alert('Keine Kontakte mit E-Mail-Adresse ausgewählt.'); return; }
+
+  const status = document.getElementById('bulk-mail-status');
+  for (let i = 0; i < leads.length; i++) {
+    const l = leads[i];
+    status.style.display = '';
+    status.textContent = `✉ Öffne ${i + 1} von ${leads.length}…`;
+    const a = document.createElement('a');
+    a.href = buildMailto(l.email, l.company);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    // Pause so Apple Mail can process each message before the next opens
+    await new Promise(r => setTimeout(r, 800));
+  }
+  status.textContent = `✓ ${leads.length} Fenster geöffnet`;
+  setTimeout(() => { status.style.display = 'none'; }, 3000);
 }
 
 function normalizeName(s) {
