@@ -263,7 +263,11 @@ function loadCRM() {
 function saveCRM(data) {
   fs.writeFileSync(CRM_FILE, JSON.stringify(data, null, 2));
   // Auto-sync CRM_SEED to Railway so data survives redeploys
-  const { RAILWAY_TOKEN, RAILWAY_PROJECT_ID, RAILWAY_ENVIRONMENT_ID, RAILWAY_SERVICE_ID } = process.env;
+  // Railway injects PROJECT_ID, ENVIRONMENT_ID, SERVICE_ID automatically
+  const RAILWAY_TOKEN       = process.env.RAILWAY_TOKEN;
+  const RAILWAY_PROJECT_ID  = process.env.RAILWAY_PROJECT_ID;
+  const RAILWAY_ENVIRONMENT_ID = process.env.RAILWAY_ENVIRONMENT_ID;
+  const RAILWAY_SERVICE_ID  = process.env.RAILWAY_SERVICE_ID;
   if (RAILWAY_TOKEN && RAILWAY_PROJECT_ID && RAILWAY_ENVIRONMENT_ID && RAILWAY_SERVICE_ID) {
     const seed = JSON.stringify({ leads: data.leads, sessions: {} });
     fetch('https://backboard.railway.app/graphql/v2', {
