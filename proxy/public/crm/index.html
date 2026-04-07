@@ -39,6 +39,22 @@
     .header-user{font-size:13px;color:rgba(255,255,255,0.7)}
     .btn-logout{font-size:13px;color:rgba(255,255,255,0.5);background:none;border:1px solid rgba(255,255,255,0.2);padding:6px 14px;border-radius:50px;cursor:pointer;transition:all 0.2s}
     .btn-logout:hover{color:#fff;border-color:rgba(255,255,255,0.5)}
+    .btn-backup{font-size:13px;color:rgba(255,255,255,0.5);background:none;border:1px solid rgba(255,255,255,0.15);padding:6px 14px;border-radius:50px;cursor:pointer;transition:all 0.2s}
+    .btn-backup:hover{color:#5db0be;border-color:#5db0be}
+
+    /* Backup Modal */
+    .backup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px}
+    .backup-overlay.open{display:flex}
+    .backup-box{background:#fff;border-radius:20px;width:100%;max-width:640px;padding:32px;box-shadow:0 32px 80px rgba(0,0,0,0.3)}
+    .backup-box h2{font-size:18px;font-weight:800;color:var(--dark);margin-bottom:8px}
+    .backup-box p{font-size:14px;color:var(--mid);margin-bottom:16px;line-height:1.6}
+    .backup-box ol{font-size:14px;color:var(--mid);margin-bottom:20px;padding-left:20px;line-height:2}
+    .backup-box ol li b{color:var(--dark)}
+    .backup-textarea{width:100%;height:120px;padding:12px;border:2px solid #e8edf0;border-radius:10px;font-size:11px;font-family:monospace;resize:none;outline:none;color:#555;background:#f7fbfc}
+    .backup-actions{display:flex;gap:10px;margin-top:16px;justify-content:flex-end}
+    .btn-copy{padding:11px 24px;border-radius:10px;border:none;background:var(--teal);color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+    .btn-copy:hover{background:var(--teal-d)}
+    .btn-close-backup{padding:11px 20px;border-radius:10px;border:2px solid #e8edf0;background:#fff;font-size:14px;font-weight:600;color:var(--mid);cursor:pointer}
 
     /* ── Toolbar ── */
     .toolbar{background:#fff;padding:16px 24px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #e8edf0;flex-wrap:wrap}
@@ -164,6 +180,7 @@
     </div>
     <div class="header-right">
       <span class="header-user" id="header-user"></span>
+      <button class="btn-backup" onclick="openBackup()">💾 Backup</button>
       <button class="btn-logout" onclick="doLogout()">Abmelden</button>
     </div>
   </header>
@@ -208,6 +225,25 @@
       <div class="es-icon">📋</div>
       <h3>Noch keine Einträge</h3>
       <p>Füge deinen ersten Kontakt hinzu</p>
+    </div>
+  </div>
+</div>
+
+<!-- BACKUP MODAL -->
+<div class="backup-overlay" id="backup-overlay">
+  <div class="backup-box">
+    <h2>💾 Daten sichern</h2>
+    <p>Damit deine Daten nach jedem Deploy erhalten bleiben, musst du den Wert unten einmalig in Railway als Umgebungsvariable <b>CRM_SEED</b> eintragen:</p>
+    <ol>
+      <li>Unten auf <b>Kopieren</b> klicken</li>
+      <li><b>railway.app</b> → dein Projekt → <b>Variables</b></li>
+      <li>Variable <b>CRM_SEED</b> suchen und Wert ersetzen</li>
+      <li><b>Deploy</b> auslösen – fertig ✓</li>
+    </ol>
+    <textarea class="backup-textarea" id="backup-seed" readonly></textarea>
+    <div class="backup-actions">
+      <button class="btn-close-backup" onclick="closeBackup()">Schließen</button>
+      <button class="btn-copy" onclick="copySeed()">📋 Kopieren</button>
     </div>
   </div>
 </div>
@@ -523,6 +559,21 @@ function exportCSV() {
 
 // Close modal on overlay click
 document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
+
+async function openBackup() {
+  const r = await fetch('/crm/backup', { headers: { 'x-crm-token': crmToken } });
+  const d = await r.json();
+  document.getElementById('backup-seed').value = d.seed;
+  document.getElementById('backup-overlay').classList.add('open');
+}
+function closeBackup() { document.getElementById('backup-overlay').classList.remove('open'); }
+async function copySeed() {
+  const val = document.getElementById('backup-seed').value;
+  await navigator.clipboard.writeText(val);
+  const btn = document.querySelector('.btn-copy');
+  btn.textContent = '✓ Kopiert!';
+  setTimeout(() => btn.textContent = '📋 Kopieren', 2000);
+}
 </script>
 </body>
 </html>

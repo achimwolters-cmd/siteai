@@ -347,6 +347,13 @@ app.delete('/crm/leads/:id', requireCRM, (req, res) => {
   res.json({ ok: true });
 });
 
+// Export CRM seed (for Railway CRM_SEED env var)
+app.get('/crm/backup', requireCRM, (req, res) => {
+  const data = loadCRM();
+  const seed = JSON.stringify({ leads: data.leads, sessions: {} });
+  res.json({ seed });
+});
+
 // ---------- admin endpoints ----------
 
 // List all clients
