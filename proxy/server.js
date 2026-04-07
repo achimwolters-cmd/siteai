@@ -260,28 +260,41 @@ function loadCRM() {
   if (!fs.existsSync(CRM_FILE)) return { leads: [], sessions: {} };
   try { return JSON.parse(fs.readFileSync(CRM_FILE, 'utf8')); } catch(e) { return { leads: [], sessions: {} }; }
 }
-async function saveCRM(data) {
-  fs.writeFileSync(CRM_FILE, JSON.stringify(data, null, 2));
-  // Sync to Railway CRM_SEED – await so client only gets success after Railway confirms
+async function syncToRailway(seed) {
   const RAILWAY_TOKEN          = process.env.RAILWAY_TOKEN;
   const RAILWAY_PROJECT_ID     = process.env.RAILWAY_PROJECT_ID;
   const RAILWAY_ENVIRONMENT_ID = process.env.RAILWAY_ENVIRONMENT_ID;
   const RAILWAY_SERVICE_ID     = process.env.RAILWAY_SERVICE_ID;
-  if (!RAILWAY_TOKEN || !RAILWAY_PROJECT_ID || !RAILWAY_ENVIRONMENT_ID || !RAILWAY_SERVICE_ID) return;
+  if (!RAILWAY_TOKEN || !RAILWAY_PROJECT_ID || !RAILWAY_ENVIRONMENT_ID || !RAILWAY_SERVICE_ID) return true;
+  const res = await fetch('https://backboard.railway.app/graphql/v2', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RAILWAY_TOKEN}` },
+    body: JSON.stringify({
+      query: `mutation variableUpsert($input: VariableUpsertInput!) { variableUpsert(input: $input) }`,
+      variables: { input: { projectId: RAILWAY_PROJECT_ID, environmentId: RAILWAY_ENVIRONMENT_ID, serviceId: RAILWAY_SERVICE_ID, name: 'CRM_SEED', value: seed } }
+    })
+  });
+  const json = await res.json();
+  if (json.errors) throw new Error(JSON.stringify(json.errors));
+  return true;
+}
+
+async function saveCRM(data) {
+  fs.writeFileSync(CRM_FILE, JSON.stringify(data, null, 2));
   const seed = JSON.stringify({ leads: data.leads, sessions: {} });
-  try {
-    await fetch('https://backboard.railway.app/graphql/v2', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RAILWAY_TOKEN}` },
-      body: JSON.stringify({
-        query: `mutation variableUpsert($input: VariableUpsertInput!) { variableUpsert(input: $input) }`,
-        variables: { input: { projectId: RAILWAY_PROJECT_ID, environmentId: RAILWAY_ENVIRONMENT_ID, serviceId: RAILWAY_SERVICE_ID, name: 'CRM_SEED', value: seed } }
-      })
-    });
-    console.log(`[CRM] sync OK – ${data.leads.length} Leads`);
-  } catch(e) {
-    console.error('[CRM] sync failed:', e.message);
+  // Try Railway sync – retry once on failure
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await syncToRailway(seed);
+      console.log(`[CRM] sync OK – ${data.leads.length} Leads`);
+      return; // success
+    } catch(e) {
+      console.error(`[CRM] sync attempt ${attempt} failed:`, e.message);
+      if (attempt < 2) await new Promise(r => setTimeout(r, 1000)); // wait 1s before retry
+    }
   }
+  // Both attempts failed – throw so route returns 500
+  throw new Error('Railway sync fehlgeschlagen – bitte nochmal speichern');
 }
 // Stateless HMAC tokens – survive server restarts
 const CRM_SECRET = process.env.CRM_SECRET || 'ailima-crm-secret-2026';
@@ -332,44 +345,56 @@ app.get('/crm/leads', requireCRM, (req, res) => {
 
 // Create lead
 app.post('/crm/leads', requireCRM, async (req, res) => {
-  const data = loadCRM();
-  const lead = {
-    id: crypto.randomBytes(8).toString('hex'),
-    ...req.body,
-    createdBy: req.crmUser,
-    createdByName: req.crmName,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    updatedBy: req.crmUser,
-  };
-  data.leads.unshift(lead);
-  await saveCRM(data);
-  res.json({ lead });
+  try {
+    const data = loadCRM();
+    const lead = {
+      id: crypto.randomBytes(8).toString('hex'),
+      ...req.body,
+      createdBy: req.crmUser,
+      createdByName: req.crmName,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.crmUser,
+    };
+    data.leads.unshift(lead);
+    await saveCRM(data);
+    res.json({ lead });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Update lead
 app.put('/crm/leads/:id', requireCRM, async (req, res) => {
-  const data = loadCRM();
-  const idx = data.leads.findIndex(l => l.id === req.params.id);
-  if (idx === -1) return res.status(404).json({ error: 'Nicht gefunden' });
-  data.leads[idx] = {
-    ...data.leads[idx],
-    ...req.body,
-    id: req.params.id,
-    updatedAt: new Date().toISOString(),
-    updatedBy: req.crmUser,
-    updatedByName: req.crmName,
-  };
-  await saveCRM(data);
-  res.json({ lead: data.leads[idx] });
+  try {
+    const data = loadCRM();
+    const idx = data.leads.findIndex(l => l.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'Nicht gefunden' });
+    data.leads[idx] = {
+      ...data.leads[idx],
+      ...req.body,
+      id: req.params.id,
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.crmUser,
+      updatedByName: req.crmName,
+    };
+    await saveCRM(data);
+    res.json({ lead: data.leads[idx] });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Delete lead
 app.delete('/crm/leads/:id', requireCRM, async (req, res) => {
-  const data = loadCRM();
-  data.leads = data.leads.filter(l => l.id !== req.params.id);
-  await saveCRM(data);
-  res.json({ ok: true });
+  try {
+    const data = loadCRM();
+    data.leads = data.leads.filter(l => l.id !== req.params.id);
+    await saveCRM(data);
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Export CRM seed (for Railway CRM_SEED env var)
