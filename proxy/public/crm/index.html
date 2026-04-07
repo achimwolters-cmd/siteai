@@ -139,6 +139,12 @@
     .btn-cancel:hover{border-color:var(--teal);color:var(--teal)}
     .btn-save{padding:11px 28px;border-radius:10px;border:none;background:var(--teal);color:#fff;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s}
     .btn-save:hover{background:var(--teal-d)}
+
+    /* Duplicate warning */
+    .dup-warning{display:none;grid-column:1/-1;background:#fff8e1;border:2px solid #f6c443;border-radius:10px;padding:12px 16px;font-size:13px;color:#7a5c00;line-height:1.5}
+    .dup-warning.visible{display:block}
+    .dup-warning strong{display:block;margin-bottom:4px;font-size:13px;color:#5a3e00}
+    .dup-warning a{color:var(--teal);font-weight:700;cursor:pointer;text-decoration:underline}
   </style>
 </head>
 <body>
@@ -258,7 +264,7 @@
     <div class="modal-body">
       <div>
         <label>Firma *</label>
-        <input type="text" id="f-company" placeholder="Firmenname" />
+        <input type="text" id="f-company" placeholder="Firmenname" oninput="checkDuplicate()" />
       </div>
       <div>
         <label>Ansprechpartner</label>
@@ -266,7 +272,7 @@
       </div>
       <div>
         <label>E-Mail</label>
-        <input type="email" id="f-email" placeholder="email@firma.de" />
+        <input type="email" id="f-email" placeholder="email@firma.de" oninput="checkDuplicate()" />
       </div>
       <div>
         <label>Telefon</label>
@@ -321,6 +327,7 @@
         <label>Notizen</label>
         <textarea id="f-notes" placeholder="Gesprächsnotizen, nächste Schritte…"></textarea>
       </div>
+      <div class="dup-warning full" id="dup-warning"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal()">Abbrechen</button>
@@ -517,6 +524,40 @@ Herzliche Grüße`;
   return `mailto:${email}?${from}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+function normalizeName(s) {
+  return (s || '').toLowerCase()
+    .replace(/\b(gmbh|ug|ag|kg|ohg|gbr|e\.k\.|e\.v\.|co\.|&)\b/g, '')
+    .replace(/[^a-z0-9äöüß]/g, '')
+    .trim();
+}
+
+function checkDuplicate() {
+  const warn = document.getElementById('dup-warning');
+  const company = document.getElementById('f-company').value.trim();
+  const email   = document.getElementById('f-email').value.trim().toLowerCase();
+
+  // Don't check when editing an existing lead
+  if (editingId) { warn.classList.remove('visible'); return; }
+
+  const normCompany = normalizeName(company);
+  const matches = allLeads.filter(l => {
+    if (email && l.email && l.email.toLowerCase() === email) return true;
+    if (normCompany.length >= 4 && normalizeName(l.company).includes(normCompany)) return true;
+    if (normCompany.length >= 4 && normCompany.includes(normalizeName(l.company)) && normalizeName(l.company).length >= 4) return true;
+    return false;
+  });
+
+  if (matches.length === 0) { warn.classList.remove('visible'); return; }
+
+  const list = matches.map(l => {
+    const badge = `<span class="badge badge-${l.status}" style="font-size:11px;padding:2px 8px">${STATUS_LABELS[l.status]||l.status}</span>`;
+    return `<a onclick="closeModal();openEdit('${l.id}')">${l.company}</a> ${badge} – erfasst von ${l.createdByName||l.createdBy}`;
+  }).join('<br>');
+
+  warn.innerHTML = `<strong>⚠️ Mögliches Duplikat gefunden:</strong>${list}`;
+  warn.classList.add('visible');
+}
+
 function openModal(id) {
   editingId = null;
   document.getElementById('modal-title').textContent = 'Neuer Kontakt';
@@ -524,6 +565,7 @@ function openModal(id) {
   document.getElementById('f-status').value = 'neu';
   document.getElementById('f-channel').value = 'email';
   document.getElementById('f-industry').value = '';
+  document.getElementById('dup-warning').classList.remove('visible');
   document.getElementById('modal').classList.add('open');
   document.getElementById('f-company').focus();
 }
