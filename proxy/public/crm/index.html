@@ -466,7 +466,15 @@ function followUpClass(dateStr) {
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+const USER_EMAILS = {
+  silke: 'silke@ailima.de',
+  achim: 'achim@ailima.de',
+  emily: 'emily@ailima.de',
+  rene:  'rene@ailima.de',
+};
+
 function buildMailto(email, company) {
+  const fromEmail = USER_EMAILS[crmUser] || '';
   const subject = `Ihre Website – selbst aktualisieren, ganz ohne Programmierer`;
   const body = `Guten Tag,
 
@@ -505,12 +513,9 @@ Eine kurze Demo reicht – und Sie sehen sofort,
 wie viel einfacher das sein kann.
 
 Herzliche Grüße,
-${crmName}
-
-──────────────────────────
-Ailima · KI-Assistent für Ihre Website
-info@ailima.de · www.ailima.de`;
-  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+${crmName}`;
+  const from = fromEmail ? `from=${encodeURIComponent(fromEmail)}&` : '';
+  return `mailto:${email}?${from}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 function openModal(id) {
