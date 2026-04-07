@@ -284,15 +284,32 @@ function saveCRM(data) {
       .catch(e => console.error('[CRM] Railway sync failed:', e.message));
   }, 3000);
 }
+// Stateless HMAC tokens – survive server restarts
+const CRM_SECRET = process.env.CRM_SECRET || 'ailima-crm-secret-2026';
+const TOKEN_TTL  = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function signToken(user) {
+  const expires = Date.now() + TOKEN_TTL;
+  const payload = `${user}:${expires}`;
+  const sig = crypto.createHmac('sha256', CRM_SECRET).update(payload).digest('hex');
+  return Buffer.from(`${payload}:${sig}`).toString('base64');
+}
+function verifyToken(token) {
+  try {
+    const decoded = Buffer.from(token, 'base64').toString();
+    const [user, expires, sig] = decoded.split(':');
+    if (Date.now() > parseInt(expires)) return null;
+    const expected = crypto.createHmac('sha256', CRM_SECRET).update(`${user}:${expires}`).digest('hex');
+    if (sig !== expected) return null;
+    return CRM_USERS[user] ? { user, name: CRM_USERS[user].name } : null;
+  } catch { return null; }
+}
+
 function requireCRM(req, res, next) {
-  const token = req.headers['x-crm-token'];
-  const data = loadCRM();
-  const session = data.sessions && data.sessions[token];
-  if (!session || new Date(session.expires) < new Date()) {
-    return res.status(401).json({ error: 'Nicht eingeloggt' });
-  }
+  const session = verifyToken(req.headers['x-crm-token'] || '');
+  if (!session) return res.status(401).json({ error: 'Nicht eingeloggt' });
   req.crmUser = session.user;
-  req.crmName = CRM_USERS[session.user]?.name || session.user;
+  req.crmName = session.name;
   next();
 }
 
@@ -302,23 +319,11 @@ app.post('/crm/login', (req, res) => {
   if (!CRM_USERS[user] || password !== CRM_PASSWORD) {
     return res.status(401).json({ error: 'Falscher Benutzername oder Passwort' });
   }
-  const token = crypto.randomBytes(24).toString('hex');
-  const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  const data = loadCRM();
-  if (!data.sessions) data.sessions = {};
-  data.sessions[token] = { user, expires };
-  saveCRM(data);
-  res.json({ token, name: CRM_USERS[user].name, user });
+  res.json({ token: signToken(user), name: CRM_USERS[user].name, user });
 });
 
-// Logout
-app.post('/crm/logout', requireCRM, (req, res) => {
-  const token = req.headers['x-crm-token'];
-  const data = loadCRM();
-  delete data.sessions[token];
-  saveCRM(data);
-  res.json({ ok: true });
-});
+// Logout (client just drops the token)
+app.post('/crm/logout', (req, res) => res.json({ ok: true }));
 
 // Get all leads
 app.get('/crm/leads', requireCRM, (req, res) => {

@@ -573,7 +573,8 @@ async function saveLead() {
 
 async function deleteLead(id) {
   if (!confirm('Diesen Eintrag wirklich löschen?')) return;
-  await fetch(`/crm/leads/${id}`, { method: 'DELETE', headers: { 'x-crm-token': crmToken } });
+  const r = await fetch(`/crm/leads/${id}`, { method: 'DELETE', headers: { 'x-crm-token': crmToken } });
+  if (r.status === 401) { doLogout(); return; }
   loadLeads();
 }
 
