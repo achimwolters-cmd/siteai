@@ -262,6 +262,19 @@ function loadCRM() {
 }
 function saveCRM(data) {
   fs.writeFileSync(CRM_FILE, JSON.stringify(data, null, 2));
+  // Auto-sync CRM_SEED to Railway so data survives redeploys
+  const { RAILWAY_TOKEN, RAILWAY_PROJECT_ID, RAILWAY_ENVIRONMENT_ID, RAILWAY_SERVICE_ID } = process.env;
+  if (RAILWAY_TOKEN && RAILWAY_PROJECT_ID && RAILWAY_ENVIRONMENT_ID && RAILWAY_SERVICE_ID) {
+    const seed = JSON.stringify({ leads: data.leads, sessions: {} });
+    fetch('https://backboard.railway.app/graphql/v2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RAILWAY_TOKEN}` },
+      body: JSON.stringify({
+        query: `mutation variableUpsert($input: VariableUpsertInput!) { variableUpsert(input: $input) }`,
+        variables: { input: { projectId: RAILWAY_PROJECT_ID, environmentId: RAILWAY_ENVIRONMENT_ID, serviceId: RAILWAY_SERVICE_ID, name: 'CRM_SEED', value: seed } }
+      })
+    }).catch(e => console.error('[CRM] Railway sync failed:', e.message));
+  }
 }
 function requireCRM(req, res, next) {
   const token = req.headers['x-crm-token'];
