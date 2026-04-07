@@ -282,7 +282,7 @@ function saveCRM(data) {
       })
     }).then(() => console.log(`[CRM] Railway sync OK – ${latest.leads.length} Leads`))
       .catch(e => console.error('[CRM] Railway sync failed:', e.message));
-  }, 3000);
+  }, 500);
 }
 // Stateless HMAC tokens – survive server restarts
 const CRM_SECRET = process.env.CRM_SECRET || 'ailima-crm-secret-2026';
