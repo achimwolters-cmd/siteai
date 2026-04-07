@@ -405,7 +405,7 @@ function renderTable() {
     const websiteLabel = l.website ? l.website.replace(/^https?:\/\//, '') : '';
     return `<tr>
       <td><div class="td-company">${esc(l.company)}</div><div class="td-contact">${esc(l.industry||'')}</div>${websiteLabel ? `<div><a href="${esc(websiteUrl)}" target="_blank" style="font-size:12px;color:var(--teal);text-decoration:none;" title="${esc(websiteUrl)}">🌐 ${esc(websiteLabel)}</a></div>` : ''}</td>
-      <td><div>${esc(l.contact||'–')}</div><div class="td-contact">${esc(l.email||'')}</div><div class="td-contact">${esc(l.phone||'')}</div></td>
+      <td><div>${esc(l.contact||'–')}</div>${l.email ? `<div><a href="${buildMailto(l.email, l.company)}" style="font-size:13px;color:var(--teal);text-decoration:none;" title="E-Mail schreiben">✉ ${esc(l.email)}</a></div>` : '<div class="td-contact">–</div>'}<div class="td-contact">${l.phone ? `<a href="tel:${esc(l.phone)}" style="color:inherit;text-decoration:none;">📞 ${esc(l.phone)}</a>` : ''}</div></td>
       <td><span class="badge badge-${l.status}">${STATUS_LABELS[l.status]||l.status}</span></td>
       <td>${CHANNEL_LABELS[l.channel]||l.channel||'–'}</td>
       <td class="td-notes" title="${esc(l.notes||'')}">${esc(l.notes||'–')}</td>
@@ -429,6 +429,28 @@ function followUpClass(dateStr) {
 }
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function buildMailto(email, company) {
+  const subject = `Ihre Website – in 2 Minuten selbst aktualisieren | Ailima`;
+  const body = `Guten Tag,
+
+mein Name ist ${crmName} und ich bin Mitgründer von Ailima – einem KI-gestützten Tool, das kleinen Unternehmen wie ${company} ermöglicht, ihre Website in Sekunden selbst zu aktualisieren.
+
+Kein Programmierer, kein Webdesigner nötig. Einfach eingeben, was geändert werden soll – Ailima erledigt den Rest.
+
+✓ Öffnungszeiten anpassen? Erledigt.
+✓ Neue Preise oder Angebote? Erledigt.
+✓ Aktuelle Fotos oder Aktionen? Erledigt.
+
+Darf ich Ihnen kurz zeigen, wie das für ${company} aussehen könnte? Ich würde mich über ein kurzes Gespräch oder eine Demo freuen.
+
+Herzliche Grüße,
+${crmName}
+
+Ailima · KI-gestützter Website-Editor
+info@ailima.de · www.ailima.de`;
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
 
 function openModal(id) {
   editingId = null;
