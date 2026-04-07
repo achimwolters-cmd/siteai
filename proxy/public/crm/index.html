@@ -67,6 +67,7 @@
     .toolbar-search input:focus{border-color:var(--teal)}
     .btn-export{padding:9px 16px;border:2px solid #e8edf0;border-radius:10px;font-size:13px;font-weight:600;color:var(--mid);background:#fff;cursor:pointer;transition:all 0.2s}
     .btn-export:hover{border-color:var(--teal);color:var(--teal)}
+    .mail-account-hint{font-size:12px;color:var(--mid);background:#f7fbfc;border:1px solid #e8edf0;border-radius:8px;padding:6px 12px;white-space:nowrap}
 
     /* ── Stats Bar ── */
     .stats-bar{background:#fff;border-bottom:1px solid #e8edf0;padding:0 24px;display:flex;gap:0}
@@ -208,6 +209,7 @@
       <input type="text" id="search-input" placeholder="🔍 Suchen…" oninput="renderTable()" />
     </div>
     <button class="btn-export" onclick="exportCSV()">⬇ Export</button>
+    <span class="mail-account-hint" id="mail-account-hint" title="Stelle dieses Konto in Apple Mail → Einstellungen → Verfassen als Standardkonto ein"></span>
   </div>
 
   <div class="table-wrap">
@@ -395,6 +397,12 @@ function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('header-user').textContent = crmName;
+  // Apple Mail hint: show which account to use
+  const fromEmail = USER_EMAILS[crmUser] || '';
+  if (fromEmail) {
+    const hint = document.getElementById('mail-account-hint');
+    if (hint) hint.textContent = `📧 Apple Mail: Standardkonto → ${fromEmail}`;
+  }
 }
 
 async function loadLeads() {
