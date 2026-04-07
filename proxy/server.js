@@ -260,16 +260,19 @@ function loadCRM() {
   if (!fs.existsSync(CRM_FILE)) return { leads: [], sessions: {} };
   try { return JSON.parse(fs.readFileSync(CRM_FILE, 'utf8')); } catch(e) { return { leads: [], sessions: {} }; }
 }
+let _crmSyncTimer = null;
 function saveCRM(data) {
   fs.writeFileSync(CRM_FILE, JSON.stringify(data, null, 2));
-  // Auto-sync CRM_SEED to Railway so data survives redeploys
-  // Railway injects PROJECT_ID, ENVIRONMENT_ID, SERVICE_ID automatically
-  const RAILWAY_TOKEN       = process.env.RAILWAY_TOKEN;
-  const RAILWAY_PROJECT_ID  = process.env.RAILWAY_PROJECT_ID;
+  // Debounced auto-sync to Railway CRM_SEED (waits 3s after last write)
+  const RAILWAY_TOKEN          = process.env.RAILWAY_TOKEN;
+  const RAILWAY_PROJECT_ID     = process.env.RAILWAY_PROJECT_ID;
   const RAILWAY_ENVIRONMENT_ID = process.env.RAILWAY_ENVIRONMENT_ID;
-  const RAILWAY_SERVICE_ID  = process.env.RAILWAY_SERVICE_ID;
-  if (RAILWAY_TOKEN && RAILWAY_PROJECT_ID && RAILWAY_ENVIRONMENT_ID && RAILWAY_SERVICE_ID) {
-    const seed = JSON.stringify({ leads: data.leads, sessions: {} });
+  const RAILWAY_SERVICE_ID     = process.env.RAILWAY_SERVICE_ID;
+  if (!RAILWAY_TOKEN || !RAILWAY_PROJECT_ID || !RAILWAY_ENVIRONMENT_ID || !RAILWAY_SERVICE_ID) return;
+  if (_crmSyncTimer) clearTimeout(_crmSyncTimer);
+  _crmSyncTimer = setTimeout(() => {
+    const latest = loadCRM();
+    const seed = JSON.stringify({ leads: latest.leads, sessions: {} });
     fetch('https://backboard.railway.app/graphql/v2', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RAILWAY_TOKEN}` },
@@ -277,8 +280,9 @@ function saveCRM(data) {
         query: `mutation variableUpsert($input: VariableUpsertInput!) { variableUpsert(input: $input) }`,
         variables: { input: { projectId: RAILWAY_PROJECT_ID, environmentId: RAILWAY_ENVIRONMENT_ID, serviceId: RAILWAY_SERVICE_ID, name: 'CRM_SEED', value: seed } }
       })
-    }).catch(e => console.error('[CRM] Railway sync failed:', e.message));
-  }
+    }).then(() => console.log(`[CRM] Railway sync OK – ${latest.leads.length} Leads`))
+      .catch(e => console.error('[CRM] Railway sync failed:', e.message));
+  }, 3000);
 }
 function requireCRM(req, res, next) {
   const token = req.headers['x-crm-token'];

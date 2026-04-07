@@ -508,12 +508,11 @@ Das bedeutet für ${company}:
 Einen ersten Eindruck bekommen Sie hier:
 → www.ailima.de
 
-Darf ich Ihnen das kurz live für ${company} zeigen?
+Darf ich Ihnen das kurz auf unserer Demoseite zeigen?
 Eine kurze Demo reicht – und Sie sehen sofort,
 wie viel einfacher das sein kann.
 
-Herzliche Grüße,
-${crmName}`;
+Herzliche Grüße`;
   const from = fromEmail ? `from=${encodeURIComponent(fromEmail)}&` : '';
   return `mailto:${email}?${from}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
