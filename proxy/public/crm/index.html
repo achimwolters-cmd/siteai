@@ -566,6 +566,7 @@ async function saveLead() {
   const url = editingId ? `/crm/leads/${editingId}` : '/crm/leads';
   const method = editingId ? 'PUT' : 'POST';
   const r = await fetch(url, { method, headers: { 'Content-Type':'application/json','x-crm-token':crmToken }, body: JSON.stringify(body) });
+  if (r.status === 401) { doLogout(); return; }
   if (!r.ok) { alert('Fehler beim Speichern'); return; }
   closeModal(); loadLeads();
 }
