@@ -260,24 +260,28 @@ function loadCRM() {
   if (!fs.existsSync(CRM_FILE)) return { leads: [], sessions: {} };
   try { return JSON.parse(fs.readFileSync(CRM_FILE, 'utf8')); } catch(e) { return { leads: [], sessions: {} }; }
 }
-function saveCRM(data) {
+async function saveCRM(data) {
   fs.writeFileSync(CRM_FILE, JSON.stringify(data, null, 2));
-  // Sync to Railway CRM_SEED immediately on every save
+  // Sync to Railway CRM_SEED – await so client only gets success after Railway confirms
   const RAILWAY_TOKEN          = process.env.RAILWAY_TOKEN;
   const RAILWAY_PROJECT_ID     = process.env.RAILWAY_PROJECT_ID;
   const RAILWAY_ENVIRONMENT_ID = process.env.RAILWAY_ENVIRONMENT_ID;
   const RAILWAY_SERVICE_ID     = process.env.RAILWAY_SERVICE_ID;
   if (!RAILWAY_TOKEN || !RAILWAY_PROJECT_ID || !RAILWAY_ENVIRONMENT_ID || !RAILWAY_SERVICE_ID) return;
   const seed = JSON.stringify({ leads: data.leads, sessions: {} });
-  fetch('https://backboard.railway.app/graphql/v2', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RAILWAY_TOKEN}` },
-    body: JSON.stringify({
-      query: `mutation variableUpsert($input: VariableUpsertInput!) { variableUpsert(input: $input) }`,
-      variables: { input: { projectId: RAILWAY_PROJECT_ID, environmentId: RAILWAY_ENVIRONMENT_ID, serviceId: RAILWAY_SERVICE_ID, name: 'CRM_SEED', value: seed } }
-    })
-  }).then(() => console.log(`[CRM] sync OK – ${data.leads.length} Leads`))
-    .catch(e => console.error('[CRM] sync failed:', e.message));
+  try {
+    await fetch('https://backboard.railway.app/graphql/v2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RAILWAY_TOKEN}` },
+      body: JSON.stringify({
+        query: `mutation variableUpsert($input: VariableUpsertInput!) { variableUpsert(input: $input) }`,
+        variables: { input: { projectId: RAILWAY_PROJECT_ID, environmentId: RAILWAY_ENVIRONMENT_ID, serviceId: RAILWAY_SERVICE_ID, name: 'CRM_SEED', value: seed } }
+      })
+    });
+    console.log(`[CRM] sync OK – ${data.leads.length} Leads`);
+  } catch(e) {
+    console.error('[CRM] sync failed:', e.message);
+  }
 }
 // Stateless HMAC tokens – survive server restarts
 const CRM_SECRET = process.env.CRM_SECRET || 'ailima-crm-secret-2026';
@@ -327,7 +331,7 @@ app.get('/crm/leads', requireCRM, (req, res) => {
 });
 
 // Create lead
-app.post('/crm/leads', requireCRM, (req, res) => {
+app.post('/crm/leads', requireCRM, async (req, res) => {
   const data = loadCRM();
   const lead = {
     id: crypto.randomBytes(8).toString('hex'),
@@ -339,12 +343,12 @@ app.post('/crm/leads', requireCRM, (req, res) => {
     updatedBy: req.crmUser,
   };
   data.leads.unshift(lead);
-  saveCRM(data);
+  await saveCRM(data);
   res.json({ lead });
 });
 
 // Update lead
-app.put('/crm/leads/:id', requireCRM, (req, res) => {
+app.put('/crm/leads/:id', requireCRM, async (req, res) => {
   const data = loadCRM();
   const idx = data.leads.findIndex(l => l.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Nicht gefunden' });
@@ -356,15 +360,15 @@ app.put('/crm/leads/:id', requireCRM, (req, res) => {
     updatedBy: req.crmUser,
     updatedByName: req.crmName,
   };
-  saveCRM(data);
+  await saveCRM(data);
   res.json({ lead: data.leads[idx] });
 });
 
 // Delete lead
-app.delete('/crm/leads/:id', requireCRM, (req, res) => {
+app.delete('/crm/leads/:id', requireCRM, async (req, res) => {
   const data = loadCRM();
   data.leads = data.leads.filter(l => l.id !== req.params.id);
-  saveCRM(data);
+  await saveCRM(data);
   res.json({ ok: true });
 });
 
