@@ -236,6 +236,117 @@ app.post('/api/restore', (req, res) => {
   res.json({ ok: true, message: 'Version wiederhergestellt' });
 });
 
+// ══════════════════════════════════════════
+// CRM – Akquise-Tool
+// ══════════════════════════════════════════
+
+const CRM_FILE = path.join(__dirname, 'crm.json');
+const crypto = require('crypto');
+
+const CRM_USERS = {
+  silke: { name: 'Silke Wolters' },
+  achim: { name: 'Achim Wolters' },
+  emily: { name: 'Emily Wolters' },
+  rene:  { name: 'René Meding'  },
+};
+const CRM_PASSWORD = process.env.CRM_PASSWORD || 'ailima2026';
+
+// Seed crm.json from env var if not exists
+if (!fs.existsSync(CRM_FILE) && process.env.CRM_SEED) {
+  try { fs.writeFileSync(CRM_FILE, process.env.CRM_SEED, 'utf8'); } catch(e) {}
+}
+
+function loadCRM() {
+  if (!fs.existsSync(CRM_FILE)) return { leads: [], sessions: {} };
+  try { return JSON.parse(fs.readFileSync(CRM_FILE, 'utf8')); } catch(e) { return { leads: [], sessions: {} }; }
+}
+function saveCRM(data) {
+  fs.writeFileSync(CRM_FILE, JSON.stringify(data, null, 2));
+}
+function requireCRM(req, res, next) {
+  const token = req.headers['x-crm-token'];
+  const data = loadCRM();
+  const session = data.sessions && data.sessions[token];
+  if (!session || new Date(session.expires) < new Date()) {
+    return res.status(401).json({ error: 'Nicht eingeloggt' });
+  }
+  req.crmUser = session.user;
+  req.crmName = CRM_USERS[session.user]?.name || session.user;
+  next();
+}
+
+// Login
+app.post('/crm/login', (req, res) => {
+  const { user, password } = req.body;
+  if (!CRM_USERS[user] || password !== CRM_PASSWORD) {
+    return res.status(401).json({ error: 'Falscher Benutzername oder Passwort' });
+  }
+  const token = crypto.randomBytes(24).toString('hex');
+  const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const data = loadCRM();
+  if (!data.sessions) data.sessions = {};
+  data.sessions[token] = { user, expires };
+  saveCRM(data);
+  res.json({ token, name: CRM_USERS[user].name, user });
+});
+
+// Logout
+app.post('/crm/logout', requireCRM, (req, res) => {
+  const token = req.headers['x-crm-token'];
+  const data = loadCRM();
+  delete data.sessions[token];
+  saveCRM(data);
+  res.json({ ok: true });
+});
+
+// Get all leads
+app.get('/crm/leads', requireCRM, (req, res) => {
+  const data = loadCRM();
+  res.json({ leads: data.leads || [], users: CRM_USERS });
+});
+
+// Create lead
+app.post('/crm/leads', requireCRM, (req, res) => {
+  const data = loadCRM();
+  const lead = {
+    id: crypto.randomBytes(8).toString('hex'),
+    ...req.body,
+    createdBy: req.crmUser,
+    createdByName: req.crmName,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    updatedBy: req.crmUser,
+  };
+  data.leads.unshift(lead);
+  saveCRM(data);
+  res.json({ lead });
+});
+
+// Update lead
+app.put('/crm/leads/:id', requireCRM, (req, res) => {
+  const data = loadCRM();
+  const idx = data.leads.findIndex(l => l.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Nicht gefunden' });
+  data.leads[idx] = {
+    ...data.leads[idx],
+    ...req.body,
+    id: req.params.id,
+    updatedAt: new Date().toISOString(),
+    updatedBy: req.crmUser,
+    updatedByName: req.crmName,
+  };
+  saveCRM(data);
+  res.json({ lead: data.leads[idx] });
+});
+
+// Delete lead
+app.delete('/crm/leads/:id', requireCRM, (req, res) => {
+  const data = loadCRM();
+  data.leads = data.leads.filter(l => l.id !== req.params.id);
+  saveCRM(data);
+  res.json({ ok: true });
+});
+
 // ---------- admin endpoints ----------
 
 // List all clients
