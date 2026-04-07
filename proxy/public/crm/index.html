@@ -69,6 +69,25 @@
     .btn-export:hover{border-color:var(--teal);color:var(--teal)}
     .mail-account-hint{font-size:12px;color:var(--mid);background:#f7fbfc;border:1px solid #e8edf0;border-radius:8px;padding:6px 12px;white-space:nowrap}
 
+    /* ── Bulk action bar ── */
+    .bulk-bar{display:none;align-items:center;gap:12px;padding:12px 24px;background:#0f2229;border-bottom:1px solid rgba(255,255,255,0.08);flex-wrap:wrap}
+    .bulk-bar.visible{display:flex}
+    .bulk-count{font-weight:700;color:#5db0be;font-size:14px;margin-right:4px}
+    .bulk-sep{color:rgba(255,255,255,0.2);margin:0 4px}
+    .btn-bulk{padding:8px 18px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s}
+    .btn-bulk-status{background:#f6c443;color:#5a3e00}
+    .btn-bulk-status:hover{background:#e6b030}
+    .btn-bulk-followup{background:#5db0be;color:#fff}
+    .btn-bulk-followup:hover{background:var(--teal)}
+    .btn-bulk-clear{background:none;border:1px solid rgba(255,255,255,0.25);color:rgba(255,255,255,0.6);padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer}
+    .btn-bulk-clear:hover{border-color:#fff;color:#fff}
+    .bulk-spinner{color:rgba(255,255,255,0.5);font-size:13px}
+
+    /* Checkboxes */
+    .cb-col{width:40px;text-align:center}
+    input[type=checkbox]{accent-color:var(--teal);width:15px;height:15px;cursor:pointer}
+    tr.row-selected td{background:#f0f9fb!important}
+
     /* ── Stats Bar ── */
     .stats-bar{background:#fff;border-bottom:1px solid #e8edf0;padding:0 24px;display:flex;gap:0}
     .stat-item{padding:12px 24px;border-right:1px solid #e8edf0;text-align:center}
@@ -212,10 +231,22 @@
     <span class="mail-account-hint" id="mail-account-hint" title="Stelle dieses Konto in Apple Mail → Einstellungen → Verfassen als Standardkonto ein"></span>
   </div>
 
+  <!-- Bulk action bar -->
+  <div class="bulk-bar" id="bulk-bar">
+    <span><span class="bulk-count" id="bulk-count">0</span> ausgewählt</span>
+    <span class="bulk-sep">|</span>
+    <button class="btn-bulk btn-bulk-status" onclick="bulkSetStatus('angeschrieben')">📧 Angeschrieben</button>
+    <button class="btn-bulk btn-bulk-followup" onclick="bulkSetFollowUp()">📅 Follow-up +7 Tage</button>
+    <span class="bulk-sep">|</span>
+    <button class="btn-bulk-clear" onclick="clearSelection()">Auswahl aufheben</button>
+    <span class="bulk-spinner" id="bulk-spinner" style="display:none">⏳ Wird gespeichert…</span>
+  </div>
+
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
+          <th class="cb-col"><input type="checkbox" id="cb-all" onclick="toggleSelectAll()" title="Alle markieren" /></th>
           <th>Firma</th>
           <th>Ansprechpartner</th>
           <th>Status</th>
@@ -346,6 +377,7 @@ let crmName  = localStorage.getItem('crm_name') || '';
 let allLeads = [];
 let currentFilter = 'all';
 let editingId = null;
+let selectedIds = new Set();
 
 const STATUS_LABELS = {
   neu: '🆕 Neu',
@@ -454,7 +486,9 @@ function renderTable() {
     const updBy = l.updatedByName || l.updatedBy || '';
     const websiteUrl = l.website ? (l.website.startsWith('http') ? l.website : 'https://' + l.website) : '';
     const websiteLabel = l.website ? l.website.replace(/^https?:\/\//, '') : '';
-    return `<tr>
+    const isSelected = selectedIds.has(l.id);
+    return `<tr class="${isSelected ? 'row-selected' : ''}">
+      <td class="cb-col"><input type="checkbox" ${isSelected ? 'checked' : ''} onclick="toggleSelect('${l.id}')" /></td>
       <td><div class="td-company">${esc(l.company)}</div><div class="td-contact">${esc(l.industry||'')}</div>${websiteLabel ? `<div><a href="${esc(websiteUrl)}" target="_blank" style="font-size:12px;color:var(--teal);text-decoration:none;" title="${esc(websiteUrl)}">🌐 ${esc(websiteLabel)}</a></div>` : ''}</td>
       <td><div>${esc(l.contact||'–')}</div>${l.email ? `<div><a href="${buildMailto(l.email, l.company)}" style="font-size:13px;color:var(--teal);text-decoration:none;" title="E-Mail schreiben">✉ ${esc(l.email)}</a></div>` : '<div class="td-contact">–</div>'}<div class="td-contact">${l.phone ? `<a href="tel:${esc(l.phone)}" style="color:inherit;text-decoration:none;">📞 ${esc(l.phone)}</a>` : ''}</div></td>
       <td><span class="badge badge-${l.status}">${STATUS_LABELS[l.status]||l.status}</span></td>
@@ -530,6 +564,94 @@ wie viel einfacher das sein kann.
 Herzliche Grüße`;
   const from = fromEmail ? `from=${encodeURIComponent(fromEmail)}&` : '';
   return `mailto:${email}?${from}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+// ── Bulk selection ──
+function toggleSelect(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  updateBulkBar();
+  renderTable();
+}
+
+function toggleSelectAll() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const visible = allLeads.filter(l => {
+    if (currentFilter !== 'all' && l.status !== currentFilter) return false;
+    if (q && !`${l.company} ${l.contact} ${l.email} ${l.notes}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const allChecked = visible.every(l => selectedIds.has(l.id));
+  if (allChecked) visible.forEach(l => selectedIds.delete(l.id));
+  else visible.forEach(l => selectedIds.add(l.id));
+  updateBulkBar();
+  renderTable();
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  updateBulkBar();
+  renderTable();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  const count = document.getElementById('bulk-count');
+  count.textContent = selectedIds.size;
+  bar.classList.toggle('visible', selectedIds.size > 0);
+  // sync header checkbox
+  const cbAll = document.getElementById('cb-all');
+  if (cbAll) {
+    const q = document.getElementById('search-input').value.toLowerCase();
+    const visible = allLeads.filter(l => {
+      if (currentFilter !== 'all' && l.status !== currentFilter) return false;
+      if (q && !`${l.company} ${l.contact} ${l.email} ${l.notes}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    cbAll.checked = visible.length > 0 && visible.every(l => selectedIds.has(l.id));
+    cbAll.indeterminate = !cbAll.checked && visible.some(l => selectedIds.has(l.id));
+  }
+}
+
+async function bulkSetStatus(status) {
+  if (!selectedIds.size) return;
+  const ids = [...selectedIds];
+  document.getElementById('bulk-spinner').style.display = '';
+  for (const id of ids) {
+    const r = await fetch(`/crm/leads/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+      body: JSON.stringify({ status })
+    });
+    if (r.status === 401) { doLogout(); return; }
+    const d = await r.json();
+    const idx = allLeads.findIndex(l => l.id === id);
+    if (idx !== -1) allLeads[idx] = d.lead;
+  }
+  document.getElementById('bulk-spinner').style.display = 'none';
+  renderStats();
+  renderTable();
+}
+
+async function bulkSetFollowUp() {
+  if (!selectedIds.size) return;
+  const ids = [...selectedIds];
+  const followUp = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  document.getElementById('bulk-spinner').style.display = '';
+  for (const id of ids) {
+    const r = await fetch(`/crm/leads/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+      body: JSON.stringify({ followUp })
+    });
+    if (r.status === 401) { doLogout(); return; }
+    const d = await r.json();
+    const idx = allLeads.findIndex(l => l.id === id);
+    if (idx !== -1) allLeads[idx] = d.lead;
+  }
+  document.getElementById('bulk-spinner').style.display = 'none';
+  renderStats();
+  renderTable();
 }
 
 function normalizeName(s) {
