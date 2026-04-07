@@ -467,23 +467,40 @@ function followUpClass(dateStr) {
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function buildMailto(email, company) {
-  const subject = `Ihre Website – in 2 Minuten selbst aktualisieren | Ailima`;
+  const subject = `Ihre Website – selbst aktualisieren, ganz ohne Programmierer`;
   const body = `Guten Tag,
 
-mein Name ist ${crmName} und ich bin Mitgründer von Ailima – einem KI-gestützten Tool, das kleinen Unternehmen wie ${company} ermöglicht, ihre Website in Sekunden selbst zu aktualisieren.
+mein Name ist ${crmName}, ich bin Mitarbeiter bei Ailima.
 
-Kein Programmierer, kein Webdesigner nötig. Einfach eingeben, was geändert werden soll – Ailima erledigt den Rest.
+Wir haben einen KI-Assistenten entwickelt, der direkt
+auf Ihrer Website arbeitet – und Ihnen ermöglicht, Inhalte
+selbst zu ändern. Ohne Programmierer, ohne Webdesigner,
+ohne Wartezeiten.
 
-✓ Öffnungszeiten anpassen? Erledigt.
-✓ Neue Preise oder Angebote? Erledigt.
-✓ Aktuelle Fotos oder Aktionen? Erledigt.
+So funktioniert es:
 
-Darf ich Ihnen kurz zeigen, wie das für ${company} aussehen könnte? Ich würde mich über ein kurzes Gespräch oder eine Demo freuen.
+  → Sie tippen, was sich ändern soll
+  → Ailima versteht und setzt es sofort um
+  → Sie prüfen und veröffentlichen mit einem Klick
+
+Das bedeutet für ${company}:
+
+  ✓ Öffnungszeiten und Preise jederzeit selbst anpassen
+  ✓ Neue Angebote oder Aktionen sofort online stellen
+  ✓ Texte und Fotos aktuell halten – wann immer Sie wollen
+
+Alles direkt auf Ihrer bestehenden Website.
+Kein Umbau, kein neues System.
+
+Darf ich Ihnen das kurz live zeigen?
+Eine kurze Demo reicht – und Sie sehen sofort,
+wie viel Zeit und Geld Sie sich sparen.
 
 Herzliche Grüße,
 ${crmName}
 
-Ailima · KI-gestützter Website-Editor
+──────────────────────────
+Ailima · KI-Assistent für Ihre Website
 info@ailima.de · www.ailima.de`;
   return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
