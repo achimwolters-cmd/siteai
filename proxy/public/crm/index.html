@@ -208,6 +208,7 @@
     </div>
     <div class="header-right">
       <span class="header-user" id="header-user"></span>
+      <button class="btn-backup" id="btn-forcesync" onclick="forceSync()" title="Aktuelle Daten sofort zu Railway synchronisieren">☁️ Sync</button>
       <button class="btn-backup" onclick="openBackup()">💾 Backup</button>
       <button class="btn-logout" onclick="doLogout()">Abmelden</button>
     </div>
@@ -789,6 +790,21 @@ function exportCSV() {
 
 // Close modal on overlay click
 document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
+
+async function forceSync() {
+  const btn = document.getElementById('btn-forcesync');
+  btn.textContent = '⏳ Sync…';
+  btn.disabled = true;
+  try {
+    const r = await fetch('/crm/forcesync', { method: 'POST', headers: { 'x-crm-token': crmToken } });
+    const d = await r.json();
+    if (r.ok) { btn.textContent = '✅ Sync OK'; }
+    else { btn.textContent = '❌ Sync fehlgeschlagen'; }
+  } catch(e) {
+    btn.textContent = '❌ Fehler';
+  }
+  setTimeout(() => { btn.textContent = '☁️ Sync'; btn.disabled = false; }, 3000);
+}
 
 async function openBackup() {
   const r = await fetch('/crm/backup', { headers: { 'x-crm-token': crmToken } });
