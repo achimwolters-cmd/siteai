@@ -242,6 +242,7 @@ app.post('/api/restore', (req, res) => {
 
 const CRM_FILE = path.join(__dirname, 'crm.json');
 const crypto = require('crypto');
+const zlib = require('zlib');
 
 const CRM_USERS = {
   silke: { name: 'Silke Wolters' },
@@ -251,9 +252,18 @@ const CRM_USERS = {
 };
 const CRM_PASSWORD = process.env.CRM_PASSWORD || 'ailima2026';
 
-// Seed crm.json from env var if not exists
+// Seed crm.json from env var if not exists (supports gzip+base64 compressed seeds)
 if (!fs.existsSync(CRM_FILE) && process.env.CRM_SEED) {
-  try { fs.writeFileSync(CRM_FILE, process.env.CRM_SEED, 'utf8'); } catch(e) {}
+  try {
+    let content = process.env.CRM_SEED;
+    try {
+      const buf = Buffer.from(content, 'base64');
+      if (buf[0] === 0x1f && buf[1] === 0x8b) { // gzip magic bytes
+        content = zlib.gunzipSync(buf).toString('utf8');
+      }
+    } catch(e) {} // not compressed, use raw
+    fs.writeFileSync(CRM_FILE, content, 'utf8');
+  } catch(e) {}
 }
 
 function loadCRM() {
@@ -266,12 +276,14 @@ async function syncToRailway(seed) {
   const RAILWAY_ENVIRONMENT_ID = process.env.RAILWAY_ENVIRONMENT_ID;
   const RAILWAY_SERVICE_ID     = process.env.RAILWAY_SERVICE_ID;
   if (!RAILWAY_TOKEN || !RAILWAY_PROJECT_ID || !RAILWAY_ENVIRONMENT_ID || !RAILWAY_SERVICE_ID) return true;
+  // Compress seed to stay well under Railway's 32768-char env var limit
+  const compressed = zlib.gzipSync(Buffer.from(seed, 'utf8')).toString('base64');
   const res = await fetch('https://backboard.railway.app/graphql/v2', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RAILWAY_TOKEN}` },
     body: JSON.stringify({
       query: `mutation variableUpsert($input: VariableUpsertInput!) { variableUpsert(input: $input) }`,
-      variables: { input: { projectId: RAILWAY_PROJECT_ID, environmentId: RAILWAY_ENVIRONMENT_ID, serviceId: RAILWAY_SERVICE_ID, name: 'CRM_SEED', value: seed } }
+      variables: { input: { projectId: RAILWAY_PROJECT_ID, environmentId: RAILWAY_ENVIRONMENT_ID, serviceId: RAILWAY_SERVICE_ID, name: 'CRM_SEED', value: compressed } }
     })
   });
   const json = await res.json();
