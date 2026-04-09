@@ -768,7 +768,16 @@ async function saveLead() {
   const r = await fetch(url, { method, headers: { 'Content-Type':'application/json','x-crm-token':crmToken }, body: JSON.stringify(body) });
   if (r.status === 401) { doLogout(); return; }
   if (!r.ok) { alert('Fehler beim Speichern'); return; }
-  closeModal(); loadLeads();
+  const d = await r.json();
+  closeModal();
+  if (editingId) {
+    const idx = allLeads.findIndex(l => l.id === editingId);
+    if (idx !== -1) allLeads[idx] = d.lead;
+  } else {
+    allLeads.unshift(d.lead);
+  }
+  renderStats();
+  renderTable();
 }
 
 async function deleteLead(id) {
