@@ -292,21 +292,10 @@ async function syncToRailway(seed) {
 }
 
 async function saveCRM(data) {
+  // Only write to local filesystem – Railway sync only happens via /crm/forcesync
+  // to avoid triggering Railway auto-redeploys on every save
   fs.writeFileSync(CRM_FILE, JSON.stringify(data, null, 2));
-  const seed = JSON.stringify({ leads: data.leads, sessions: {} });
-  // Try Railway sync – retry once on failure, but never block the save
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      await syncToRailway(seed);
-      console.log(`[CRM] sync OK – ${data.leads.length} Leads`);
-      return; // success
-    } catch(e) {
-      console.error(`[CRM] sync attempt ${attempt} failed:`, e.message);
-      if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
-    }
-  }
-  // Both attempts failed – log warning but do NOT throw (save locally succeeded)
-  console.warn(`[CRM] Railway sync failed after 2 attempts – data saved locally only`);
+  console.log(`[CRM] saved locally – ${data.leads.length} Leads`);
 }
 
 // Force-sync current crm.json state to Railway (for use when sync was previously failing)
