@@ -1,0 +1,7 @@
+node_modules/
+.env
+clients.json
+crm.json
+crm_seed.txt
+public/versions/
+*.log
