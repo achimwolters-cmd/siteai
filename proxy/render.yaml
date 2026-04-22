@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: siteai
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ADMIN_KEY
+        sync: false
+      - key: CRM_PASSWORD
+        sync: false
+      - key: CRM_SECRET
+        sync: false
+      - key: CRM_SEED
+        sync: false
+      - key: RAILWAY_TOKEN
+        sync: false
+      - key: RAILWAY_PROJECT_ID
+        sync: false
+      - key: RAILWAY_ENVIRONMENT_ID
+        sync: false
+      - key: RAILWAY_SERVICE_ID
+        sync: false

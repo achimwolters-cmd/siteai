@@ -271,24 +271,46 @@ function loadCRM() {
   if (!fs.existsSync(CRM_FILE)) return { leads: [], sessions: {} };
   try { return JSON.parse(fs.readFileSync(CRM_FILE, 'utf8')); } catch(e) { return { leads: [], sessions: {} }; }
 }
-async function syncToRailway(seed) {
+async function syncEnvVar(seed) {
+  // Compress seed (gzip+base64) to minimize size
+  const compressed = zlib.gzipSync(Buffer.from(seed, 'utf8')).toString('base64');
+
+  // --- Render.com ---
+  const RENDER_API_KEY    = process.env.RENDER_API_KEY;
+  const RENDER_SERVICE_ID = process.env.RENDER_SERVICE_ID;
+  if (RENDER_API_KEY && RENDER_SERVICE_ID) {
+    const res = await fetch(`https://api.render.com/v1/services/${RENDER_SERVICE_ID}/env-vars`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RENDER_API_KEY}` },
+      body: JSON.stringify([{ key: 'CRM_SEED', value: compressed }])
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`Render API error ${res.status}: ${txt}`);
+    }
+    return true;
+  }
+
+  // --- Railway (legacy fallback) ---
   const RAILWAY_TOKEN          = process.env.RAILWAY_TOKEN;
   const RAILWAY_PROJECT_ID     = process.env.RAILWAY_PROJECT_ID;
   const RAILWAY_ENVIRONMENT_ID = process.env.RAILWAY_ENVIRONMENT_ID;
   const RAILWAY_SERVICE_ID     = process.env.RAILWAY_SERVICE_ID;
-  if (!RAILWAY_TOKEN || !RAILWAY_PROJECT_ID || !RAILWAY_ENVIRONMENT_ID || !RAILWAY_SERVICE_ID) return true;
-  // Compress seed to stay well under Railway's 32768-char env var limit
-  const compressed = zlib.gzipSync(Buffer.from(seed, 'utf8')).toString('base64');
-  const res = await fetch('https://backboard.railway.app/graphql/v2', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RAILWAY_TOKEN}` },
-    body: JSON.stringify({
-      query: `mutation variableUpsert($input: VariableUpsertInput!) { variableUpsert(input: $input) }`,
-      variables: { input: { projectId: RAILWAY_PROJECT_ID, environmentId: RAILWAY_ENVIRONMENT_ID, serviceId: RAILWAY_SERVICE_ID, name: 'CRM_SEED', value: compressed } }
-    })
-  });
-  const json = await res.json();
-  if (json.errors) throw new Error(JSON.stringify(json.errors));
+  if (RAILWAY_TOKEN && RAILWAY_PROJECT_ID && RAILWAY_ENVIRONMENT_ID && RAILWAY_SERVICE_ID) {
+    const res = await fetch('https://backboard.railway.app/graphql/v2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RAILWAY_TOKEN}` },
+      body: JSON.stringify({
+        query: `mutation variableUpsert($input: VariableUpsertInput!) { variableUpsert(input: $input) }`,
+        variables: { input: { projectId: RAILWAY_PROJECT_ID, environmentId: RAILWAY_ENVIRONMENT_ID, serviceId: RAILWAY_SERVICE_ID, name: 'CRM_SEED', value: compressed } }
+      })
+    });
+    const json = await res.json();
+    if (json.errors) throw new Error(JSON.stringify(json.errors));
+    return true;
+  }
+
+  // No sync configured – skip silently
   return true;
 }
 
@@ -299,12 +321,12 @@ async function saveCRM(data) {
   console.log(`[CRM] saved locally – ${data.leads.length} Leads`);
 }
 
-// Force-sync current crm.json state to Railway (for use when sync was previously failing)
+// Force-sync current crm.json state to hosting env var (Render or Railway)
 app.post('/crm/forcesync', requireCRM, async (req, res) => {
   try {
     const data = loadCRM();
     const seed = JSON.stringify({ leads: data.leads, sessions: {} });
-    await syncToRailway(seed);
+    await syncEnvVar(seed);
     console.log(`[CRM] force-sync OK – ${data.leads.length} Leads`);
     res.json({ ok: true, leads: data.leads.length });
   } catch(e) {
