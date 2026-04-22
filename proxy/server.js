@@ -512,7 +512,7 @@ app.delete('/admin/clients/:token', requireAdminKey, (req, res) => {
 
 // ---------- start ----------
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`SiteAI Proxy running on port ${PORT}`);
   if (!ANTHROPIC_API_KEY) console.warn('WARNING: ANTHROPIC_API_KEY not set!');
   if (!ADMIN_KEY) console.warn('WARNING: ADMIN_KEY not set!');
