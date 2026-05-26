@@ -146,6 +146,9 @@ app.post('/api/save', (req, res) => {
 
   // Nur erlaubte Seiten (Sicherheit)
   const siteName = (site || 'demo').replace(/[^a-z0-9-]/g, '');
+  if (siteName === 'demo') {
+    return res.status(403).json({ error: 'Demo-Seite kann nicht gespeichert werden' });
+  }
   const siteDir  = path.join(__dirname, 'public', siteName);
   if (!fs.existsSync(siteDir)) {
     return res.status(400).json({ error: 'Unknown site' });
