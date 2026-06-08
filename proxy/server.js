@@ -574,7 +574,8 @@ app.post('/api/create-page', async (req, res) => {
   const siteName  = (site || '').replace(/[^a-z0-9-]/g, '');
   const safeSlug  = (pageName || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40);
 
-  if (!siteName || siteName === 'demo') return res.status(403).json({ error: 'Nicht für Demo erlaubt' });
+  // Demo temporär freigeschaltet zum Testen
+  // if (!siteName || siteName === 'demo') return res.status(403).json({ error: 'Nicht für Demo erlaubt' });
   if (!safeSlug) return res.status(400).json({ error: 'Ungültiger Seitenname' });
 
   const siteDir = path.join(__dirname, 'public', siteName);

@@ -4,6 +4,7 @@
   const KI_TOKEN  = scriptTag.getAttribute('data-token');
   const KI_PROXY  = scriptTag.getAttribute('data-proxy') || window.location.origin;
   const KI_DEMO   = scriptTag.getAttribute('data-demo') === 'true';
+  const KI_SITE   = scriptTag.getAttribute('data-site') || '';
   // ══════════════════════════════════════════
 
   // ── CSS injizieren ────────────────────────────────────────────────────────
