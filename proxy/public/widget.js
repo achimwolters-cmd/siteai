@@ -240,6 +240,61 @@
   .ki-save-btn:disabled { background: #a0cdd4; cursor: not-allowed; }
   .ki-save-btn.saving { background: #a0cdd4; }
   .ki-save-btn.saved  { background: #2a6670; }
+
+  /* ── NEUE-SEITE-DIALOG ── */
+  .ki-page-dialog {
+    position: fixed; inset: 0; background: rgba(15,34,41,0.55);
+    z-index: 3000; display: flex; align-items: center; justify-content: center;
+    padding: 16px; backdrop-filter: blur(2px);
+  }
+  .ki-page-box {
+    background: #fff; border-radius: 18px; width: 100%; max-width: 400px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.22); overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .ki-page-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px 0; font-weight: 800; font-size: 15px; color: #0f2229;
+  }
+  .ki-page-head button {
+    background: none; border: none; font-size: 22px; cursor: pointer; color: #aaa; line-height:1;
+  }
+  .ki-page-body {
+    padding: 14px 20px 4px; display: flex; flex-direction: column; gap: 12px;
+    max-height: 60vh; overflow-y: auto;
+  }
+  .ki-page-body label {
+    font-size: 11px; font-weight: 700; color: #4a6b72;
+    text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: -6px;
+  }
+  .ki-page-body input, .ki-page-body textarea {
+    width: 100%; padding: 10px 12px; border: 1.5px solid #ddedf0;
+    border-radius: 9px; font-size: 14px; font-family: inherit;
+    outline: none; transition: border-color 0.2s; resize: vertical; box-sizing: border-box;
+  }
+  .ki-page-body input:focus, .ki-page-body textarea:focus { border-color: #3d8a96; }
+  .ki-photo-drop {
+    border: 2px dashed #b8d8de; border-radius: 10px; padding: 14px;
+    text-align: center; font-size: 13px; color: #4a6b72; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .ki-photo-drop:hover { border-color: #3d8a96; background: #f0f8fa; }
+  .ki-photo-previews { display: flex; flex-wrap: wrap; gap: 7px; margin-top: -4px; }
+  .ki-photo-thumb { width: 68px; height: 68px; object-fit: cover; border-radius: 8px; border: 2px solid #ddedf0; }
+  .ki-page-foot {
+    padding: 14px 20px; display: flex; gap: 10px;
+    border-top: 1px solid #f0f5f6;
+  }
+  .ki-page-cancel {
+    flex:1; padding: 11px; border: 1.5px solid #ddedf0; border-radius: 9px;
+    background: #fff; font-size: 14px; font-weight: 600; cursor: pointer; color: #4a6b72;
+  }
+  .ki-page-submit {
+    flex: 2; padding: 11px; background: #3d8a96; border: none; border-radius: 9px;
+    color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.2s;
+  }
+  .ki-page-submit:hover { background: #2a6670; }
+  .ki-page-submit:disabled { background: #a0cdd4; cursor: not-allowed; }
   .ki-upload-btn {
     background: none; border: none; cursor: pointer;
     font-size: 18px; padding: 4px 6px; opacity: 0.6;
@@ -516,7 +571,7 @@
     <div class="ki-chip" onclick="kiChip(this)">Telefonnummer ändern</div>
     <div class="ki-chip" onclick="kiChip(this)">Preise aktualisieren</div>
     <div class="ki-chip" onclick="kiChip(this)">Öffnungszeiten ändern</div>
-    <div class="ki-chip" onclick="kiChip(this)">➕ Neue Seite erstellen</div>
+    <div class="ki-chip" onclick="kiShowCreatePageDialog()">➕ Neue Seite erstellen</div>
   </div>
 
   <div class="ki-save-bar" ${KI_DEMO ? 'style="display:none"' : ''}>
@@ -537,6 +592,44 @@
 `;
 
   document.body.insertAdjacentHTML('beforeend', widgetHTML);
+
+  // ── NEUE-SEITE-DIALOG HTML ────────────────────────────────────────────────
+  document.body.insertAdjacentHTML('beforeend', `
+<div class="ki-page-dialog" id="ki-page-dialog" style="display:none" onclick="if(event.target===this)kiClosePageDialog()">
+  <div class="ki-page-box">
+    <div class="ki-page-head">
+      <span>➕ Neue Seite erstellen</span>
+      <button onclick="kiClosePageDialog()">✕</button>
+    </div>
+    <div class="ki-page-body">
+      <label>Menüeintrag</label>
+      <input type="text" id="ki-pd-nav" placeholder="z.B. Galerie, Über uns, Kontakt">
+
+      <label>Überschrift der neuen Seite</label>
+      <input type="text" id="ki-pd-headline" placeholder="z.B. Unsere Galerie">
+
+      <label>Text / Beschreibung</label>
+      <textarea id="ki-pd-text" rows="4" placeholder="Beschreibe kurz, was auf der Seite stehen soll…"></textarea>
+
+      <label>Fotos (optional)</label>
+      <div class="ki-photo-drop" id="ki-photo-drop"
+           onclick="document.getElementById('ki-pd-photos').click()"
+           ondragover="event.preventDefault();this.style.borderColor='#3d8a96'"
+           ondragleave="this.style.borderColor=''"
+           ondrop="event.preventDefault();this.style.borderColor='';kiPagePhotosDropped(event.dataTransfer.files)">
+        📷 Klicken oder Fotos hierher ziehen
+      </div>
+      <input type="file" id="ki-pd-photos" accept="image/*" multiple style="display:none"
+             onchange="kiPagePhotosChanged(this.files)">
+      <div class="ki-photo-previews" id="ki-photo-previews"></div>
+    </div>
+    <div class="ki-page-foot">
+      <button class="ki-page-cancel" onclick="kiClosePageDialog()">Abbrechen</button>
+      <button class="ki-page-submit" id="ki-pd-submit" onclick="kiSubmitPageDialog()">Seite erstellen (5 Credits)</button>
+    </div>
+  </div>
+</div>
+`);
 
   // ── Widget-Logik ──────────────────────────────────────────────────────────
   let kiOpen = false;
@@ -1146,11 +1239,15 @@ REGELN:
         return;
       }
 
-      // Neue Seite erstellen – separater Flow
+      // Neue Seite erstellen – Dialog öffnen
       if (changes[0]?.type === 'create-page') {
         document.getElementById('ki-typing').classList.remove('visible');
         btn.disabled = false;
-        await kiCreatePage(changes[0]);
+        kiShowCreatePageDialog({
+          navLabel: changes[0].navLabel || changes[0].pageName || '',
+          headline: changes[0].headline || '',
+          text:     changes[0].desc || changes[0].description || ''
+        });
         return;
       }
 
@@ -1214,12 +1311,107 @@ REGELN:
     }
   };
 
+  // ── NEUE-SEITE-DIALOG ─────────────────────────────────────────────────────
+  let _pdPhotos = []; // { file, dataUrl }
+
+  window.kiShowCreatePageDialog = function(pre = {}) {
+    document.getElementById('ki-pd-nav').value      = pre.navLabel || '';
+    document.getElementById('ki-pd-headline').value = pre.headline || '';
+    document.getElementById('ki-pd-text').value     = pre.text || '';
+    document.getElementById('ki-photo-previews').innerHTML = '';
+    document.getElementById('ki-pd-photos').value  = '';
+    _pdPhotos = [];
+    document.getElementById('ki-page-dialog').style.display = 'flex';
+  };
+
+  window.kiClosePageDialog = function() {
+    document.getElementById('ki-page-dialog').style.display = 'none';
+  };
+
+  window.kiResizeImageFile = function(file, maxW, maxH, quality) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          let w = img.width, h = img.height;
+          if (w > maxW || h > maxH) {
+            const ratio = Math.min(maxW / w, maxH / h);
+            w = Math.round(w * ratio); h = Math.round(h * ratio);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  async function _addPagePhotos(files) {
+    const previews = document.getElementById('ki-photo-previews');
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) continue;
+      if (_pdPhotos.length >= 6) { addMsg('ℹ️ Maximal 6 Fotos pro Seite', 'bot'); break; }
+      const resized = await window.kiResizeImageFile(file, 1200, 1200, 0.85);
+      const dataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = e => r(e.target.result); fr.readAsDataURL(resized); });
+      _pdPhotos.push({ file: resized, dataUrl });
+      const img = document.createElement('img');
+      img.src = dataUrl; img.className = 'ki-photo-thumb';
+      previews.appendChild(img);
+    }
+  }
+
+  window.kiPagePhotosChanged = function(files) { _addPagePhotos(files); };
+  window.kiPagePhotosDropped = function(files)  { _addPagePhotos(files); };
+
+  window.kiSubmitPageDialog = async function() {
+    const navLabel = document.getElementById('ki-pd-nav').value.trim();
+    const headline = document.getElementById('ki-pd-headline').value.trim();
+    const text     = document.getElementById('ki-pd-text').value.trim();
+    if (!navLabel) { document.getElementById('ki-pd-nav').focus(); return; }
+
+    const btn = document.getElementById('ki-pd-submit');
+    btn.disabled = true; btn.textContent = '⏳ Fotos hochladen…';
+
+    // Upload photos first
+    const imageUrls = [];
+    for (const { file } of _pdPhotos) {
+      try {
+        const fd = new FormData();
+        fd.append('image', file, 'photo.jpg');
+        const res = await fetch(`${KI_PROXY}/api/upload`, {
+          method: 'POST',
+          headers: { 'x-client-token': KI_TOKEN, 'x-site': KI_SITE || '' },
+          body: fd
+        });
+        const d = await res.json();
+        if (!res.ok || !d.ok) throw new Error(d.error || 'Upload error');
+        const url = d.url.startsWith('http') ? d.url : `${KI_PROXY}${d.url}`;
+        imageUrls.push(url);
+      } catch(err) {
+        btn.disabled = false; btn.textContent = 'Seite erstellen (5 Credits)';
+        addMsg(`❌ Foto-Upload fehlgeschlagen: ${err.message}`, 'error');
+        return;
+      }
+    }
+
+    kiClosePageDialog();
+    await kiCreatePage({ navLabel, headline, text, imageUrls });
+    btn.disabled = false; btn.textContent = 'Seite erstellen (5 Credits)';
+  };
+
   // ── NEUE SEITE ERSTELLEN ──────────────────────────────────────────────────
   window.kiCreatePage = async function(info) {
-    const pageName = info.pageName || prompt('URL-Slug der neuen Seite (z.B. "galerie", "kontakt"):');
-    if (!pageName) return;
-    const navLabel = info.navLabel || pageName;
-    const description = info.desc || info.description || '';
+    const navLabel = info.navLabel || info.pageName || 'Neue Seite';
+    const pageName = navLabel.toLowerCase()
+      .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')
+      .replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const headline   = info.headline   || navLabel;
+    const text       = info.text       || info.desc || info.description || '';
+    const imageUrls  = info.imageUrls  || [];
 
     addMsg(`🔨 Erstelle Seite <strong>${navLabel}</strong> – KI analysiert dein Design und baut die Seite. Bitte 30–60 Sekunden warten…`, 'bot');
     document.getElementById('ki-typing').classList.add('visible');
@@ -1242,9 +1434,11 @@ REGELN:
         headers: { 'Content-Type': 'application/json', 'x-client-token': KI_TOKEN },
         body: JSON.stringify({
           pageContext,
-          pageName: pageName.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+          pageName,
           navLabel,
-          description,
+          headline,
+          text,
+          imageUrls,
           site: KI_SITE || ''
         })
       });

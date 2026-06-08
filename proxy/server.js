@@ -570,9 +570,9 @@ app.post('/api/create-page', async (req, res) => {
     credits: client.credits
   });
 
-  const { pageContext, pageName, navLabel, description, site } = req.body;
+  const { pageContext, pageName, navLabel, headline, text, imageUrls, description, site } = req.body;
   const siteName  = (site || '').replace(/[^a-z0-9-]/g, '');
-  const safeSlug  = (pageName || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40);
+  const safeSlug  = (pageName || '').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0, 40);
 
   // Demo temporär freigeschaltet zum Testen
   // if (!siteName || siteName === 'demo') return res.status(403).json({ error: 'Nicht für Demo erlaubt' });
@@ -605,9 +605,11 @@ Antworte NUR mit dem vollständigen HTML. Keine Erklärung, kein Markdown.`,
         messages: [{
           role: 'user',
           content: `Erstelle eine neue Seite mit folgenden Angaben:
-Seitenname: ${navLabel || safeSlug}
+Menübezeichnung: ${navLabel || safeSlug}
 URL: /${safeSlug}/
-Inhalt/Zweck: ${description || navLabel || safeSlug}
+Überschrift der Seite: ${headline || navLabel || safeSlug}
+Seitentext / Inhalt: ${text || description || navLabel || safeSlug}
+${(imageUrls && imageUrls.length) ? `Fotos (binde alle als <img>-Elemente ein):\n${imageUrls.map(u => `- ${u}`).join('\n')}` : ''}
 
 Design der bestehenden Website (übernimm Nav, Footer und CSS-Variablen exakt):
 ${pageContext || ''}`.slice(0, 60000)
