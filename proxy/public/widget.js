@@ -239,6 +239,13 @@
   .ki-save-btn:disabled { background: #a0cdd4; cursor: not-allowed; }
   .ki-save-btn.saving { background: #a0cdd4; }
   .ki-save-btn.saved  { background: #2a6670; }
+  .ki-upload-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 18px; padding: 4px 6px; opacity: 0.6;
+    transition: opacity 0.2s; flex-shrink: 0;
+  }
+  .ki-upload-btn:hover { opacity: 1; }
+  .ki-upload-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
   @media (max-width: 480px) {
     #ki-panel { width: calc(100vw - 32px); right: 16px; bottom: 88px; }
@@ -508,6 +515,7 @@
     <div class="ki-chip" onclick="kiChip(this)">Telefonnummer ändern</div>
     <div class="ki-chip" onclick="kiChip(this)">Preise aktualisieren</div>
     <div class="ki-chip" onclick="kiChip(this)">Öffnungszeiten ändern</div>
+    <div class="ki-chip" onclick="kiChip(this)">➕ Neue Seite erstellen</div>
   </div>
 
   <div class="ki-save-bar" ${KI_DEMO ? 'style="display:none"' : ''}>
@@ -517,6 +525,8 @@
   </div>
 
   <div class="ki-input-row">
+    <button class="ki-upload-btn" id="ki-upload-btn" title="Bild hochladen" onclick="document.getElementById('ki-file-input').click()">📎</button>
+    <input type="file" id="ki-file-input" accept="image/*" style="display:none" onchange="kiUpload(this)">
     <textarea class="ki-textarea" id="ki-input" placeholder="Was soll geändert werden?" rows="1"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();kiSend();}"
       oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
@@ -1007,6 +1017,10 @@
           else fail.push(`Selektor "${c.selector}" nicht gefunden`);
         } else if (c.type === 'cssvar') {
           document.documentElement.style.setProperty(c.name, c.value); ok++;
+        } else if (c.type === 'attr') {
+          const els = document.querySelectorAll(c.selector);
+          if (els.length) { els.forEach(el => el.setAttribute(c.attr, c.value)); ok++; }
+          else fail.push(`Selektor "${c.selector}" nicht gefunden`);
         }
       } catch(e) { fail.push(e.message); }
     }
@@ -1084,6 +1098,13 @@ Antworte NUR mit einem JSON-Array – kein Markdown, keine Erklärung, kein Text
 3. Globale Akzentfarbe (ändert Buttons, Icons, Akzente auf einmal):
    {"type":"cssvar","name":"--gold","value":"#FARBE","desc":"was wurde geändert"}
 
+4. Bild-Attribut ändern (z.B. nach Bild-Upload):
+   {"type":"attr","selector":"CSS-SELEKTOR","attr":"src","value":"BILD-URL","desc":"Bild gesetzt"}
+
+5. Neue Seite erstellen (wenn Nutzer explizit eine neue Unterseite will):
+   {"type":"create-page","pageName":"kontakt","navLabel":"Kontakt","desc":"Kontaktseite wird erstellt"}
+   pageName: nur Kleinbuchstaben und Bindestriche
+
 BEKANNTE STIL-SELEKTOREN:
 - Hero-Hintergrund links (dunkler Bereich): .hero-content → background
 - Navigation Hintergrund: .navbar → background
@@ -1124,6 +1145,14 @@ REGELN:
         return;
       }
 
+      // Neue Seite erstellen – separater Flow
+      if (changes[0]?.type === 'create-page') {
+        document.getElementById('ki-typing').classList.remove('visible');
+        btn.disabled = false;
+        await kiCreatePage(changes[0]);
+        return;
+      }
+
       const { ok, fail } = applyChanges(changes);
       const descs = changes.filter(c=>c.desc && c.type!=='question').map(c=>c.desc).join(', ');
 
@@ -1145,6 +1174,98 @@ REGELN:
     document.getElementById('ki-chips').style.display = '';
     btn.disabled = false;
     window.loadCredits();
+  };
+
+  // ── BILD-UPLOAD ────────────────────────────────────────────────────────────
+  window.kiUpload = async function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      addMsg('❌ Bild zu groß (max. 8 MB)', 'error');
+      input.value = '';
+      return;
+    }
+    const btn = document.getElementById('ki-upload-btn');
+    btn.textContent = '⏳'; btn.disabled = true;
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await fetch(`${KI_PROXY}/api/upload`, {
+        method: 'POST',
+        headers: { 'x-client-token': KI_TOKEN, 'x-site': KI_SITE || '' },
+        body: fd
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Upload fehlgeschlagen');
+
+      const fullUrl = data.url.startsWith('http') ? data.url : `${KI_PROXY}${data.url}`;
+      addMsg(`📸 Bild hochgeladen!<br><img src="${fullUrl}" style="max-width:120px;border-radius:8px;margin-top:6px;display:block">`, 'bot');
+
+      // URL in Eingabefeld vorausfüllen
+      const ta = document.getElementById('ki-input');
+      ta.value = `Nutze dieses Bild (${fullUrl}): `;
+      ta.focus(); ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px';
+    } catch(err) {
+      addMsg(`❌ Upload: ${err.message}`, 'error');
+    } finally {
+      btn.textContent = '📎'; btn.disabled = false;
+      input.value = '';
+    }
+  };
+
+  // ── NEUE SEITE ERSTELLEN ──────────────────────────────────────────────────
+  window.kiCreatePage = async function(info) {
+    const pageName = info.pageName || prompt('URL-Slug der neuen Seite (z.B. "galerie", "kontakt"):');
+    if (!pageName) return;
+    const navLabel = info.navLabel || pageName;
+    const description = info.desc || info.description || '';
+
+    addMsg(`🔨 Erstelle Seite <strong>${navLabel}</strong> – das dauert ca. 30 Sekunden…`, 'bot');
+    document.getElementById('ki-typing').classList.add('visible');
+    document.getElementById('ki-send-btn').disabled = true;
+
+    // Design-Kontext extrahieren: CSS-Variablen + Nav + Footer
+    const styles = Array.from(document.querySelectorAll('style'))
+      .map(s => s.textContent).join('\n').slice(0, 8000);
+    const navHtml    = document.querySelector('nav')?.outerHTML || '';
+    const footerHtml = document.querySelector('footer')?.outerHTML || '';
+    const pageContext = `<styles>\n${styles}\n</styles>\n\n${navHtml}\n\n${footerHtml}`;
+
+    try {
+      const ctrl = new AbortController();
+      const to   = setTimeout(() => ctrl.abort(), 90000);
+
+      const res = await fetch(`${KI_PROXY}/api/create-page`, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json', 'x-client-token': KI_TOKEN },
+        body: JSON.stringify({
+          pageContext,
+          pageName: pageName.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+          navLabel,
+          description,
+          site: KI_SITE || ''
+        })
+      });
+      clearTimeout(to);
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Fehler');
+
+      addMsg(`✅ Seite <strong>${navLabel}</strong> erstellt! <a href="${data.url}" target="_blank" style="color:#3d8a96">Seite öffnen →</a>`, 'bot');
+      if (data._credits_remaining !== undefined)
+        document.getElementById('ki-credits-badge').textContent = `${data._credits_remaining} Credits`;
+
+      if (confirm(`Seite "${navLabel}" ist live!\nJetzt neu laden, damit der neue Nav-Link erscheint?`))
+        location.reload();
+
+    } catch(err) {
+      if (err.name === 'AbortError') addMsg('⏱️ Zeitüberschreitung – bitte nochmal versuchen.', 'error');
+      else addMsg(`❌ ${err.message}`, 'error');
+    } finally {
+      document.getElementById('ki-typing').classList.remove('visible');
+      document.getElementById('ki-send-btn').disabled = false;
+    }
   };
 
   window.kiShowVersions = async function() {

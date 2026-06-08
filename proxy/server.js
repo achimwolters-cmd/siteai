@@ -1,9 +1,10 @@
-// Ailima Proxy Server – last deploy trigger: 2026-04-22
+// Ailima Proxy Server – last deploy trigger: 2026-06-08
 require('dotenv').config({ override: true });
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -511,6 +512,156 @@ app.delete('/admin/clients/:token', requireAdminKey, (req, res) => {
   delete clients[req.params.token];
   saveClients(clients);
   res.json({ ok: true });
+});
+
+// ── BILD-UPLOAD ─────────────────────────────────────────────────────────────
+
+const imageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const site = (req.headers['x-site'] || '').replace(/[^a-z0-9-]/g, '');
+      const dir = site
+        ? path.join(__dirname, 'public', site, 'images')
+        : path.join(__dirname, 'public', 'uploads');
+      fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, '') || '.jpg';
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    }
+  }),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Nur Bilddateien erlaubt'));
+  }
+});
+
+// POST /api/upload  – Bild hochladen, URL zurückgeben
+app.post('/api/upload', imageUpload.single('image'), (req, res) => {
+  const token = req.headers['x-client-token'];
+  const clients = loadClients();
+  const client = clients[token];
+  if (!client) return res.status(401).json({ error: 'Invalid token' });
+  if (!client.active) return res.status(403).json({ error: 'Account deactivated' });
+  if (!req.file) return res.status(400).json({ error: 'Kein Bild empfangen' });
+
+  const site = (req.headers['x-site'] || '').replace(/[^a-z0-9-]/g, '');
+  const url  = site
+    ? `/${site}/images/${req.file.filename}`
+    : `/uploads/${req.file.filename}`;
+
+  console.log(`[SiteAI] Bild hochgeladen: ${url} von ${client.name}`);
+  res.json({ ok: true, url, filename: req.file.filename });
+});
+
+// ── NEUE SEITE ERSTELLEN ─────────────────────────────────────────────────────
+
+// POST /api/create-page – neue Unterseite generieren + speichern
+app.post('/api/create-page', async (req, res) => {
+  const token = req.headers['x-client-token'];
+  const clients = loadClients();
+  const client = clients[token];
+  if (!client) return res.status(401).json({ error: 'Invalid token' });
+  if (!client.active) return res.status(403).json({ error: 'Account deactivated' });
+  if (client.credits < 5) return res.status(402).json({
+    error: 'Mindestens 5 Credits für Seitenerstellung benötigt.',
+    credits: client.credits
+  });
+
+  const { pageContext, pageName, navLabel, description, site } = req.body;
+  const siteName  = (site || '').replace(/[^a-z0-9-]/g, '');
+  const safeSlug  = (pageName || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40);
+
+  if (!siteName || siteName === 'demo') return res.status(403).json({ error: 'Nicht für Demo erlaubt' });
+  if (!safeSlug) return res.status(400).json({ error: 'Ungültiger Seitenname' });
+
+  const siteDir = path.join(__dirname, 'public', siteName);
+  if (!fs.existsSync(siteDir)) return res.status(400).json({ error: 'Unbekannte Site' });
+
+  try {
+    // Claude generiert die neue Seite anhand des bestehenden Designs
+    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 16000,
+        system: `Du bist ein professioneller Webdesigner. Du erstellst neue HTML-Seiten die zum bestehenden Design einer Website passen.
+Analysiere das gegebene Design (CSS-Variablen, Farben, Schriften, Nav, Footer) und erstelle eine vollständige, passende HTML-Seite.
+Die neue Seite muss:
+- Dieselben CSS-Variablen, Schriften und Klassen nutzen
+- Denselben <nav> (mit angepassten Links) und <footer> enthalten
+- Mobilfreundlich sein
+- Relevanten, professionellen Inhalt für das angegebene Thema haben
+- Vollständiges, valides HTML sein (kein Markdown, keine Codeblöcke)
+Antworte NUR mit dem vollständigen HTML. Keine Erklärung, kein Markdown.`,
+        messages: [{
+          role: 'user',
+          content: `Erstelle eine neue Seite mit folgenden Angaben:
+Seitenname: ${navLabel || safeSlug}
+URL: /${safeSlug}/
+Inhalt/Zweck: ${description || navLabel || safeSlug}
+
+Design der bestehenden Website (übernimm Nav, Footer und CSS-Variablen exakt):
+${pageContext || ''}`.slice(0, 60000)
+        }]
+      })
+    });
+
+    const cData = await claudeRes.json();
+    if (!claudeRes.ok) throw new Error(cData.error?.message || 'Claude API Fehler');
+
+    let html = (cData.content?.[0]?.text || '').trim()
+      .replace(/^```html\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+
+    if (!html.includes('<!DOCTYPE') && !html.includes('<html')) {
+      throw new Error('Kein gültiges HTML erhalten');
+    }
+
+    // Neue Seite speichern
+    const pageDir  = path.join(siteDir, safeSlug);
+    const pagePath = path.join(pageDir, 'index.html');
+    fs.mkdirSync(pageDir, { recursive: true });
+    fs.writeFileSync(pagePath, html, 'utf8');
+
+    // Nav in index.html aktualisieren – Link vor nav-cta einfügen
+    const indexPath = path.join(siteDir, 'index.html');
+    if (navLabel && fs.existsSync(indexPath)) {
+      let idx = fs.readFileSync(indexPath, 'utf8');
+      const linkHtml = `<a href="${safeSlug}/">${navLabel}</a>`;
+      if (!idx.includes(`href="${safeSlug}/"`)) {
+        idx = idx.replace(
+          /(<a[^>]+class="[^"]*nav-cta[^"]*")/,
+          `${linkHtml}\n      $1`
+        );
+        fs.writeFileSync(indexPath, idx, 'utf8');
+      }
+    }
+
+    // 5 Credits abziehen
+    clients[token].credits -= 5;
+    clients[token].lastUsed = new Date().toISOString();
+    saveClients(clients);
+
+    console.log(`[SiteAI] Neue Seite "/${safeSlug}/" erstellt für ${client.name}`);
+    res.json({
+      ok: true,
+      url: `/${siteName}/${safeSlug}/`,
+      pageName: safeSlug,
+      navLabel,
+      _credits_remaining: clients[token].credits
+    });
+
+  } catch(err) {
+    console.error('Create-page error:', err);
+    res.status(500).json({ error: 'Seitenerstellung fehlgeschlagen', details: err.message });
+  }
 });
 
 // ---------- start ----------
