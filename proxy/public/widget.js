@@ -1221,7 +1221,7 @@ REGELN:
     const navLabel = info.navLabel || pageName;
     const description = info.desc || info.description || '';
 
-    addMsg(`🔨 Erstelle Seite <strong>${navLabel}</strong> – das dauert ca. 30 Sekunden…`, 'bot');
+    addMsg(`🔨 Erstelle Seite <strong>${navLabel}</strong> – KI analysiert dein Design und baut die Seite. Bitte 30–60 Sekunden warten…`, 'bot');
     document.getElementById('ki-typing').classList.add('visible');
     document.getElementById('ki-send-btn').disabled = true;
 
@@ -1234,7 +1234,7 @@ REGELN:
 
     try {
       const ctrl = new AbortController();
-      const to   = setTimeout(() => ctrl.abort(), 90000);
+      const to   = setTimeout(() => ctrl.abort(), 150000);
 
       const res = await fetch(`${KI_PROXY}/api/create-page`, {
         method: 'POST',
