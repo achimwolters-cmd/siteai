@@ -1,10 +1,11 @@
-// Ailima Proxy Server – last deploy trigger: 2026-06-08
+// Ailima Proxy Server – last deploy trigger: 2026-08-22
 require('dotenv').config({ override: true });
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const { exec } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -666,6 +667,183 @@ ${pageContext || ''}`.slice(0, 60000)
     res.status(500).json({ error: 'Seitenerstellung fehlgeschlagen', details: err.message });
   }
 });
+
+// ── AUTO-BLOG: Neuen Blogbeitrag generieren und per FTP hochladen ────────────
+
+const FTP_HOST = 'tojopo.han-solo.net';
+const FTP_USER = process.env.FTP_USER || 'admin';
+const FTP_PASS = process.env.FTP_PASS || '8PaZoUE6<;+&&XCY4]F^YT+p$+|692F^xQO';
+const FTP_SITE = 'ftp://tojopo.han-solo.net/noexec/ailima.de';
+const NETRC_FILE = '/tmp/ailima-netrc';
+
+const BLOG_HERO_PHOTOS = [
+  'photo-1557804506-669a67965ba0', 'photo-1460925895917-afdab827c52f',
+  'photo-1547658719-da2b51169166', 'photo-1573167507387-6b4b98cb7c13',
+  'photo-1600880292203-757bb62b4baf', 'photo-1542744173-8e7e53415bb0',
+  'photo-1551650975-87deedd944c3', 'photo-1553729459-efe14ef6055d',
+  'photo-1423666639041-f56000c27a9a'
+];
+
+function run(cmd, timeoutMs = 30000) {
+  return new Promise((resolve, reject) => {
+    exec(cmd, { timeout: timeoutMs }, (err, stdout, stderr) => {
+      if (err) reject(new Error(stderr || err.message));
+      else resolve(stdout);
+    });
+  });
+}
+
+function setupFtpNetrc() {
+  fs.writeFileSync(NETRC_FILE, `machine ${FTP_HOST}\nlogin ${FTP_USER}\npassword ${FTP_PASS}\n`, { mode: 0o600 });
+}
+
+async function ftpGet(remotePath, localPath) {
+  await run(`curl --netrc-file "${NETRC_FILE}" -s -o "${localPath}" "${FTP_SITE}/${remotePath}"`, 30000);
+}
+
+async function ftpPut(localPath, remotePath) {
+  await run(`curl --netrc-file "${NETRC_FILE}" -s -T "${localPath}" "${FTP_SITE}/${remotePath}"`, 30000);
+}
+
+function todayDE() {
+  const m = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  const d = new Date();
+  return `${d.getDate()}. ${m[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function generateAndUploadBlogPost() {
+  console.log('[auto-blog] Starte Blog-Generierung…');
+  setupFtpNetrc();
+
+  // Dateien herunterladen
+  await ftpGet('blog/index.html', '/tmp/ab-index.html');
+  await ftpGet('blog/oeffnungszeiten-website-falsch.html', '/tmp/ab-vorlage.html');
+  await ftpGet('sitemap.xml', '/tmp/ab-sitemap.xml');
+
+  const indexHtml  = fs.readFileSync('/tmp/ab-index.html',  'utf8');
+  const vorlage    = fs.readFileSync('/tmp/ab-vorlage.html', 'utf8');
+
+  // Vorhandene Slugs extrahieren
+  const existingSlugs = [...indexHtml.matchAll(/href="([a-z0-9][a-z0-9-]+\.html)"/gi)]
+    .map(m => m[1].replace('.html', ''))
+    .filter(s => !['index','impressum','datenschutz'].includes(s));
+  const slugList = [...new Set(existingSlugs)].join(', ');
+
+  const dateDE  = todayDE();
+  const dateISO = todayISO();
+
+  // Claude generiert den neuen Post
+  const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5',
+      max_tokens: 8000,
+      system: `Du erstellst Blog-Posts für ailima.de. Antworte NUR in diesem Format – zuerst 5 Kommentarzeilen, dann direkt das komplette HTML ohne Markdown-Fence:
+
+<!--SLUG:dein-slug-->
+<!--TITLE:Vollständiger Titel-->
+<!--CATEGORY:Kategorie-->
+<!--EXCERPT:1-2 Sätze Teaser.-->
+<!--HEROPIC:photo-XXXXXXXXXX-->
+<!DOCTYPE html>
+...`,
+      messages: [{
+        role: 'user',
+        content: `Erstelle einen neuen deutschen Blog-Post für ailima.de.
+
+Bereits vorhandene Slugs (nicht nochmal verwenden): ${slugList}
+
+Wähle ein NEUES Thema für kleine lokale Unternehmen (Friseur, Handwerker, Restaurant, Einzelhandel) rund um Website-Pflege, Online-Marketing, lokale Sichtbarkeit oder Digitalisierung.
+
+Datum: ${dateDE} | ISO: ${dateISO}
+Hero-Foto-IDs (eine wählen): ${BLOG_HERO_PHOTOS.join(', ')}
+
+700-900 Wörter, 3-4 h2-Abschnitte, eine inline-CTA-Box mit Ailima als Lösung. Ton: freundlich, lösungsorientiert.
+
+Verwende EXAKT diese Vorlage (Nav, Footer, CSS identisch übernehmen):
+
+${vorlage.slice(0, 20000)}`.slice(0, 60000)
+      }]
+    })
+  });
+
+  const cData = await claudeRes.json();
+  if (!claudeRes.ok) throw new Error(cData.error?.message || 'Claude API Fehler');
+
+  const raw = (cData.content?.[0]?.text || '').trim()
+    .replace(/^```html\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+
+  // Metadaten aus Kommentaren parsen
+  const slug     = (raw.match(/<!--SLUG:([a-z0-9-]{3,40})-->/)     || [])[1] || 'neuer-post';
+  const title    = (raw.match(/<!--TITLE:([^\n>]+)-->/)             || [])[1]?.trim() || slug;
+  const category = (raw.match(/<!--CATEGORY:([^\n>]+)-->/)          || [])[1]?.trim() || 'Marketing';
+  const excerpt  = (raw.match(/<!--EXCERPT:([^\n>]+)-->/)           || [])[1]?.trim() || '';
+  const heroPic  = (raw.match(/<!--HEROPIC:(photo-[a-z0-9-]+)-->/)  || [])[1] || BLOG_HERO_PHOTOS[0];
+
+  const postHtml = raw.replace(/<!--[^\n>]+-->\n?/g, '').trim();
+  if (!postHtml.includes('<!DOCTYPE') && !postHtml.includes('<html'))
+    throw new Error('Kein gültiges HTML erhalten');
+
+  const safeSlug = slug.replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+
+  // Post-Datei schreiben
+  fs.writeFileSync(`/tmp/ab-${safeSlug}.html`, postHtml, 'utf8');
+
+  // Blog-Index: neue Card vorne einfügen
+  const newCard = `
+      <a href="${safeSlug}.html" class="blog-card">
+        <img class="blog-card-img" src="https://images.unsplash.com/${heroPic}?w=600&q=80&fit=crop" alt="${title}" loading="lazy" />
+        <div class="blog-card-body">
+          <div class="blog-card-meta">
+            <span class="blog-card-cat">${category}</span>
+            <span class="blog-card-date">${dateDE}</span>
+          </div>
+          <h2>${title}</h2>
+          <p>${excerpt}</p>
+          <span class="blog-card-link">Lesen &#8594; </span>
+        </div>
+      </a>`;
+
+  const gridMark = 'class="blog-grid">';
+  const gPos = indexHtml.indexOf(gridMark);
+  const newIndex = gPos !== -1
+    ? indexHtml.slice(0, gPos + gridMark.length) + newCard + indexHtml.slice(gPos + gridMark.length)
+    : indexHtml;
+  fs.writeFileSync('/tmp/ab-index.html', newIndex, 'utf8');
+
+  // Sitemap aktualisieren
+  let sitemap = fs.readFileSync('/tmp/ab-sitemap.xml', 'utf8');
+  const sitemapEntry = `  <url>\n    <loc>https://www.ailima.de/blog/${safeSlug}.html</loc>\n    <lastmod>${dateISO}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+  sitemap = sitemap.includes('</urlset>')
+    ? sitemap.replace('</urlset>', sitemapEntry + '</urlset>')
+    : sitemap + sitemapEntry;
+  fs.writeFileSync('/tmp/ab-sitemap.xml', sitemap, 'utf8');
+
+  // Upload
+  await ftpPut(`/tmp/ab-${safeSlug}.html`, `blog/${safeSlug}.html`);
+  await ftpPut('/tmp/ab-index.html', 'blog/index.html');
+  await ftpPut('/tmp/ab-sitemap.xml', 'sitemap.xml');
+
+  console.log(`[auto-blog] ✅ Fertig: ${safeSlug} – "${title}"`);
+  return { slug: safeSlug, title, category };
+}
+
+// GET + POST /api/auto-blog – von GitHub Actions oder externem Cron aufgerufen
+app.get('/api/auto-blog',  handleAutoBlog);
+app.post('/api/auto-blog', handleAutoBlog);
+
+function handleAutoBlog(req, res) {
+  const key = req.headers['x-admin-key'] || req.query.key;
+  if (key !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+
+  res.json({ ok: true, message: 'Blog-Generierung gestartet – Ergebnis im Server-Log.' });
+  generateAndUploadBlogPost().catch(err => console.error('[auto-blog] Fehler:', err.message));
+}
 
 // ---------- start ----------
 

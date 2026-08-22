@@ -1,0 +1,29 @@
+name: Ailima Auto-Blog
+
+on:
+  schedule:
+    # Alle 3 Tage um 08:00 Uhr UTC (10:00 MEZ)
+    - cron: '0 8 */3 * *'
+  workflow_dispatch: # Auch manuell auslösbar
+
+jobs:
+  create-blog-post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Neuen Blog-Post generieren
+        run: |
+          echo "Starte Blog-Post-Generierung..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://siteai-khmo.onrender.com/api/auto-blog" \
+            -H "x-admin-key: ${{ secrets.ADMIN_KEY }}" \
+            -H "Content-Type: application/json" \
+            --max-time 30)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -1)
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Fehler: HTTP $HTTP_CODE"
+            exit 1
+          fi
+          echo "Blog-Post-Generierung erfolgreich angestoßen."
