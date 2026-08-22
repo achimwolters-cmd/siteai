@@ -845,6 +845,154 @@ function handleAutoBlog(req, res) {
   generateAndUploadBlogPost().catch(err => console.error('[auto-blog] Fehler:', err.message));
 }
 
+// ── AUTO-BLOG FAIRWAYAPP ─────────────────────────────────────────────────────
+
+const FTP_SITE_FAIRWAY = 'ftp://tojopo.han-solo.net/noexec/fairwayapp.de';
+
+async function ftpGetFW(remotePath, localPath) {
+  await run(`curl --netrc-file "${NETRC_FILE}" -s -o "${localPath}" "${FTP_SITE_FAIRWAY}/${remotePath}"`, 30000);
+}
+async function ftpPutFW(localPath, remotePath) {
+  await run(`curl --netrc-file "${NETRC_FILE}" -s -T "${localPath}" "${FTP_SITE_FAIRWAY}/${remotePath}"`, 30000);
+}
+
+const FW_SVG_PATTERNS = [
+  `<g fill="none" stroke="#4a9a5c" stroke-width="2" opacity="0.6"><circle cx="300" cy="105" r="45"/><circle cx="300" cy="105" r="85"/><circle cx="300" cy="105" r="130"/></g><line x1="300" y1="105" x2="300" y2="66" stroke="#c9a84c" stroke-width="2.5"/><path d="M300 66 l16 5 -16 5 z" fill="#c9a84c"/><circle cx="300" cy="105" r="4" fill="#ffffff"/>`,
+  `<g fill="none" stroke="#4a9a5c" stroke-width="2" opacity="0.6"><ellipse cx="300" cy="100" rx="60" ry="42"/><ellipse cx="300" cy="100" rx="110" ry="76"/><ellipse cx="300" cy="100" rx="165" ry="115"/><ellipse cx="300" cy="100" rx="225" ry="158"/></g><circle cx="300" cy="100" r="5" fill="#c9a84c"/>`,
+  `<g stroke="#4a9a5c" stroke-width="1.2" opacity="0.5"><line x1="40" y1="200" x2="110" y2="10"/><line x1="150" y1="200" x2="185" y2="10"/><line x1="260" y1="200" x2="260" y2="10"/><line x1="370" y1="200" x2="335" y2="10"/><line x1="0" y1="150" x2="400" y2="150"/><line x1="30" y1="105" x2="370" y2="105"/><line x1="70" y1="70" x2="330" y2="70"/></g>`,
+  `<g fill="none" stroke="#4a9a5c" stroke-width="1.5" opacity="0.55"><path d="M0 160 Q100 80 200 120 T400 100"/><path d="M0 130 Q100 50 200 90 T400 70"/><path d="M0 190 Q100 110 200 150 T400 130"/></g><circle cx="200" cy="110" r="6" fill="#c9a84c"/>`,
+];
+
+async function generateAndUploadFairwayBlogPost() {
+  console.log('[fw-blog] Starte FairwayApp Blog-Generierung…');
+  setupFtpNetrc();
+
+  // Dateien herunterladen
+  await ftpGetFW('blog/index.html', '/tmp/fw-index.html');
+  await ftpGetFW('blog/golf-app-einfuehren.html', '/tmp/fw-vorlage.html');
+  await ftpGetFW('sitemap.xml', '/tmp/fw-sitemap.xml');
+
+  const indexHtml = fs.readFileSync('/tmp/fw-index.html', 'utf8');
+  const vorlage   = fs.readFileSync('/tmp/fw-vorlage.html', 'utf8');
+
+  // Vorhandene Slugs extrahieren
+  const existingSlugs = [...indexHtml.matchAll(/href="([a-z0-9][a-z0-9-]+\.html)"/gi)]
+    .map(m => m[1].replace('.html', ''))
+    .filter(s => !['index','impressum','datenschutz','privacy','legal'].includes(s));
+  const slugList = [...new Set(existingSlugs)].join(', ');
+
+  const dateDE  = todayDE();
+  const dateISO = todayISO();
+
+  // SVG-Pattern rotieren (nach Anzahl bestehender Posts)
+  const patternIdx = existingSlugs.length % FW_SVG_PATTERNS.length;
+  const svgPattern = FW_SVG_PATTERNS[patternIdx];
+
+  const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5',
+      max_tokens: 8000,
+      system: `Du erstellst Blog-Posts für fairwayapp.de – eine App für Golfclub-Management. Antworte NUR in diesem Format – zuerst 4 Kommentarzeilen, dann direkt das komplette HTML ohne Markdown-Fence:
+
+<!--SLUG:dein-slug-->
+<!--TITLE:Vollständiger Titel-->
+<!--CATEGORY:Kategorie-->
+<!--EXCERPT:1-2 Sätze Teaser.-->
+<!DOCTYPE html>
+...`,
+      messages: [{
+        role: 'user',
+        content: `Erstelle einen neuen deutschen Blog-Post für fairwayapp.de.
+
+Bereits vorhandene Slugs (nicht nochmal verwenden): ${slugList}
+
+Wähle ein NEUES Thema rund um Golfclub-Management, Digitalisierung im Golfclub, Mitgliederverwaltung, Turnierorganisation oder Club-App-Einführung. Zielgruppe: Golfclub-Manager und Vorstände.
+
+Kategorie-Optionen: Digitalisierung, Vereinsführung, Spielbetrieb, Events, Marketing, Finanzen
+
+Datum: ${dateDE} | ISO: ${dateISO}
+
+700-900 Wörter, 3-4 h2-Abschnitte, eine inline-CTA-Box mit FairwayApp als Lösung. Ton: professionell, praxisnah.
+
+Verwende EXAKT diese Vorlage (Nav, Footer, CSS identisch übernehmen):
+
+${vorlage.slice(0, 20000)}`.slice(0, 60000)
+      }]
+    })
+  });
+
+  const cData = await claudeRes.json();
+  if (!claudeRes.ok) throw new Error(cData.error?.message || 'Claude API Fehler');
+
+  const raw = (cData.content?.[0]?.text || '').trim()
+    .replace(/^```html\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+
+  const slug     = (raw.match(/<!--SLUG:([a-z0-9-]{3,40})-->/)  || [])[1] || 'neuer-post';
+  const title    = (raw.match(/<!--TITLE:([^\n>]+)-->/)           || [])[1]?.trim() || slug;
+  const category = (raw.match(/<!--CATEGORY:([^\n>]+)-->/)        || [])[1]?.trim() || 'Digitalisierung';
+  const excerpt  = (raw.match(/<!--EXCERPT:([^\n>]+)-->/)         || [])[1]?.trim() || '';
+
+  const postHtml = raw.replace(/<!--[^\n>]+-->\n?/g, '').trim();
+  if (!postHtml.includes('<!DOCTYPE') && !postHtml.includes('<html'))
+    throw new Error('Kein gültiges HTML erhalten');
+
+  // Slug sicher machen (Umlaute normalisieren)
+  const safeSlug = slug
+    .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')
+    .replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+
+  fs.writeFileSync(`/tmp/fw-${safeSlug}.html`, postHtml, 'utf8');
+
+  // Blog-Index: neue Card vorne einfügen
+  const newCard = `
+      <a href="${safeSlug}.html" class="article-card">
+        <div class="card-img"><svg class="card-pattern" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">${svgPattern}</svg>
+          <span class="card-tag">${category}</span>
+        </div>
+        <div class="card-body">
+          <div class="card-meta">${dateDE} · 6 Min.</div>
+          <h2>${title}</h2>
+          <p>${excerpt}</p>
+          <span class="card-link">Artikel lesen <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+        </div>
+      </a>`;
+
+  const gridMark = 'class="articles-grid">';
+  const gPos = indexHtml.indexOf(gridMark);
+  const newIndex = gPos !== -1
+    ? indexHtml.slice(0, gPos + gridMark.length) + newCard + indexHtml.slice(gPos + gridMark.length)
+    : indexHtml;
+  fs.writeFileSync('/tmp/fw-index.html', newIndex, 'utf8');
+
+  // Sitemap aktualisieren
+  let sitemap = fs.readFileSync('/tmp/fw-sitemap.xml', 'utf8');
+  const sitemapEntry = `  <url>\n    <loc>https://www.fairwayapp.de/blog/${safeSlug}.html</loc>\n    <lastmod>${dateISO}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n`;
+  sitemap = sitemap.includes('</urlset>')
+    ? sitemap.replace('</urlset>', sitemapEntry + '</urlset>')
+    : sitemap + sitemapEntry;
+  fs.writeFileSync('/tmp/fw-sitemap.xml', sitemap, 'utf8');
+
+  // Upload
+  await ftpPutFW(`/tmp/fw-${safeSlug}.html`, `blog/${safeSlug}.html`);
+  await ftpPutFW('/tmp/fw-index.html', 'blog/index.html');
+  await ftpPutFW('/tmp/fw-sitemap.xml', 'sitemap.xml');
+
+  console.log(`[fw-blog] ✅ Fertig: ${safeSlug} – "${title}"`);
+}
+
+app.get('/api/auto-blog-fairway',  handleAutoBlogFairway);
+app.post('/api/auto-blog-fairway', handleAutoBlogFairway);
+
+function handleAutoBlogFairway(req, res) {
+  const key = req.headers['x-admin-key'] || req.query.key;
+  if (key !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+
+  res.json({ ok: true, message: 'FairwayApp Blog-Generierung gestartet – Ergebnis im Server-Log.' });
+  generateAndUploadFairwayBlogPost().catch(err => console.error('[fw-blog] Fehler:', err.message));
+}
+
 // ---------- start ----------
 
 app.listen(PORT, '0.0.0.0', () => {

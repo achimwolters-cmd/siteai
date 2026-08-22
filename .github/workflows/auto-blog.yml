@@ -1,4 +1,4 @@
-name: Ailima Auto-Blog
+name: Ailima + FairwayApp Auto-Blog
 
 on:
   schedule:
@@ -7,12 +7,13 @@ on:
   workflow_dispatch: # Auch manuell auslösbar
 
 jobs:
-  create-blog-post:
+  ailima-blog:
+    name: Ailima Blog-Post
     runs-on: ubuntu-latest
     steps:
       - name: Neuen Blog-Post generieren
         run: |
-          echo "Starte Blog-Post-Generierung..."
+          echo "Starte Ailima Blog-Post-Generierung..."
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             "https://siteai-khmo.onrender.com/api/auto-blog" \
             -H "x-admin-key: ${{ secrets.ADMIN_KEY }}" \
@@ -26,4 +27,29 @@ jobs:
             echo "Fehler: HTTP $HTTP_CODE"
             exit 1
           fi
-          echo "Blog-Post-Generierung erfolgreich angestoßen."
+          echo "Ailima Blog-Post-Generierung erfolgreich angestoßen."
+
+  fairway-blog:
+    name: FairwayApp Blog-Post
+    runs-on: ubuntu-latest
+    needs: ailima-blog
+    steps:
+      - name: Neuen FairwayApp Blog-Post generieren
+        run: |
+          echo "Starte FairwayApp Blog-Post-Generierung..."
+          # 60s warten damit Render nach ailima-job nicht schläft
+          sleep 60
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://siteai-khmo.onrender.com/api/auto-blog-fairway" \
+            -H "x-admin-key: ${{ secrets.ADMIN_KEY }}" \
+            -H "Content-Type: application/json" \
+            --max-time 90)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -1)
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Fehler: HTTP $HTTP_CODE"
+            exit 1
+          fi
+          echo "FairwayApp Blog-Post-Generierung erfolgreich angestoßen."
