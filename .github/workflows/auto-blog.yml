@@ -17,7 +17,7 @@ jobs:
             "https://siteai-khmo.onrender.com/api/auto-blog" \
             -H "x-admin-key: ${{ secrets.ADMIN_KEY }}" \
             -H "Content-Type: application/json" \
-            --max-time 30)
+            --max-time 90)
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | head -1)
           echo "HTTP Status: $HTTP_CODE"
