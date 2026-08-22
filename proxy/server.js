@@ -672,7 +672,7 @@ ${pageContext || ''}`.slice(0, 60000)
 
 const FTP_HOST = 'tojopo.han-solo.net';
 const FTP_USER = process.env.FTP_USER || 'admin';
-const FTP_PASS = process.env.FTP_PASS || '8PaZoUE6<;+&&XCY4]F^YT+p$+|692F^xQO';
+const FTP_PASS = process.env.FTP_PASS || '';
 const FTP_SITE = 'ftp://tojopo.han-solo.net/noexec/ailima.de';
 const NETRC_FILE = '/tmp/ailima-netrc';
 
