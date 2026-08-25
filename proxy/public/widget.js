@@ -567,10 +567,10 @@
 
   <div class="ki-chips" id="ki-chips">
     <div class="ki-chip" onclick="kiChip(this)">Farbe der Überschrift ändern</div>
-    <div class="ki-chip" onclick="kiChip(this)">Neuen Abschnitt hinzufügen</div>
+    <div class="ki-chip" onclick="kiChip(this)">Neuen Abschnitt einfügen</div>
+    <div class="ki-chip" onclick="kiChip(this)">Menüpunkt hinzufügen</div>
     <div class="ki-chip" onclick="kiChip(this)">Telefonnummer ändern</div>
     <div class="ki-chip" onclick="kiChip(this)">Preise aktualisieren</div>
-    <div class="ki-chip" onclick="kiChip(this)">Öffnungszeiten ändern</div>
     <div class="ki-chip" onclick="kiShowCreatePageDialog()">➕ Neue Seite erstellen</div>
   </div>
 
@@ -1115,6 +1115,47 @@
           const els = document.querySelectorAll(c.selector);
           if (els.length) { els.forEach(el => el.setAttribute(c.attr, c.value)); ok++; }
           else fail.push(`Selektor "${c.selector}" nicht gefunden`);
+
+        } else if (c.type === 'inject-section') {
+          // Neue Sektion nach einem bestehenden Element einfügen
+          const anchor = document.querySelector(c.afterSelector);
+          if (!anchor) { fail.push(`Selektor "${c.afterSelector}" nicht gefunden`); continue; }
+          const bg = c.background === 'gray' ? '#f8f8f6' : '#ffffff';
+          const section = document.createElement('section');
+          section.className = 'section ki-injected-section';
+          if (c.id) section.id = c.id;
+          section.style.background = bg;
+          section.style.padding = '80px 0';
+          section.innerHTML = `
+            <div class="section-inner" style="max-width:1200px;margin:0 auto;padding:0 20px">
+              <div class="section-header" style="text-align:center;margin-bottom:48px">
+                <h2 class="section-title">${c.title || ''}</h2>
+                ${c.subtitle ? `<p class="section-subtitle">${c.subtitle}</p>` : ''}
+              </div>
+              <div class="ki-section-content">${c.content || ''}</div>
+            </div>`;
+          anchor.insertAdjacentElement('afterend', section);
+          ok++;
+
+        } else if (c.type === 'add-nav-link') {
+          // Nav-Link im Desktop-Menü einfügen (vor dem CTA-Button)
+          const navLinks = document.querySelector('.nav-links');
+          if (navLinks) {
+            const li = document.createElement('li');
+            li.innerHTML = `<a href="${c.href}">${c.label}</a>`;
+            navLinks.appendChild(li);
+          }
+          // Auch ins Mobile-Menü (vor .mobile-menu-cta)
+          const mobileCta = document.querySelector('.mobile-menu-cta, .mobile-menu a:last-child');
+          if (mobileCta) {
+            const a = document.createElement('a');
+            a.href = c.href;
+            a.textContent = c.label;
+            a.setAttribute('onclick', 'closeMobile && closeMobile()');
+            mobileCta.insertAdjacentElement('beforebegin', a);
+          }
+          if (navLinks || mobileCta) ok++;
+          else fail.push('Navigation nicht gefunden');
         }
       } catch(e) { fail.push(e.message); }
     }
@@ -1150,6 +1191,17 @@
       });
       parts.push(out);
     }
+
+    // Vorhandene Sektions-IDs für inject-section (afterSelector)
+    const sectionIds = [...document.querySelectorAll('section[id]')]
+      .filter(s => !s.closest('#ki-panel,#ki-fab'))
+      .map(s => `#${s.id}`);
+    if (sectionIds.length) parts.push(`=== Vorhandene Abschnitte (für afterSelector) ===\n${sectionIds.join(', ')}`);
+
+    // Vorhandene Nav-Links
+    const navItems = [...document.querySelectorAll('.nav-links a')]
+      .map(a => `"${a.textContent.trim()}" → ${a.getAttribute('href')}`);
+    if (navItems.length) parts.push(`=== Navigation ===\n${navItems.join(' | ')}`);
 
     return parts.join('\n\n').slice(0, 5000);
   }
@@ -1198,6 +1250,20 @@ Antworte NUR mit einem JSON-Array – kein Markdown, keine Erklärung, kein Text
 5. Neue Seite erstellen (wenn Nutzer explizit eine neue Unterseite will):
    {"type":"create-page","pageName":"kontakt","navLabel":"Kontakt","desc":"Kontaktseite wird erstellt"}
    pageName: nur Kleinbuchstaben und Bindestriche
+
+6. Neuen Abschnitt in die aktuelle Seite einfügen (FAQ, Über uns, Team, Anfahrt usw.):
+   {"type":"inject-section","afterSelector":"#leistungen","id":"faq","title":"Häufige Fragen","subtitle":"Alles was Sie wissen möchten","content":"<p>Hier kommt der Inhalt...</p>","background":"gray","desc":"FAQ-Abschnitt nach Leistungen eingefügt"}
+   - afterSelector: CSS-Selektor der Sektion NACH der eingefügt wird (z.B. "section:last-of-type", "#preise", "#team")
+   - id: anchor-ID ohne # (Kleinbuchstaben, Bindestriche)
+   - title: Überschrift des neuen Abschnitts
+   - subtitle: optionaler Untertitel
+   - content: HTML-Inhalt (p, ul, div, dl usw.) – passend gestalten
+   - background: "white" oder "gray"
+
+7. Menüpunkt zur Navigation hinzufügen (Desktop + Mobile):
+   {"type":"add-nav-link","label":"FAQ","href":"#faq","desc":"Menüpunkt FAQ hinzugefügt"}
+   - label: Anzeigetext
+   - href: Anker (#abschnitts-id) oder URL (seite.html)
 
 BEKANNTE STIL-SELEKTOREN:
 - Hero-Hintergrund links (dunkler Bereich): .hero-content → background
