@@ -742,6 +742,7 @@
     <div style="padding:18px 28px 6px" id="reply-body"></div>
     <div style="padding:0 28px;font-size:12px;color:var(--mid)" id="reply-status"></div>
     <div class="modal-footer" style="padding-top:16px">
+      <button class="btn-cancel" onclick="markNotAReply()" title="Lead zurück auf Angeschrieben, Follow-ups laufen weiter">🤖 War nur eine automatische Antwort</button>
       <button class="btn-cancel" onclick="closeReplies()">Schließen</button>
       <a class="btn-save" id="reply-answer" style="text-decoration:none" href="#">✉ Im Mailprogramm antworten</a>
     </div>
@@ -969,6 +970,9 @@ function renderTable() {
         : `<span class="mbadge ${cls}">${label}</span>`;
     } else {
       mailBadge = `<span class="mbadge mbadge-none">–</span>`;
+    }
+    if (l.lastAutoReply && !l.replies?.length) {
+      mailBadge += `<div class="mbadge" style="margin-top:4px;background:#f1f5f9;color:#475569" title="${esc((l.lastAutoReply.summary || l.lastAutoReply.subject || '') + ' – ' + new Date(l.lastAutoReply.at).toLocaleString('de-DE'))}">🤖 Auto-Antwort</div>`;
     }
 
     // Mail action button
@@ -1819,8 +1823,20 @@ async function openFuPreview(id, regenerate = false) {
 let fuPreviewKind = 'fu1';
 
 // ── Antworten ──
-const REPLY_CAT = { interessiert: 'Interessiert', termin: 'Termin', frage: 'Frage', kein_interesse: 'Kein Interesse', sonstiges: 'Sonstiges' };
+const REPLY_CAT = { interessiert: 'Interessiert', termin: 'Termin', frage: 'Frage', kein_interesse: 'Kein Interesse', auto_reply: 'Automatisch', sonstiges: 'Sonstiges' };
+let repliesLeadId = null;
+async function markNotAReply() {
+  if (!repliesLeadId || !confirm('Als automatische Antwort markieren?\n\nDer Lead geht zurück auf „Angeschrieben" und die Follow-ups laufen normal weiter.')) return;
+  const r = await fetch(`/crm/leads/${repliesLeadId}/not-a-reply`, { method: 'POST', headers: { 'x-crm-token': crmToken } });
+  const d = await r.json();
+  if (!r.ok) { showToast('❌ ' + d.error, 'err'); return; }
+  const i = allLeads.findIndex(l => l.id === repliesLeadId);
+  if (i !== -1) allLeads[i] = d.lead;
+  closeReplies(); renderStats(); renderTable(); updateOutboxBadge();
+  showToast(`🤖 ${d.lead.company}: zurück auf „Angeschrieben", Follow-up am ${d.lead.followUp ? new Date(d.lead.followUp).toLocaleDateString('de-DE') : '–'}`, 'ok');
+}
 async function openReplies(id) {
+  repliesLeadId = id;
   const lead = allLeads.find(l => l.id === id);
   if (!lead?.replies?.length) return;
   document.getElementById('reply-title').textContent = `💬 Antworten von ${lead.company}`;

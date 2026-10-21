@@ -1107,8 +1107,10 @@ function isBounce(mail) {
 
 function isAutoReply(mail) {
   const auto = String(mail.headers.get('auto-submitted') || '').toLowerCase();
-  return (auto && auto !== 'no') || mail.headers.has('x-autoreply') || mail.headers.has('x-autorespond') ||
-    /abwesen|out of office|automatische antwort|auto-?reply|autoreply|urlaub|nicht im büro|vacation/i.test(mail.subject || '');
+  const precedence = String(mail.headers.get('precedence') || '').toLowerCase();
+  return (auto && auto !== 'no') || /auto_reply|bulk|junk/.test(precedence) ||
+    mail.headers.has('x-autoreply') || mail.headers.has('x-autorespond') || mail.headers.has('x-auto-response-suppress') ||
+    /abwesen|out of office|automatische antwort|auto-?reply|autoreply|urlaub|nicht im büro|vacation|eingangsbestätigung|danke für ihre (nachricht|e-?mail|anfrage)|vielen dank für ihre (nachricht|e-?mail|anfrage)|wir haben ihre (nachricht|e-?mail|anfrage) erhalten|thank you for your (message|email)/i.test(mail.subject || '');
 }
 
 function stripQuoted(text) {
@@ -1147,7 +1149,7 @@ async function classifyReply(lead, text) {
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5', max_tokens: 200,
-        system: 'Du ordnest Antworten auf Akquise-Mails für Ailima (KI-Website-Editor) ein. Antworte NUR mit JSON: {"category":"interessiert|termin|frage|kein_interesse|sonstiges","summary":"ein kurzer deutscher Satz"}. "termin" nur wenn ein konkreter Termin/Rückruf vereinbart oder angefragt wird.',
+        system: 'Du ordnest Antworten auf Akquise-Mails für Ailima (KI-Website-Editor) ein. Antworte NUR mit JSON: {"category":"interessiert|termin|frage|kein_interesse|auto_reply|sonstiges","summary":"ein kurzer deutscher Satz"}. "termin" nur wenn ein konkreter Termin/Rückruf vereinbart oder angefragt wird. "auto_reply" für automatische Antworten, Eingangsbestätigungen, Abwesenheitsnotizen und Standardtexte ohne persönlichen Bezug auf unsere Mail.',
         messages: [{ role: 'user', content: `Antwort von ${lead.company}:\n\n${text.slice(0, 1500)}` }],
       }),
     });
@@ -1215,6 +1217,11 @@ async function checkInbox() {
           continue;
         }
         const { category, summary } = await classifyReply(lead, text);
+        if (category === 'auto_reply') {
+          patches.push([lead.id, l => ({ ...l, lastAutoReply: { at: now, subject: mail.subject || '', text: text.slice(0, 500), summary } })]);
+          console.log(`[Inbox] Auto-Antwort (KI) von ${lead.company}`);
+          continue;
+        }
         const reply = { at: (mail.date || new Date()).toISOString(), from: mail.from?.text || '', subject: mail.subject || '', text, category, summary };
         patches.push([lead.id, l => {
           const { queuedMail, fuDraft, ...rest } = l;
@@ -1242,6 +1249,22 @@ async function checkInbox() {
 }
 setInterval(checkInbox, 3 * 60000);
 setTimeout(checkInbox, 20000);
+
+// Undo a reply that was really an automatic answer: restore the follow-up sequence.
+app.post('/crm/leads/:id/not-a-reply', requireCRM, async (req, res) => {
+  const data = await patchLeads([[req.params.id, l => {
+    if (!l.replies?.length) return l;
+    const last = l.replies[l.replies.length - 1];
+    const lastSent = l.followUp2SentAt || l.followUp1SentAt || l.emailSentAt;
+    const followUp = l.followUp2SentAt ? '' : new Date(new Date(lastSent).getTime() + 7 * 86400000).toISOString().slice(0, 10);
+    const { replies, replyAt, newReply, ...rest } = l;
+    return { ...rest, status: 'angeschrieben', followUp,
+      mailStatus: l.followUp2SentAt ? 'fu2_sent' : l.followUp1SentAt ? 'fu1_sent' : 'sent',
+      lastAutoReply: { at: last.at, subject: last.subject, text: (last.text || '').slice(0, 500), summary: last.summary },
+      updatedAt: new Date().toISOString(), updatedBy: req.crmUser };
+  }]]);
+  res.json({ lead: data.leads.find(l => l.id === req.params.id) });
+});
 
 app.get('/crm/inbox-status', requireCRM, (req, res) => res.json({ enabled: !!SMTP_PASS, ...inbox, autoFollowUp: loadCRM().settings?.autoFollowUp || 'draft' }));
 app.post('/crm/inbox-check', requireCRM, async (req, res) => { await checkInbox(); res.json({ ...inbox, leads: loadCRM().leads }); });
