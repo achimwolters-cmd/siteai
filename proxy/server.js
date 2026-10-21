@@ -785,7 +785,18 @@ REGELN:
 // Send approved email via SMTP
 // ── CRM: Versand-Warteschlange (schützt die Absender-Reputation) ──
 // Mails gehen nur werktags im Versandfenster raus, mit zufälligem Abstand und Tageslimit.
-const SEND_DAILY_LIMIT = parseInt(process.env.SEND_DAILY_LIMIT) || 25;
+// Warm-up for the new sender address: [from date (Berlin), mails per day]. SEND_DAILY_LIMIT overrides.
+const SEND_WARMUP = [['2026-10-26', 60], ['2026-10-23', 40], ['0000-00-00', 25]];
+function dailyLimit(ymd, leads) {
+  if (process.env.SEND_DAILY_LIMIT) return parseInt(process.env.SEND_DAILY_LIMIT);
+  const planned = SEND_WARMUP.find(([from]) => ymd >= from)[1];
+  // Brake: too many bounces hurt sender reputation, so stay at the start level.
+  const weekAgo = Date.now() - 7 * 86400000;
+  const recent = leads.filter(l => l.emailSentAt && new Date(l.emailSentAt) > weekAgo);
+  const bounced = recent.filter(l => l.emailBounced).length;
+  if (recent.length >= 20 && bounced / recent.length > 0.05) return SEND_WARMUP[SEND_WARMUP.length - 1][1];
+  return planned;
+}
 const SEND_GAP_MIN_MS  = (parseInt(process.env.SEND_GAP_MIN) || 4) * 60000;
 const SEND_GAP_MAX_MS  = (parseInt(process.env.SEND_GAP_MAX) || 9) * 60000;
 const SEND_HOUR_FROM = 8, SEND_HOUR_TO = 18;
@@ -828,7 +839,7 @@ function estimateSchedule(leads) {
     for (let guard = 0; guard < 5000; guard++) {
       const d = berlinParts(t).ymd;
       if (d !== day) { day = d; count = 0; }
-      if (inSendWindow(t) && count < SEND_DAILY_LIMIT) break;
+      if (inSendWindow(t) && count < dailyLimit(day, leads)) break;
       t = new Date(t.getTime() + 15 * 60000);
     }
     etas[l.id] = t.toISOString();
@@ -887,7 +898,7 @@ async function processQueue() {
     const next = queuedLeads(data.leads)[0];
     if (!next) return;
     const { sentToday, lastSent } = queueState(data.leads, now);
-    if (sentToday >= SEND_DAILY_LIMIT) return;
+    if (sentToday >= dailyLimit(berlinParts(now).ymd, data.leads)) return;
     if (lastSent && now - lastSent < nextGapMs) return;
     if (now - lastAttemptAt < nextGapMs) return;
     lastAttemptAt = now.getTime();
@@ -944,7 +955,7 @@ function enqueue(lead, kind, subject, body, user) {
 function queueResponse(leads) {
   const etas = estimateSchedule(leads);
   const { sentToday } = queueState(leads);
-  return { sentToday, limit: SEND_DAILY_LIMIT, windowOpen: inSendWindow(new Date()),
+  return { sentToday, limit: dailyLimit(berlinParts(new Date()).ymd, leads), windowOpen: inSendWindow(new Date()),
     window: `Mo–Fr ${SEND_HOUR_FROM}–${SEND_HOUR_TO} Uhr`,
     queue: queuedLeads(leads).map(l => ({ id: l.id, company: l.company, email: l.email, kind: l.queuedMail.kind,
       subject: l.queuedMail.subject, eta: etas[l.id], lastError: l.queuedMail.lastError || '' })) };
