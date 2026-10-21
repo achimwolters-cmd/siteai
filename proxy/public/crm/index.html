@@ -143,9 +143,8 @@
     .av-rene{background:#1a454d}
 
     /* Action buttons */
-    .td-actions{display:flex;gap:5px;opacity:0;transition:opacity 0.2s;flex-wrap:wrap}
-    tr:hover .td-actions{opacity:1}
-    .btn-edit,.btn-del,.btn-mail-action,.btn-fu-action{padding:5px 11px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s}
+    .td-actions{display:flex;gap:5px;flex-wrap:wrap}
+    .btn-edit,.btn-del,.btn-mail-action,.btn-fu-action{white-space:nowrap;padding:5px 11px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s}
     .btn-edit{background:#f0f4f6;color:var(--mid)}
     .btn-edit:hover{background:var(--teal);color:#fff}
     .btn-del{background:#fee2e2;color:#991b1b}
@@ -407,15 +406,15 @@
         <thead>
           <tr>
             <th class="cb-col"><input type="checkbox" id="cb-all" onclick="toggleSelectAll()" title="Alle markieren" /></th>
-            <th style="width:22%">Firma</th>
-            <th style="width:18%">Ansprechpartner</th>
+            <th style="width:19%">Firma</th>
+            <th style="width:17%">Ansprechpartner</th>
             <th style="width:10%">Status</th>
             <th style="width:9%">Mail</th>
-            <th style="width:12%">Notizen</th>
-            <th style="width:9%">Follow-up</th>
-            <th style="width:10%">Erfasst von</th>
+            <th style="width:10%">Notizen</th>
+            <th style="width:8%">Follow-up</th>
+            <th style="width:9%">Erfasst von</th>
             <th style="width:8%">Aktualisiert</th>
-            <th style="width:2%"></th>
+            <th style="width:230px">Aktionen</th>
           </tr>
         </thead>
         <tbody id="leads-body"></tbody>
@@ -919,7 +918,7 @@ function renderTable() {
       <td class="td-followup ${fu}">${fuLabel}</td>
       <td><div style="display:flex;align-items:center;gap:6px"><span class="avatar ${avClass}">${initials}</span><span style="font-size:12px;color:var(--mid)">${esc(l.createdByName||l.createdBy||'')}</span></div></td>
       <td class="td-date">${updLabel}<br><span style="font-size:11px;color:#aaa">${esc(updBy)}</span></td>
-      <td><div class="td-actions">
+      <td style="max-width:none"><div class="td-actions">
         ${mailAction}
         <button class="btn-edit" onclick="openEdit('${l.id}')">Bearbeiten</button>
         <button class="btn-del" onclick="deleteLead('${l.id}')">×</button>
