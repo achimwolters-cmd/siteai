@@ -468,40 +468,57 @@ app.get('/crm/smtp-status', requireCRM, (req, res) => {
 });
 
 // OSM discovery: find local businesses via Overpass API
+const OSM_UA = 'AilimaCRM/1.0 (achim@ailima.de)';
 const OVERPASS_MIRRORS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
 ];
 
+async function overpassOnce(url, query, signal) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': OSM_UA },
+    body: 'data=' + encodeURIComponent(query),
+    signal,
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const data = await r.json();
+  if (!Array.isArray(data.elements)) throw new Error('ungültige Antwort');
+  if (data.remark && data.elements.length === 0) throw new Error('Server-Timeout');
+  return data;
+}
+
+// Mirrors are often queued for 30s+, so race them in parallel and take the first success.
 async function overpassQuery(query) {
-  const errors = [];
-  for (const url of OVERPASS_MIRRORS) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 30000);
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'AilimaCRM/1.0 (achim@ailima.de)',
-        },
-        body: 'data=' + encodeURIComponent(query),
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      if (!r.ok) { errors.push(`${url}: HTTP ${r.status}`); continue; }
-      return await r.json();
-    } catch(e) { errors.push(`${url}: ${e.message}`); }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 75000);
+  try {
+    return await Promise.any(OVERPASS_MIRRORS.map(u => overpassOnce(u, query, controller.signal)));
+  } catch (e) {
+    const reasons = (e.errors || [e]).map(x => x.name === 'AbortError' ? 'Timeout' : x.message);
+    console.error('[Overpass] alle Mirror fehlgeschlagen:', reasons);
+    throw new Error('OpenStreetMap ist gerade überlastet – bitte in 1–2 Minuten erneut versuchen (' + reasons.join(', ') + ')');
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
   }
-  console.error('[Overpass] alle Mirror fehlgeschlagen:', errors);
-  throw new Error('Overpass API nicht erreichbar (' + errors.map(e => e.split(': ')[1]).join(', ') + ')');
+}
+
+async function geocodeCity(city, country) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&city=${encodeURIComponent(city)}&countrycodes=${country}`;
+  const r = await fetch(url, { headers: { 'User-Agent': OSM_UA }, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`Geocoding HTTP ${r.status}`);
+  const [hit] = await r.json();
+  if (!hit) return null;
+  const [s, n, w, e] = hit.boundingbox.map(Number);
+  return { bbox: `${s},${w},${n},${e}`, name: hit.name };
 }
 
 app.post('/crm/discover', requireCRM, async (req, res) => {
   const { city = 'Mönchengladbach', country = 'de', industry = 'Friseur / Kosmetik', limit = 30, customSearch = '' } = req.body;
-  const COUNTRY_CODES = { de: 'DE', at: 'AT', ch: 'CH' };
-  const countryCode = COUNTRY_CODES[country] || 'DE';
+  const countryCode = ['de', 'at', 'ch'].includes(country) ? country : 'de';
+  const max = Math.max(1, Math.min(parseInt(limit) || 20, 100));
 
   const OSM_TAGS = {
     'Friseur / Kosmetik':       [['shop','hairdresser'],['shop','beauty'],['shop','cosmetics']],
@@ -523,28 +540,26 @@ app.post('/crm/discover', requireCRM, async (req, res) => {
     'Immobilien':               [['office','estate_agent']],
   };
 
-  let tagLines, searchLabel;
   const trimmed = customSearch.trim();
+  let tagLines;
   if (trimmed) {
-    // Free text: search by name containing the term
-    const safe = trimmed.replace(/['"\\]/g, '');
-    tagLines = `  node["name"~"${safe}",i](area.searchArea);\n  way["name"~"${safe}",i](area.searchArea);`;
-    searchLabel = trimmed;
+    const safe = trimmed.replace(/["\\]/g, '');
+    tagLines = `  nwr["name"~"${safe}",i];`;
   } else {
     const tags = OSM_TAGS[industry] || [['amenity','restaurant']];
-    tagLines = tags.map(([k,v]) => `  node["${k}"="${v}"](area.searchArea);\n  way["${k}"="${v}"](area.searchArea);`).join('\n');
-    searchLabel = industry;
+    tagLines = tags.map(([k,v]) => `  nwr["${k}"="${v}"];`).join('\n');
   }
 
-  const query = `[out:json][timeout:25];
-area["ISO3166-1"="${countryCode}"]->.country;
-area["name"="${city}"]["place"~"city|town|village"](area.country)->.searchArea;
+  try {
+    const place = await geocodeCity(city.trim(), countryCode);
+    if (!place) return res.status(404).json({ error: `Stadt "${city}" in ${countryCode.toUpperCase()} nicht gefunden` });
+
+    const query = `[out:json][timeout:60][bbox:${place.bbox}];
 (
 ${tagLines}
 );
-out body ${Math.min(parseInt(limit)*4, 200)};`;
+out center tags ${Math.min(max * 4, 300)};`;
 
-  try {
     const data = await overpassQuery(query);
 
     const crm = loadCRM();
@@ -568,7 +583,7 @@ out body ${Math.min(parseInt(limit)*4, 200)};`;
         if (b.email && existingEmails.has(b.email.toLowerCase())) return false;
         return true;
       })
-      .slice(0, parseInt(limit));
+      .slice(0, max);
 
     res.json({ leads: results, total: data.elements?.length || 0 });
   } catch(e) {
