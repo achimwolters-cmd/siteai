@@ -1098,6 +1098,30 @@ const inbox = { lastCheck: null, lastError: '', processed: 0, running: false };
 const domainOf = e => (e || '').toLowerCase().split('@')[1] || '';
 const normId = id => (id || '').trim().replace(/^<|>$/g, '').toLowerCase();
 
+// Matched mails are moved out of the inbox into these folders (created on first use).
+const INBOX_FOLDERS = { reply: ['Ailima', 'Antworten'], auto: ['Ailima', 'Automatisch'], bounce: ['Ailima', 'Unzustellbar'] };
+const INBOX_MOVE = process.env.INBOX_MOVE !== 'off';
+
+async function ensureInboxFolders(client) {
+  const ns = client.namespace || { prefix: '', delimiter: '/' };
+  const delim = ns.delimiter || '/';
+  const existing = new Set((await client.list()).map(b => b.path));
+  const paths = {};
+  for (const [key, parts] of Object.entries(INBOX_FOLDERS)) {
+    const parent = ns.prefix + parts[0];
+    const full = ns.prefix + parts.join(delim);
+    for (const p of [parent, full]) {
+      if (existing.has(p)) continue;
+      await client.mailboxCreate(p);
+      try { await client.mailboxSubscribe(p); } catch {}
+      existing.add(p);
+      console.log(`[Inbox] Ordner angelegt: ${p}`);
+    }
+    paths[key] = full;
+  }
+  return paths;
+}
+
 function isBounce(mail) {
   const from = (mail.from?.value?.[0]?.address || '').toLowerCase();
   const ct = (mail.headers.get('content-type')?.value || '').toLowerCase();
@@ -1190,6 +1214,7 @@ async function checkInbox() {
       }
       let changed = false;
       const patches = [];
+      const moves = { reply: [], auto: [], bounce: [] };
       const messages = [];
       for await (const msg of client.fetch(`${st.lastUid + 1}:*`, { uid: true, source: true }, { uid: true })) {
         if (msg.uid > st.lastUid) messages.push(msg);
@@ -1206,6 +1231,7 @@ async function checkInbox() {
             emailBounced: true, mailStatus: 'bounced', followUp: '', updatedAt: now,
             notes: `${l.notes ? l.notes + '\n' : ''}⚠️ Mail unzustellbar (${new Date().toLocaleDateString('de-DE')})` }; }]);
           inbox.processed++;
+          moves.bounce.push(msg.uid);
           console.log(`[Inbox] Rückläufer: ${lead.company}`);
           continue;
         }
@@ -1214,12 +1240,14 @@ async function checkInbox() {
         const text = stripQuoted(mail.text || '');
         if (isAutoReply(mail)) {
           patches.push([lead.id, l => ({ ...l, lastAutoReply: { at: now, subject: mail.subject || '', text: text.slice(0, 500) } })]);
+          moves.auto.push(msg.uid);
           continue;
         }
         const { category, summary } = await classifyReply(lead, text);
         if (category === 'auto_reply') {
           patches.push([lead.id, l => ({ ...l, lastAutoReply: { at: now, subject: mail.subject || '', text: text.slice(0, 500), summary } })]);
           console.log(`[Inbox] Auto-Antwort (KI) von ${lead.company}`);
+          moves.auto.push(msg.uid);
           continue;
         }
         const reply = { at: (mail.date || new Date()).toISOString(), from: mail.from?.text || '', subject: mail.subject || '', text, category, summary };
@@ -1230,9 +1258,20 @@ async function checkInbox() {
             status: statusForCategory(l.status, category), updatedAt: now };
         }]);
         inbox.processed++;
+        moves.reply.push(msg.uid);
         console.log(`[Inbox] Antwort von ${lead.company} → ${category}`);
       }
       if (changed) await patchLeads(patches, d => { d.inboxState = st; });
+      if (INBOX_MOVE && Object.values(moves).some(u => u.length)) {
+        try {
+          const paths = await ensureInboxFolders(client);
+          for (const [key, uids] of Object.entries(moves)) {
+            if (uids.length) await client.messageMove(uids.join(','), paths[key], { uid: true });
+          }
+        } catch (e) {
+          console.error('[Inbox] Verschieben fehlgeschlagen:', e.message);
+        }
+      }
     } finally {
       lock.release();
     }
