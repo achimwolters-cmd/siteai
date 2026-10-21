@@ -1122,7 +1122,7 @@ async function runDiscovery() {
     wrap.style.display = discResults.length ? 'block' : 'none';
 
     if (!discResults.length) {
-      status.textContent = `Keine neuen Unternehmen gefunden. Bereits alle in Mönchengladbach erfasst oder andere Branche versuchen.`;
+      status.textContent = `Keine neuen Unternehmen gefunden. Bereits alle in ${city} erfasst oder andere Branche versuchen.`;
     }
   } catch(e) {
     status.textContent = `Fehler: ${e.message}`;
