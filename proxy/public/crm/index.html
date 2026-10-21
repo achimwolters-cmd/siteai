@@ -133,6 +133,19 @@
     .mbadge-sent{background:#dcfce7;color:#14532d}
     .mbadge-fu1_sent{background:#dbeafe;color:#1e3a8a}
     .mbadge-fu2_sent{background:#ede9fe;color:#4c1d95}
+    .mbadge-queued{background:#e0f2fe;color:#075985}
+    .queue-box{background:#fff;border-radius:14px;padding:18px 20px;box-shadow:0 2px 10px rgba(0,0,0,0.07);margin-bottom:24px;border-left:4px solid #0284c7}
+    .queue-head{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-size:13px;color:var(--mid);margin-bottom:12px}
+    .queue-head b{color:var(--dark)}
+    .queue-pill{padding:3px 10px;border-radius:50px;font-size:12px;font-weight:700}
+    .queue-pill.on{background:#dcfce7;color:#166534}
+    .queue-pill.off{background:#f1f5f9;color:#64748b}
+    .queue-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid #f0f4f6;font-size:13px}
+    .queue-eta{width:118px;flex-shrink:0;font-weight:700;color:#075985}
+    .queue-main{flex:1;min-width:0}
+    .queue-main div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .btn-queue-cancel{padding:5px 11px;border-radius:6px;border:none;background:#fee2e2;color:#991b1b;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+    .btn-queue-cancel:hover{background:#fca5a5}
     .mbadge-none{background:#f1f5f9;color:#94a3b8;font-size:10px}
 
     /* Avatar */
@@ -688,7 +701,7 @@
       <button class="btn-epm-regen" onclick="regenEmail()">↻ Neu generieren</button>
       <button class="btn-epm-cancel" onclick="closeEmailModal()">Abbrechen</button>
       <button class="btn-epm-send" id="btn-epm-send" onclick="sendEmail()">
-        <span>📤 Senden</span>
+        <span>⏳ In Warteschlange</span>
       </button>
     </div>
   </div>
@@ -727,6 +740,7 @@ const MAIL_STATUS_LABELS = {
   sent:     ['✅ Gesendet', 'mbadge-sent'],
   fu1_sent: ['↩ FU 1', 'mbadge-fu1_sent'],
   fu2_sent: ['↩ FU 2', 'mbadge-fu2_sent'],
+  queued:   ['⏳ Warteschlange', 'mbadge-queued'],
 };
 
 // ── Init ──
@@ -811,12 +825,13 @@ function switchTab(tab) {
 function renderStats() {
   const counts = {};
   Object.keys(STATUS_LABELS).forEach(s => counts[s] = 0);
-  let drafts = 0, sent = 0, fu_pending = 0;
+  let drafts = 0, sent = 0, fu_pending = 0, queued = 0;
   const active = activeLeads();
   active.forEach(l => {
     if (counts[l.status] !== undefined) counts[l.status]++;
     if (l.mailStatus === 'draft') drafts++;
-    if (l.mailStatus === 'sent' || l.mailStatus === 'fu1_sent') {
+    if (l.queuedMail) queued++;
+    if ((l.mailStatus === 'sent' || l.mailStatus === 'fu1_sent') && !l.queuedMail) {
       const fu = l.followUp ? new Date(l.followUp) : null;
       if (fu && fu <= new Date()) fu_pending++;
     }
@@ -830,6 +845,7 @@ function renderStats() {
     <div class="stat-item"><div class="stat-num" style="color:#065f46">${counts.gewonnen}</div><div class="stat-label">Gewonnen</div></div>
     <div class="stat-item"><div class="stat-num" style="color:#b7791f">${drafts}</div><div class="stat-label">📝 Entwürfe</div></div>
     <div class="stat-item"><div class="stat-num" style="color:#e53e3e">${fu_pending}</div><div class="stat-label">📬 FU fällig</div></div>
+    <div class="stat-item"><div class="stat-num" style="color:#075985">${queued}</div><div class="stat-label">⏳ Warteschlange</div></div>
   `;
   document.getElementById('badge-leads').textContent = active.length;
 }
@@ -838,7 +854,7 @@ function updateOutboxBadge() {
   const badge = document.getElementById('badge-outbox');
   const count = activeLeads().filter(l => {
     if (l.mailStatus === 'draft') return true;
-    if ((l.mailStatus === 'sent' || l.mailStatus === 'fu1_sent') && l.followUp) {
+    if ((l.mailStatus === 'sent' || l.mailStatus === 'fu1_sent') && l.followUp && !l.queuedMail) {
       return new Date(l.followUp) <= new Date();
     }
     return false;
@@ -893,7 +909,9 @@ function renderTable() {
     let mailBadge = '';
     if (ms && MAIL_STATUS_LABELS[ms]) {
       const [label, cls] = MAIL_STATUS_LABELS[ms];
-      mailBadge = ms === 'draft'
+      mailBadge = l.queuedMail
+        ? `<span class="mbadge mbadge-queued">⏳ ${l.queuedMail.kind === 'initial' ? 'Warteschlange' : 'FU in Warteschlange'}</span>`
+        : ms === 'draft'
         ? `<span class="mbadge ${cls}" style="cursor:pointer" title="Entwurf öffnen" onclick="openEmailModal('${l.id}',false)">${label}</span>`
         : `<span class="mbadge ${cls}">${label}</span>`;
     } else {
@@ -902,7 +920,9 @@ function renderTable() {
 
     // Mail action button
     let mailAction = '';
-    if (!ms || ms === 'none') {
+    if (l.queuedMail) {
+      mailAction = `<button class="btn-del" style="padding:5px 11px" onclick="cancelQueued('${l.id}')">✕ Versand stoppen</button>`;
+    } else if (!ms || ms === 'none') {
       mailAction = `<button class="btn-mail-action" onclick="openEmailModal('${l.id}',true)">✉ Generieren</button>`;
     } else if (ms === 'draft') {
       mailAction = `<button class="btn-mail-action" onclick="openEmailModal('${l.id}',false)">📝 Entwurf öffnen</button>`;
@@ -1427,22 +1447,22 @@ function renderOutbox() {
   const drafts = activeLeads().filter(l => l.mailStatus === 'draft' && l.email);
   const fuReady = activeLeads().filter(l => {
     if (l.mailStatus !== 'sent' && l.mailStatus !== 'fu1_sent') return false;
-    if (!l.email) return false;
+    if (!l.email || l.queuedMail) return false;
     if (l.followUp2SentAt) return false;
     const fuDate = l.followUp ? new Date(l.followUp) : null;
     return fuDate && fuDate <= now;
   });
   const fuPending = activeLeads().filter(l => {
     if (l.mailStatus !== 'sent' && l.mailStatus !== 'fu1_sent') return false;
-    if (!l.email) return false;
+    if (!l.email || l.queuedMail) return false;
     if (l.followUp2SentAt) return false;
     const fuDate = l.followUp ? new Date(l.followUp) : null;
     return fuDate && fuDate > now;
   });
 
-  let html = '';
+  let html = '<div id="queue-box"></div>';
 
-  if (!drafts.length && !fuReady.length && !fuPending.length) {
+  if (!drafts.length && !fuReady.length && !fuPending.length && !activeLeads().some(l => l.queuedMail)) {
     html = `<div class="outbox-empty">
       <div class="oe-icon">📭</div>
       <h3>Ausgang leer</h3>
@@ -1451,7 +1471,8 @@ function renderOutbox() {
   } else {
     if (drafts.length) {
       html += `<div class="outbox-section">
-        <div class="outbox-section-title">📝 Entwürfe – bereit zum Senden <span class="outbox-section-count">${drafts.length}</span></div>
+        <div class="outbox-section-title">📝 Entwürfe – bereit zum Senden <span class="outbox-section-count">${drafts.length}</span>
+          <button class="btn-outbox-send" style="margin-left:auto;text-transform:none;letter-spacing:0" onclick="queueAllDrafts()">⏳ Alle ${drafts.length} in Warteschlange</button></div>
         <div class="outbox-cards">${drafts.map(l => outboxCard(l, 'draft')).join('')}</div>
       </div>`;
     }
@@ -1470,7 +1491,72 @@ function renderOutbox() {
   }
 
   document.getElementById('outbox-content').innerHTML = html;
+  loadQueue();
 }
+
+const fmtEta = iso => {
+  const d = new Date(iso), today = new Date();
+  const time = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === today.toDateString()) return `heute ${time}`;
+  const tomorrow = new Date(today.getTime() + 86400000);
+  if (d.toDateString() === tomorrow.toDateString()) return `morgen ${time}`;
+  return `${d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })} ${time}`;
+};
+const KIND_LABEL = { initial: 'Erstmail', fu1: 'Follow-up 1', fu2: 'Follow-up 2' };
+
+async function loadQueue() {
+  const box = document.getElementById('queue-box');
+  if (!box) return;
+  try {
+    const r = await fetch('/crm/queue', { headers: { 'x-crm-token': crmToken } });
+    const q = await r.json();
+    if (!r.ok) throw new Error(q.error);
+    box.innerHTML = `<div class="queue-box">
+      <div class="queue-head">
+        <b style="font-size:15px">⏳ Versand-Warteschlange (${q.queue.length})</b>
+        <span class="queue-pill ${q.windowOpen ? 'on' : 'off'}">${q.windowOpen ? '● Versand aktiv' : '○ Außerhalb Versandzeit'}</span>
+        <span>Heute gesendet: <b>${q.sentToday} / ${q.limit}</b></span>
+        <span>Versandzeit: ${q.window}, 4–9 Min. Abstand</span>
+      </div>
+      ${q.queue.length ? q.queue.map(x => `<div class="queue-row">
+        <div class="queue-eta">~ ${fmtEta(x.eta)}</div>
+        <div class="queue-main"><div><b>${esc(x.company)}</b> · ${KIND_LABEL[x.kind] || x.kind} · <span style="color:var(--mid)">${esc(x.email)}</span></div>
+          <div style="color:var(--mid)">${esc(x.subject)}${x.lastError ? ` <span style="color:#991b1b">⚠️ ${esc(x.lastError)}</span>` : ''}</div></div>
+        <button class="btn-queue-cancel" onclick="cancelQueued('${x.id}')">✕ Stoppen</button>
+      </div>`).join('') : '<div style="font-size:13px;color:var(--mid)">Keine Mails in der Warteschlange.</div>'}
+    </div>`;
+  } catch (e) {
+    box.innerHTML = `<div class="queue-box">⚠️ Warteschlange nicht geladen: ${esc(e.message)}</div>`;
+  }
+}
+
+async function cancelQueued(id) {
+  const r = await fetch(`/crm/queue/cancel/${id}`, { method: 'POST', headers: { 'x-crm-token': crmToken } });
+  const d = await r.json();
+  if (!r.ok) { showToast('❌ ' + d.error, 'err'); return; }
+  const idx = allLeads.findIndex(l => l.id === id);
+  if (idx !== -1) allLeads[idx] = d.lead;
+  renderStats(); renderTable(); updateOutboxBadge();
+  if (currentTab === 'outbox') renderOutbox();
+  showToast('Versand gestoppt – Mail liegt wieder als Entwurf bereit', 'ok');
+}
+
+async function queueAllDrafts() {
+  const ids = activeLeads().filter(l => l.mailStatus === 'draft' && l.email).map(l => l.id);
+  if (!ids.length) return;
+  if (!confirm(`${ids.length} Entwürfe in die Warteschlange stellen?\n\nSie werden ungeprüft so verschickt, wie sie gerade sind.`)) return;
+  const r = await fetch('/crm/queue/add-drafts', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+    body: JSON.stringify({ ids })
+  });
+  const d = await r.json();
+  if (!r.ok) { showToast('❌ ' + d.error, 'err'); return; }
+  d.leads.forEach(nl => { const i = allLeads.findIndex(l => l.id === nl.id); if (i !== -1) allLeads[i] = nl; });
+  renderStats(); renderTable(); updateOutboxBadge(); renderOutbox();
+  showToast(`⏳ ${d.added} Mails in der Warteschlange`, 'ok');
+}
+
+setInterval(() => { if (currentTab === 'outbox' && crmToken) loadQueue(); }, 30000);
 
 function outboxCard(l, type) {
   const metaParts = [l.industry, l.city].filter(Boolean);
@@ -1571,8 +1657,8 @@ async function sendEmail() {
 
   const btn = document.getElementById('btn-epm-send');
   btn.disabled = true;
-  btn.innerHTML = `<span class="epm-spinner"></span> Sende…`;
-  document.getElementById('epm-status').textContent = '⏳ Sende E-Mail…';
+  btn.innerHTML = `<span class="epm-spinner"></span> Wird eingereiht…`;
+  document.getElementById('epm-status').textContent = '';
 
   try {
     const r = await fetch(`/crm/send-email/${emailModalLeadId}`, {
@@ -1587,11 +1673,11 @@ async function sendEmail() {
     renderStats(); renderTable(); updateOutboxBadge();
     if (currentTab === 'outbox') renderOutbox();
     closeEmailModal();
-    showToast(`✅ Mail an ${d.lead.company} gesendet`, 'ok');
+    showToast(`⏳ ${d.lead.company}: geht ca. ${d.eta ? fmtEta(d.eta) : 'bald'} raus`, 'ok');
   } catch(e) {
     document.getElementById('epm-status').textContent = `❌ ${e.message}`;
     btn.disabled = false;
-    btn.innerHTML = `<span>📤 Senden</span>`;
+    btn.innerHTML = `<span>⏳ In Warteschlange</span>`;
   }
 }
 
@@ -1631,9 +1717,9 @@ async function sendFollowUp(leadId) {
   const lead = allLeads.find(l => l.id === leadId);
   if (!lead) return;
   const fuNum = lead.followUp1SentAt ? 2 : 1;
-  if (!confirm(`Follow-up ${fuNum} an ${lead.company} (${lead.email}) senden?\n\nDie KI generiert automatisch einen kurzen Text.`)) return;
+  if (!confirm(`Follow-up ${fuNum} an ${lead.company} (${lead.email}) vorbereiten?\n\nDie KI schreibt einen kurzen Text, der dann in die Versand-Warteschlange kommt.`)) return;
 
-  showToast(`⏳ Follow-up ${fuNum} wird generiert und gesendet…`);
+  showToast(`⏳ Follow-up ${fuNum} wird generiert…`);
   try {
     const r = await fetch(`/crm/followup/${leadId}`, {
       method: 'POST', headers: { 'x-crm-token': crmToken }
@@ -1644,7 +1730,7 @@ async function sendFollowUp(leadId) {
     if (idx !== -1) allLeads[idx] = d.lead;
     renderStats(); renderTable(); updateOutboxBadge();
     if (currentTab === 'outbox') renderOutbox();
-    showToast(`✅ Follow-up ${d.fuType} an ${lead.company} gesendet`, 'ok');
+    showToast(`⏳ Follow-up ${d.fuType} für ${lead.company}: geht ca. ${d.eta ? fmtEta(d.eta) : 'bald'} raus`, 'ok');
   } catch(e) {
     showToast(`❌ ${e.message}`, 'err');
   }

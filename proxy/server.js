@@ -767,6 +767,149 @@ REGELN:
 });
 
 // Send approved email via SMTP
+// ── CRM: Versand-Warteschlange (schützt die Absender-Reputation) ──
+// Mails gehen nur werktags im Versandfenster raus, mit zufälligem Abstand und Tageslimit.
+const SEND_DAILY_LIMIT = parseInt(process.env.SEND_DAILY_LIMIT) || 25;
+const SEND_GAP_MIN_MS  = (parseInt(process.env.SEND_GAP_MIN) || 4) * 60000;
+const SEND_GAP_MAX_MS  = (parseInt(process.env.SEND_GAP_MAX) || 9) * 60000;
+const SEND_HOUR_FROM = 8, SEND_HOUR_TO = 18;
+let nextGapMs = SEND_GAP_MIN_MS;
+let lastAttemptAt = 0;
+let queueBusy = false;
+
+function berlinParts(date) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Berlin', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false,
+  }).formatToParts(date).map(x => [x.type, x.value]));
+  return { weekday: p.weekday, hour: parseInt(p.hour) % 24, ymd: `${p.year}-${p.month}-${p.day}` };
+}
+const inSendWindow = d => { const p = berlinParts(d); return !['Sat', 'Sun'].includes(p.weekday) && p.hour >= SEND_HOUR_FROM && p.hour < SEND_HOUR_TO; };
+const pickGap = () => SEND_GAP_MIN_MS + Math.random() * (SEND_GAP_MAX_MS - SEND_GAP_MIN_MS);
+
+function sentTimestamps(leads) {
+  return leads.flatMap(l => [l.emailSentAt, l.followUp1SentAt, l.followUp2SentAt]).filter(Boolean).map(t => new Date(t));
+}
+
+function queueState(leads, now = new Date()) {
+  const sent = sentTimestamps(leads);
+  const today = berlinParts(now).ymd;
+  const sentToday = sent.filter(t => berlinParts(t).ymd === today).length;
+  const lastSent = sent.length ? new Date(Math.max(...sent)) : null;
+  return { sentToday, lastSent };
+}
+
+const queuedLeads = leads => leads.filter(l => l.queuedMail && !l.archived)
+  .sort((x, y) => x.queuedMail.queuedAt.localeCompare(y.queuedMail.queuedAt));
+
+// Rough schedule for the UI: walks forward in time respecting window, gap and daily limit.
+function estimateSchedule(leads) {
+  const { sentToday, lastSent } = queueState(leads);
+  const avgGap = (SEND_GAP_MIN_MS + SEND_GAP_MAX_MS) / 2;
+  let t = new Date(Math.max(Date.now(), lastSent ? lastSent.getTime() + nextGapMs : 0));
+  let day = berlinParts(t).ymd, count = berlinParts(new Date()).ymd === day ? sentToday : 0;
+  const etas = {};
+  for (const l of queuedLeads(leads)) {
+    for (let guard = 0; guard < 5000; guard++) {
+      const d = berlinParts(t).ymd;
+      if (d !== day) { day = d; count = 0; }
+      if (inSendWindow(t) && count < SEND_DAILY_LIMIT) break;
+      t = new Date(t.getTime() + 15 * 60000);
+    }
+    etas[l.id] = t.toISOString();
+    count++;
+    t = new Date(t.getTime() + avgGap);
+  }
+  return etas;
+}
+
+async function deliver(lead, subject, body) {
+  await smtpTransport().sendMail({
+    from: `"${SMTP_FROM_NAME}" <${SMTP_USER}>`,
+    to: lead.email,
+    subject,
+    ...buildMail(body),
+  });
+}
+
+function applySent(lead, kind, subject, now) {
+  const in7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  if (kind === 'initial') return { ...lead, status: 'angeschrieben', mailStatus: 'sent', emailSentAt: now, emailSubject: subject, followUp: in7, channel: 'email', emailDraft: null };
+  if (kind === 'fu1') return { ...lead, mailStatus: 'fu1_sent', followUp1SentAt: now, followUp: in7 };
+  return { ...lead, mailStatus: 'fu2_sent', followUp2SentAt: now, followUp: '' };
+}
+
+async function processQueue() {
+  if (queueBusy || !SMTP_PASS) return;
+  queueBusy = true;
+  try {
+    await crmReady;
+    const now = new Date();
+    if (!inSendWindow(now)) return;
+    const data = loadCRM();
+    const next = queuedLeads(data.leads)[0];
+    if (!next) return;
+    const { sentToday, lastSent } = queueState(data.leads, now);
+    if (sentToday >= SEND_DAILY_LIMIT) return;
+    if (lastSent && now - lastSent < nextGapMs) return;
+    if (now - lastAttemptAt < nextGapMs) return;
+    lastAttemptAt = now.getTime();
+
+    const { kind, subject, body } = next.queuedMail;
+    const idx = data.leads.findIndex(l => l.id === next.id);
+    const stamp = now.toISOString();
+    try {
+      await deliver(next, subject, body);
+      const { queuedMail, sendError, ...rest } = applySent(next, kind, subject, stamp);
+      data.leads[idx] = { ...rest, updatedAt: stamp };
+      console.log(`[Queue] gesendet (${kind}) an ${next.company}`);
+    } catch (e) {
+      const attempts = (next.queuedMail.attempts || 0) + 1;
+      console.error(`[Queue] Fehler bei ${next.company} (Versuch ${attempts}):`, e.message);
+      if (attempts >= 3) {
+        const { queuedMail, ...rest } = next;
+        data.leads[idx] = { ...rest, sendError: e.message, updatedAt: stamp,
+          ...(kind === 'initial' ? { mailStatus: 'draft', emailDraft: { subject, body, generatedAt: stamp } } : {}) };
+      } else {
+        data.leads[idx] = { ...next, queuedMail: { ...next.queuedMail, attempts, lastError: e.message } };
+      }
+    }
+    nextGapMs = pickGap();
+    await saveCRM(data);
+  } catch (e) {
+    console.error('[Queue]', e.message);
+  } finally {
+    queueBusy = false;
+  }
+}
+setInterval(processQueue, 30000);
+
+// Render free tier sleeps after 15 min without traffic; keep awake while mails are waiting.
+setInterval(() => {
+  if (!process.env.RENDER_EXTERNAL_URL) return;
+  if (!queuedLeads(loadCRM().leads).length) return;
+  fetch(`${process.env.RENDER_EXTERNAL_URL}/health`).catch(() => {});
+}, 10 * 60000);
+
+function enqueue(lead, kind, subject, body, user) {
+  const now = new Date().toISOString();
+  return { ...lead,
+    queuedMail: { kind, subject, body, queuedAt: now, queuedBy: user },
+    ...(kind === 'initial' ? { mailStatus: 'queued', emailDraft: { subject, body, generatedAt: lead.emailDraft?.generatedAt || now } } : {}),
+    sendError: undefined, updatedAt: now, updatedBy: user };
+}
+
+function queueResponse(leads) {
+  const etas = estimateSchedule(leads);
+  const { sentToday } = queueState(leads);
+  return { sentToday, limit: SEND_DAILY_LIMIT, windowOpen: inSendWindow(new Date()),
+    window: `Mo–Fr ${SEND_HOUR_FROM}–${SEND_HOUR_TO} Uhr`,
+    queue: queuedLeads(leads).map(l => ({ id: l.id, company: l.company, email: l.email, kind: l.queuedMail.kind,
+      subject: l.queuedMail.subject, eta: etas[l.id], lastError: l.queuedMail.lastError || '' })) };
+}
+
+app.get('/crm/queue', requireCRM, (req, res) => res.json(queueResponse(loadCRM().leads)));
+
+// Put a (edited) mail into the queue instead of sending immediately
 app.post('/crm/send-email/:id', requireCRM, async (req, res) => {
   if (!SMTP_PASS) return res.status(500).json({ error: 'SMTP_PASS nicht in Render konfiguriert' });
   try {
@@ -775,34 +918,53 @@ app.post('/crm/send-email/:id', requireCRM, async (req, res) => {
     if (idx === -1) return res.status(404).json({ error: 'Lead nicht gefunden' });
     const lead = data.leads[idx];
     if (!lead.email) return res.status(400).json({ error: 'Keine E-Mail-Adresse eingetragen' });
-
+    if (lead.emailSentAt) return res.status(400).json({ error: 'Erste Mail wurde bereits gesendet' });
     const { subject, body } = req.body;
     if (!subject || !body) return res.status(400).json({ error: 'Betreff und Text erforderlich' });
 
-
-    await smtpTransport().sendMail({
-      from: `"${SMTP_FROM_NAME}" <${SMTP_USER}>`,
-      to: lead.email,
-      subject,
-      ...buildMail(body),
-    });
-
-    const now = new Date().toISOString();
-    data.leads[idx] = { ...lead,
-      status: 'angeschrieben', mailStatus: 'sent',
-      emailSentAt: now, emailSubject: subject,
-      followUp: new Date(Date.now() + 7*86400000).toISOString().slice(0,10),
-      channel: 'email',
-      updatedAt: now, updatedBy: req.crmUser, updatedByName: req.crmName,
-    };
+    data.leads[idx] = enqueue(lead, 'initial', subject, body, req.crmUser);
     await saveCRM(data);
-    res.json({ ok: true, lead: data.leads[idx] });
+    const q = queueResponse(data.leads);
+    res.json({ ok: true, lead: data.leads[idx], eta: q.queue.find(x => x.id === lead.id)?.eta });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// Send follow-up email
+// Queue all existing drafts of the given leads
+app.post('/crm/queue/add-drafts', requireCRM, async (req, res) => {
+  try {
+    const ids = new Set(req.body.ids || []);
+    const data = loadCRM();
+    let added = 0;
+    data.leads = data.leads.map(l => {
+      if (!ids.has(l.id) || l.mailStatus !== 'draft' || !l.email || !l.emailDraft?.subject || l.queuedMail) return l;
+      added++;
+      return enqueue(l, 'initial', l.emailDraft.subject, l.emailDraft.body, req.crmUser);
+    });
+    await saveCRM(data);
+    res.json({ added, leads: data.leads.filter(l => ids.has(l.id)) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/crm/queue/cancel/:id', requireCRM, async (req, res) => {
+  try {
+    const data = loadCRM();
+    const idx = data.leads.findIndex(l => l.id === req.params.id);
+    if (idx === -1 || !data.leads[idx].queuedMail) return res.status(404).json({ error: 'Nicht in der Warteschlange' });
+    const { queuedMail, ...rest } = data.leads[idx];
+    data.leads[idx] = { ...rest, updatedAt: new Date().toISOString(), updatedBy: req.crmUser,
+      ...(queuedMail.kind === 'initial' ? { mailStatus: 'draft', emailDraft: { subject: queuedMail.subject, body: queuedMail.body, generatedAt: queuedMail.queuedAt } } : {}) };
+    await saveCRM(data);
+    res.json({ ok: true, lead: data.leads[idx] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Generate a follow-up and put it into the queue
 app.post('/crm/followup/:id', requireCRM, async (req, res) => {
   if (!SMTP_PASS) return res.status(500).json({ error: 'SMTP_PASS nicht in Render konfiguriert' });
   try {
@@ -813,6 +975,7 @@ app.post('/crm/followup/:id', requireCRM, async (req, res) => {
     if (!lead.email)       return res.status(400).json({ error: 'Keine E-Mail-Adresse' });
     if (!lead.emailSentAt) return res.status(400).json({ error: 'Erste Mail noch nicht gesendet' });
     if (lead.followUp2SentAt) return res.status(400).json({ error: 'Follow-up 2 bereits gesendet – Sequenz abgeschlossen' });
+    if (lead.queuedMail) return res.status(400).json({ error: 'Für diesen Lead wartet schon eine Mail in der Warteschlange' });
 
     const isFU2 = !!lead.followUp1SentAt;
     const sentDE = new Date(lead.emailSentAt).toLocaleDateString('de-DE');
@@ -824,7 +987,7 @@ app.post('/crm/followup/:id', requireCRM, async (req, res) => {
         model: 'claude-haiku-4-5',
         max_tokens: 350,
         system: `Du schreibst ${isFU2 ? 'letzte Abschluss-' : 'freundliche Follow-up-'}Mails für Ailima (KI-Website-Editor, www.ailima.de, ab €29/Monat).
-Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur.`,
+Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur, keine URL.`,
         messages: [{ role: 'user', content: isFU2
           ? `Letzte höfliche Abschlussnachricht an ${lead.company} (${lead.industry||''}). Haben auf 2 Mails nicht geantwortet. Tür offen lassen für die Zukunft. Kein Verkaufsdruck.`
           : `Follow-up an ${lead.company} (${lead.industry||''}). Erste Mail: ${sentDE}. Keine Antwort. Neuen Gedanken einbringen: Website ist oft das erste was Kunden sehen – veraltete Infos kosten Vertrauen.` }],
@@ -832,26 +995,14 @@ Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text ab de
     });
     const cData = await claudeRes.json();
     const body = (cData.content?.[0]?.text || '').trim();
+    if (!body) return res.status(500).json({ error: 'KI hat keinen Text geliefert' });
     const origSubject = lead.emailSubject || `Ihre Website – selbst aktualisieren, ganz ohne Programmierer`;
     const subject = isFU2 ? `Letzte Nachricht von Ailima – ${origSubject}` : `Re: ${origSubject}`;
 
-    await smtpTransport().sendMail({
-      from: `"${SMTP_FROM_NAME}" <${SMTP_USER}>`,
-      to: lead.email,
-      subject,
-      ...buildMail(body),
-    });
-
-    const now = new Date().toISOString();
-    const fuKey = isFU2 ? 'followUp2SentAt' : 'followUp1SentAt';
-    data.leads[idx] = { ...lead,
-      [fuKey]: now,
-      mailStatus: isFU2 ? 'fu2_sent' : 'fu1_sent',
-      followUp: isFU2 ? '' : new Date(Date.now() + 7*86400000).toISOString().slice(0,10),
-      updatedAt: now, updatedBy: req.crmUser, updatedByName: req.crmName,
-    };
+    data.leads[idx] = enqueue(lead, isFU2 ? 'fu2' : 'fu1', subject, body, req.crmUser);
     await saveCRM(data);
-    res.json({ ok: true, fuType: isFU2 ? 2 : 1, lead: data.leads[idx] });
+    const q = queueResponse(data.leads);
+    res.json({ ok: true, fuType: isFU2 ? 2 : 1, lead: data.leads[idx], eta: q.queue.find(x => x.id === lead.id)?.eta });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }

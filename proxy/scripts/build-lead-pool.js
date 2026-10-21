@@ -16,6 +16,35 @@ const INDUSTRIES = {
   'Handwerk':           [['craft','plumber'],['craft','electrician'],['craft','carpenter'],['craft','painter'],['craft','hvac'],['craft','tiler'],['craft','roofer'],['craft','gardener']],
   'Fitness / Yoga':     [['leisure','fitness_centre'],['sport','yoga'],['leisure','sports_centre']],
   'Arztpraxis':         [['amenity','doctors'],['amenity','dentist'],['healthcare','doctor'],['healthcare','dentist']],
+  'Handwerk+':          [['craft','plasterer'],['craft','glaziery'],['craft','metal_construction'],['craft','stonemason'],['craft','locksmith'],['shop','locksmith'],['craft','floorer'],['craft','window_construction'],['craft','joiner'],['craft','upholsterer'],['craft','chimney_sweeper'],['craft','builder'],['craft','sanitary'],['craft','heating_engineer'],['craft','plumber;heating_engineer']],
+  'Kanzlei / Steuerberater':   [['office','lawyer'],['office','tax_advisor'],['office','accountant'],['office','notary']],
+  'Immobilien':                [['office','estate_agent']],
+  'Versicherung / Finanzen':   [['office','insurance'],['office','financial_advisor'],['office','financial']],
+  'Architektur / Ingenieure':  [['office','architect'],['office','engineer'],['office','surveyor']],
+  'Agentur / IT / Beratung':   [['office','advertising_agency'],['office','it'],['office','consulting'],['office','graphic_design']],
+  'Hotel / Pension':           [['tourism','hotel'],['tourism','guest_house'],['tourism','hostel'],['tourism','apartment']],
+  'Bar / Kneipe':              [['amenity','bar'],['amenity','pub'],['amenity','biergarten']],
+  'Imbiss / Eisdiele':         [['amenity','fast_food'],['amenity','ice_cream']],
+  'Bäckerei / Konditorei':     [['shop','bakery'],['shop','pastry'],['shop','confectionery']],
+  'Metzgerei / Feinkost / Wein': [['shop','butcher'],['shop','deli'],['shop','wine'],['shop','cheese'],['shop','greengrocer'],['shop','coffee'],['shop','tea']],
+  'Blumen / Garten':           [['shop','florist'],['shop','garden_centre']],
+  'Mode / Schuhe':             [['shop','clothes'],['shop','shoes'],['shop','boutique'],['shop','fashion_accessories'],['shop','bag']],
+  'Schmuck / Uhren':           [['shop','jewelry'],['shop','watches']],
+  'Optiker / Hörakustik':      [['shop','optician'],['shop','hearing_aids']],
+  'Einrichtung / Möbel':       [['shop','furniture'],['shop','interior_decoration'],['shop','kitchen'],['shop','bed'],['shop','lighting'],['shop','curtain']],
+  'Geschenke / Bücher / Spiel': [['shop','gift'],['shop','books'],['shop','toys'],['shop','stationery'],['shop','art'],['shop','craft']],
+  'Fahrrad / Sport':           [['shop','bicycle'],['shop','sports'],['shop','outdoor']],
+  'Autowerkstatt / Autohaus':  [['shop','car_repair'],['shop','car'],['shop','tyres'],['shop','motorcycle']],
+  'Tierarzt / Tierbedarf':     [['amenity','veterinary'],['shop','pet'],['shop','pet_grooming']],
+  'Heilpraktiker / Therapie':  [['healthcare','alternative'],['healthcare','psychotherapist'],['healthcare','occupational_therapist'],['healthcare','speech_therapist'],['healthcare','midwife']],
+  'Apotheke / Sanitätshaus':   [['amenity','pharmacy'],['shop','medical_supply']],
+  'Fotografie / Druck':        [['shop','photo'],['craft','photographer'],['shop','copyshop'],['craft','printer']],
+  'Schulen / Kurse':           [['amenity','driving_school'],['amenity','music_school'],['amenity','dancing_school'],['amenity','language_school'],['amenity','prep_school']],
+  'Reinigung / Schneiderei':   [['shop','dry_cleaning'],['shop','laundry'],['shop','tailor'],['craft','tailor'],['shop','shoe_repair']],
+  'Tattoo / Piercing':         [['shop','tattoo']],
+  'Reisebüro':                 [['shop','travel_agency']],
+  'Event / Catering':          [['amenity','events_venue'],['craft','caterer'],['shop','party']],
+  'Coworking':                 [['amenity','coworking_space'],['office','coworking']],
 };
 
 const MIRRORS = [
@@ -73,16 +102,19 @@ function toLead(el, industry) {
 async function collect(existing) {
   const byId = new Map(existing.map(l => [l.osmId, l]));
   const only = argVal('--only');
+  const known = new Set(existing.map(l => l.industry));
   for (const [industry, tags] of Object.entries(INDUSTRIES)) {
     if (only && only !== industry) continue;
+    if (!only && known.has(industry)) { console.log(`▷ ${industry}: schon im Pool, übersprungen`); continue; }
     console.log(`▶ ${industry}`);
     const lines = tags.map(([k, v]) => `nwr["${k}"="${v}"]["name"];`).join('');
     const els = await overpass(`[out:json][timeout:170][bbox:${REGION.bbox}];(${lines});out center tags;`);
     let added = 0;
     for (const el of els) {
-      const lead = toLead(el, industry);
+      if (el.tags?.['brand:wikidata']) continue;
+      const lead = toLead(el, industry === 'Handwerk+' ? 'Handwerk' : industry);
       const prev = byId.get(lead.osmId);
-      if (prev) { Object.assign(prev, { ...lead, email: prev.email || lead.email }); continue; }
+      if (prev) { Object.assign(prev, { ...lead, industry: prev.industry, email: prev.email || lead.email }); continue; }
       byId.set(lead.osmId, lead); added++;
     }
     console.log(`   ${els.length} gefunden, ${added} neu`);
@@ -164,7 +196,7 @@ async function enrich(leads) {
       if (++done % 25 === 0) { console.log(`   ${done}/${todo.length} geprüft, ${hits} E-Mails`); save(leads); }
     }
   }
-  await Promise.all(Array.from({ length: 10 }, worker));
+  await Promise.all(Array.from({ length: 16 }, worker));
   console.log(`   fertig: ${hits} E-Mails gefunden`);
 }
 
@@ -187,11 +219,12 @@ function upload() {
 (async () => {
   const existing = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')).leads : [];
   const leads = args.includes('--skip-osm') ? existing : await collect(existing);
+  if (args.includes('--upload')) upload();
   await enrich(leads);
   save(leads);
   const withMail = leads.filter(l => l.email).length;
   console.log(`✓ Pool: ${leads.length} Firmen, ${withMail} mit E-Mail`);
-  for (const ind of Object.keys(INDUSTRIES)) {
+  for (const ind of [...new Set(leads.map(l => l.industry))]) {
     const all = leads.filter(l => l.industry === ind);
     console.log(`   ${ind}: ${all.length} (${all.filter(l => l.email).length} mit E-Mail)`);
   }
