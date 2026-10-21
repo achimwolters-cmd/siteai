@@ -742,6 +742,13 @@ app.post('/crm/generate-email/:id', requireCRM, async (req, res) => {
       `Kleine Website-Änderungen – jetzt in Sekunden, nicht Tagen`,
     ];
     const subject = subjects[Math.floor(Math.random() * subjects.length)];
+    const industryHint = (data.settings?.industryHints?.[lead.industry] || '').trim();
+    const extraHint = String(req.body?.extraHint || '').trim().slice(0, 1000);
+    const hints = [industryHint, extraHint].filter(Boolean);
+    const hintRules = hints.length ? `
+
+ZUSÄTZLICH ZU BERÜCKSICHTIGEN (kurz in 1–2 Sätzen einbauen, nach dem Ailima-Teil; Bedingungen darin beachten):
+${hints.map(h => '- ' + h).join('\n')}` : '';
 
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -756,14 +763,14 @@ Was ist Ailima: Ein KI-Assistent, der direkt auf der Website des Kunden läuft. 
 REGELN:
 - Immer Sie-Form, natürliche Geschäftssprache
 - Ansprechpartner falls bekannt namentlich ansprechen, sonst: "Guten Tag,"
-- Maximal 160 Wörter
+- Maximal ${hints.length ? 190 : 160} Wörter
 - Konkretes Problem der Branche ansprechen (z.B. Friseur: Öffnungszeiten, Preise, Mitarbeiter ändern sich)
 - Ailima als Lösung nennen mit www.ailima.de
 - Ab €29/Monat erwähnen
 - CTA: kurzes 15-Minuten Telefonat oder Demo
 - Markiere genau EINEN Kernsatz (den Nutzen von Ailima) mit **doppelten Sternchen**, sonst keine Formatierung
 - Keine URL im Text – ein Demo-Button wird automatisch eingefügt; ende mit einer kurzen Frage
-- NUR den E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur`,
+- NUR den E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur${hintRules}`,
         messages: [{ role: 'user', content:
           `Firma: ${lead.company}\nBranche: ${lead.industry||'lokales Unternehmen'}\nStadt: ${lead.city||''}\nAnsprechpartner: ${lead.contact||'unbekannt'}\nWebsite: ${lead.website||'keine'}` }],
       }),
@@ -1358,14 +1365,26 @@ async function runAutoFollowUps() {
 setInterval(runAutoFollowUps, 15 * 60000);
 setTimeout(runAutoFollowUps, 60000);
 
+app.get('/crm/settings', requireCRM, (req, res) => res.json({ settings: loadCRM().settings || {} }));
+
 app.post('/crm/settings', requireCRM, async (req, res) => {
   const data = loadCRM();
-  const { autoFollowUp } = req.body;
-  if (!['off', 'draft', 'auto'].includes(autoFollowUp)) return res.status(400).json({ error: 'Ungültiger Modus' });
-  data.settings = { ...(data.settings || {}), autoFollowUp };
+  const settings = { ...(data.settings || {}) };
+  const { autoFollowUp, industry, industryHint } = req.body;
+  if (autoFollowUp !== undefined) {
+    if (!['off', 'draft', 'auto'].includes(autoFollowUp)) return res.status(400).json({ error: 'Ungültiger Modus' });
+    settings.autoFollowUp = autoFollowUp;
+  }
+  if (industry) {
+    const hints = { ...(settings.industryHints || {}) };
+    const text = String(industryHint || '').trim().slice(0, 1000);
+    if (text) hints[industry] = text; else delete hints[industry];
+    settings.industryHints = hints;
+  }
+  data.settings = settings;
   await saveCRM(data);
-  res.json({ settings: data.settings });
-  if (autoFollowUp !== 'off') runAutoFollowUps();
+  res.json({ settings });
+  if (autoFollowUp && autoFollowUp !== 'off') runAutoFollowUps();
 });
 
 // Release (optionally edited) follow-up draft into the queue, or discard it
