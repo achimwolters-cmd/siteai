@@ -414,6 +414,7 @@
         <button class="filter-btn" data-filter="termin" onclick="setFilter('termin',this)">📅 Termin</button>
         <button class="filter-btn" data-filter="gewonnen" onclick="setFilter('gewonnen',this)">✅ Gewonnen</button>
         <button class="filter-btn" data-filter="kein_interesse" onclick="setFilter('kein_interesse',this)">❌ Kein Interesse</button>
+        <button class="filter-btn" data-filter="entwuerfe" onclick="setFilter('entwuerfe',this)">📝 Entwürfe</button>
         <button class="filter-btn" data-filter="antworten" onclick="setFilter('antworten',this)">💬 Antworten</button>
         <button class="filter-btn" data-filter="archiv" onclick="setFilter('archiv',this)">🗄 Archiv</button>
       </div>
@@ -430,6 +431,7 @@
       <button class="btn-bulk btn-bulk-mail" onclick="bulkOpenMail()">✉ Alle anmailen</button>
       <button class="btn-bulk btn-bulk-status" onclick="bulkSetStatus('angeschrieben')">📧 Angeschrieben</button>
       <button class="btn-bulk btn-bulk-followup" onclick="bulkSetFollowUp()">📅 Follow-up +7 Tage</button>
+      <button class="btn-bulk btn-bulk-followup" id="btn-bulk-queue" onclick="bulkQueue()">⏳ In Warteschlange</button>
       <button class="btn-bulk btn-bulk-archive" id="btn-bulk-archive" onclick="bulkArchive()">🗄 Archivieren</button>
       <span class="bulk-sep">|</span>
       <button class="btn-bulk-clear" onclick="clearSelection()">Auswahl aufheben</button>
@@ -481,6 +483,9 @@
             <datalist id="pool-city-list"></datalist>
             <input type="text" id="pool-q" placeholder="🔍 Name, Straße…" oninput="schedulePoolSearch()" />
             <label><input type="checkbox" id="pool-only-email" checked onchange="runPoolSearch()" /> nur mit E-Mail</label>
+            <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mid)">Erste
+              <input type="number" id="pool-first-n" value="10" min="1" max="500" style="width:64px;padding:6px 8px;border:2px solid #e8edf0;border-radius:8px;font-family:inherit" />
+              <button class="btn-mini" onclick="selectFirstPool()">auswählen</button></span>
             <span class="pool-count" id="pool-count"></span>
           </div>
           <div class="discover-results-wrap" style="max-height:460px">
@@ -499,7 +504,9 @@
             </table>
           </div>
           <div class="discover-footer">
-            <div style="font-size:13px;color:var(--mid)"><b id="pool-sel-count">0</b> ausgewählt</div>
+            <div style="font-size:13px;color:var(--mid)"><b id="pool-sel-count">0</b> ausgewählt
+              <label style="margin-left:14px;cursor:pointer"><input type="checkbox" id="pool-gen-drafts" checked /> Mails direkt erstellen</label>
+              <span id="pool-import-progress" style="margin-left:14px;font-weight:700;color:var(--teal)"></span></div>
             <button class="btn-import-all" id="btn-pool-import" onclick="importPoolSelected()">Ausgewählte ins CRM übernehmen</button>
           </div>
         </div>
@@ -918,6 +925,7 @@ function visibleLeads() {
     if (currentFilter === 'archiv') { if (!l.archived) return false; }
     else if (l.archived) return false;
     else if (currentFilter === 'antworten') { if (!l.replies?.length) return false; }
+    else if (currentFilter === 'entwuerfe') { if (l.mailStatus !== 'draft' || l.queuedMail) return false; }
     else if (currentFilter !== 'all' && l.status !== currentFilter) return false;
     if (q && !`${l.company} ${l.contact} ${l.email} ${l.notes}`.toLowerCase().includes(q)) return false;
     return true;
@@ -986,7 +994,9 @@ function renderTable() {
     }
 
     return `<tr class="${isSelected ? 'row-selected' : ''} ${l.newReply ? 'row-new-reply' : ''}">
-      <td class="cb-col"><input type="checkbox" ${isSelected ? 'checked' : ''} onclick="toggleSelect('${l.id}')" /></td>
+      <td class="cb-col">${l.queuedMail
+        ? '<input type="checkbox" disabled title="Schon in der Warteschlange" style="opacity:.35;cursor:not-allowed" />'
+        : `<input type="checkbox" ${isSelected ? 'checked' : ''} onclick="toggleSelect('${l.id}')" />`}</td>
       <td>
         <div class="td-company">${esc(l.company)}</div>
         <div class="td-contact">${esc(l.industry||'')}</div>
@@ -1030,7 +1040,7 @@ function toggleSelect(id) {
 }
 
 function toggleSelectAll() {
-  const visible = visibleLeads();
+  const visible = visibleLeads().filter(l => !l.queuedMail);
   const allChecked = visible.every(l => selectedIds.has(l.id));
   if (allChecked) visible.forEach(l => selectedIds.delete(l.id));
   else visible.forEach(l => selectedIds.add(l.id));
@@ -1046,10 +1056,40 @@ function updateBulkBar() {
   document.getElementById('btn-bulk-archive').textContent = currentFilter === 'archiv' ? '↩ Wiederherstellen' : '🗄 Archivieren';
   const cbAll = document.getElementById('cb-all');
   if (cbAll) {
-    const visible = visibleLeads();
+    const visible = visibleLeads().filter(l => !l.queuedMail);
     cbAll.checked = visible.length > 0 && visible.every(l => selectedIds.has(l.id));
     cbAll.indeterminate = !cbAll.checked && visible.some(l => selectedIds.has(l.id));
   }
+}
+
+async function bulkQueue() {
+  const selected = [...selectedIds].map(id => allLeads.find(l => l.id === id)).filter(Boolean);
+  const eligible = selected.filter(l => l.email && !l.emailSentAt && !l.queuedMail && !l.archived);
+  const needDraft = eligible.filter(l => l.mailStatus !== 'draft' || !l.emailDraft?.subject);
+  const skipped = selected.length - eligible.length;
+  if (!eligible.length) { showToast('Keiner der ausgewählten Leads kann eingereiht werden (schon angeschrieben, ohne E-Mail oder schon eingereiht)', 'err'); return; }
+  const msg = [`${eligible.length} Mails in die Warteschlange stellen?`,
+    needDraft.length ? `Für ${needDraft.length} davon schreibt die KI vorher den Entwurf.` : '',
+    skipped ? `${skipped} ausgewählte werden übersprungen (schon angeschrieben, ohne E-Mail oder eingereiht).` : '',
+    'Die Mails werden so verschickt, wie sie gerade sind.'].filter(Boolean).join('\n\n');
+  if (!confirm(msg)) return;
+  const spinner = document.getElementById('bulk-spinner');
+  spinner.style.display = '';
+  if (needDraft.length) {
+    await generateDrafts(needDraft.map(l => l.id), (n, t) => { spinner.textContent = `✉ Entwurf ${n} / ${t}…`; });
+  }
+  spinner.textContent = '⏳ Wird eingereiht…';
+  const r = await fetch('/crm/queue/add-drafts', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+    body: JSON.stringify({ ids: eligible.map(l => l.id) })
+  });
+  const d = await r.json();
+  spinner.style.display = 'none';
+  if (!r.ok) { showToast('❌ ' + d.error, 'err'); return; }
+  d.leads.forEach(nl => { const i = allLeads.findIndex(l => l.id === nl.id); if (i !== -1) allLeads[i] = nl; });
+  selectedIds.clear();
+  updateBulkBar(); renderStats(); renderTable(); updateOutboxBadge();
+  showToast(`⏳ ${d.added} Mails in der Warteschlange – Zeitplan im Tab „Ausgang"`, 'ok');
 }
 
 async function bulkArchive() {
@@ -1376,6 +1416,34 @@ function updatePoolSelection() {
   all.checked = poolResults.length > 0 && poolResults.every(p => poolSelected.has(p.osmId));
 }
 
+function selectFirstPool() {
+  const n = Math.max(1, parseInt(document.getElementById('pool-first-n').value) || 10);
+  poolSelected.clear();
+  poolResults.slice(0, n).forEach(p => poolSelected.add(p.osmId));
+  renderPoolTable();
+  if (n > poolResults.length) showToast(`Nur ${poolResults.length} Leads in der Liste`, 'err');
+}
+
+// Generates initial drafts for leads (3 in parallel), reporting progress.
+async function generateDrafts(ids, onProgress) {
+  let done = 0, failed = 0, i = 0;
+  async function worker() {
+    while (i < ids.length) {
+      const id = ids[i++];
+      try {
+        const r = await fetch(`/crm/generate-email/${id}`, { method: 'POST', headers: { 'x-crm-token': crmToken } });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error);
+        const idx = allLeads.findIndex(l => l.id === id);
+        if (idx !== -1) allLeads[idx] = d.lead;
+      } catch { failed++; }
+      onProgress(++done, ids.length);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(3, ids.length) }, worker));
+  return { done, failed };
+}
+
 async function importPoolSelected() {
   if (!poolSelected.size) { showToast('Bitte zuerst Leads auswählen', 'err'); return; }
   const btn = document.getElementById('btn-pool-import');
@@ -1390,7 +1458,17 @@ async function importPoolSelected() {
     allLeads.unshift(...d.added);
     poolSelected.clear();
     renderStats(); renderTable(); updateOutboxBadge();
-    showToast(`✅ ${d.added.length} Leads ins CRM übernommen`, 'ok');
+    renderPoolTable();
+    const progress = document.getElementById('pool-import-progress');
+    if (document.getElementById('pool-gen-drafts').checked && d.added.length) {
+      const ids = d.added.filter(l => l.email).map(l => l.id);
+      btn.textContent = '⏳ Mails werden erstellt…';
+      const res = await generateDrafts(ids, (n, total) => { progress.textContent = `✉ Mail ${n} / ${total} erstellt…`; });
+      renderStats(); renderTable(); updateOutboxBadge();
+      progress.textContent = `✅ ${d.added.length} übernommen, ${res.done - res.failed} Mails als Entwurf${res.failed ? `, ${res.failed} fehlgeschlagen` : ''} – Tab „Leads" → Filter „📝 Entwürfe"`;
+    } else {
+      progress.textContent = `✅ ${d.added.length} Leads übernommen`;
+    }
     await loadPoolOverview();
   } catch (e) {
     showToast('❌ ' + e.message, 'err');

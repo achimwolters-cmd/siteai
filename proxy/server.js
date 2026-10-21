@@ -774,10 +774,9 @@ REGELN:
     const body = (cData.content?.[0]?.text || '').trim();
     const draft = { subject, body, generatedAt: new Date().toISOString() };
 
-    data.leads[idx] = { ...lead, emailDraft: draft, mailStatus: 'draft',
-      updatedAt: new Date().toISOString(), updatedBy: req.crmUser, updatedByName: req.crmName };
-    await saveCRM(data);
-    res.json({ draft, lead: data.leads[idx] });
+    const fresh = await patchLeads([[lead.id, l => l.emailSentAt || l.queuedMail ? l : ({ ...l, emailDraft: draft, mailStatus: 'draft',
+      updatedAt: new Date().toISOString(), updatedBy: req.crmUser, updatedByName: req.crmName })]]);
+    res.json({ draft, lead: fresh.leads.find(l => l.id === lead.id) });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
@@ -1079,10 +1078,9 @@ app.post('/crm/followup/:id', requireCRM, async (req, res) => {
     if (followUpBlocked(lead)) return res.status(400).json({ error: 'Lead hat geantwortet bzw. ist in Kontakt – kein Follow-up nötig' });
 
     const { isFU2, subject, body } = await generateFollowUp(lead);
-    data.leads[idx] = enqueue(lead, isFU2 ? 'fu2' : 'fu1', subject, body, req.crmUser);
-    await saveCRM(data);
-    const q = queueResponse(data.leads);
-    res.json({ ok: true, fuType: isFU2 ? 2 : 1, lead: data.leads[idx], eta: q.queue.find(x => x.id === lead.id)?.eta });
+    const fresh = await patchLeads([[lead.id, l => l.queuedMail || followUpBlocked(l) ? l : enqueue(l, isFU2 ? 'fu2' : 'fu1', subject, body, req.crmUser)]]);
+    const q = queueResponse(fresh.leads);
+    res.json({ ok: true, fuType: isFU2 ? 2 : 1, lead: fresh.leads.find(l => l.id === lead.id), eta: q.queue.find(x => x.id === lead.id)?.eta });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
