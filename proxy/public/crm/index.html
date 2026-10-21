@@ -257,6 +257,11 @@
     .epm-body-label{font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
     .epm-body-wrap textarea{flex:1;width:100%;min-height:260px;padding:12px;border:2px solid #e8edf0;border-radius:8px;font-size:14px;font-family:inherit;outline:none;resize:none;line-height:1.6}
     .epm-body-wrap textarea:focus{border-color:var(--teal)}
+    .epm-body-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+    .epm-toggle{display:inline-flex;background:#f0f4f6;border-radius:8px;padding:3px}
+    .epm-toggle button{border:none;background:none;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;color:var(--mid);cursor:pointer;font-family:inherit}
+    .epm-toggle button.active{background:#fff;color:var(--teal);box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+    #epm-preview{flex:1;width:100%;min-height:440px;border:2px solid #e8edf0;border-radius:8px;background:#fff;display:none}
     .epm-signature{padding:6px 28px;font-size:12px;color:#94a3b8;font-style:italic;flex-shrink:0}
     .epm-status-bar{padding:6px 28px;font-size:13px;flex-shrink:0;min-height:28px}
     .epm-footer{padding:14px 28px 20px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #f0f4f6;flex-shrink:0;flex-wrap:wrap}
@@ -667,8 +672,15 @@
       <input type="text" id="epm-subject" placeholder="Betreff…" />
     </div>
     <div class="epm-body-wrap">
-      <div class="epm-body-label">E-Mail Text</div>
+      <div class="epm-body-head">
+        <div class="epm-body-label" style="margin:0">E-Mail Text</div>
+        <div class="epm-toggle">
+          <button id="epm-tab-edit" class="active" onclick="setEmailView('edit')">✏️ Bearbeiten</button>
+          <button id="epm-tab-preview" onclick="setEmailView('preview')">👁 Vorschau</button>
+        </div>
+      </div>
       <textarea id="epm-body" placeholder="E-Mail Text…"></textarea>
+      <iframe id="epm-preview" title="Mail-Vorschau"></iframe>
     </div>
     <div class="epm-signature" id="epm-sig"></div>
     <div class="epm-status-bar" id="epm-status"></div>
@@ -1507,7 +1519,8 @@ async function openEmailModal(leadId, generate) {
   if (!lead) return;
 
   document.getElementById('epm-to').textContent = `An: ${lead.email||'(keine E-Mail)'} · ${lead.company}`;
-  document.getElementById('epm-sig').textContent = '+ „Viele Grüße, Achim Wolters" und Ailima-Signatur mit Logo werden automatisch angehängt';
+  setEmailView('edit');
+  document.getElementById('epm-sig').textContent = 'Tipp: **Text** wird fett. Demo-Button, Grußformel und Signatur mit Logo kommen automatisch dazu – siehe 👁 Vorschau.';
   document.getElementById('epm-status').textContent = '';
   document.getElementById('btn-epm-send').disabled = !lead.email;
 
@@ -1579,6 +1592,28 @@ async function sendEmail() {
     document.getElementById('epm-status').textContent = `❌ ${e.message}`;
     btn.disabled = false;
     btn.innerHTML = `<span>📤 Senden</span>`;
+  }
+}
+
+async function setEmailView(view) {
+  const preview = view === 'preview';
+  document.getElementById('epm-tab-edit').classList.toggle('active', !preview);
+  document.getElementById('epm-tab-preview').classList.toggle('active', preview);
+  document.getElementById('epm-body').style.display = preview ? 'none' : '';
+  const frame = document.getElementById('epm-preview');
+  frame.style.display = preview ? 'block' : 'none';
+  if (!preview) return;
+  frame.srcdoc = '<p style="font-family:sans-serif;color:#94a3b8;padding:16px">Vorschau wird erstellt…</p>';
+  try {
+    const r = await fetch('/crm/preview-email', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+      body: JSON.stringify({ body: document.getElementById('epm-body').value })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    frame.srcdoc = d.html.replace('<body style="margin:0;padding:0', '<base target="_blank"><body style="margin:0;padding:16px');
+  } catch (e) {
+    frame.srcdoc = `<p style="font-family:sans-serif;color:#991b1b;padding:16px">Vorschau fehlgeschlagen: ${esc(e.message)}</p>`;
   }
 }
 

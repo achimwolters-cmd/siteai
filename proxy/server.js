@@ -529,13 +529,22 @@ const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || 'Achim Wolters';
 
 const escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+const DEMO_URL = 'https://siteai-khmo.onrender.com/demo/?edit=sat_4ug6sat368k4ew976lr8z';
+
 function buildMail(body) {
-  const text = `${body.trim()}\n\nViele Grüße\n${SMTP_FROM_NAME}\n\n--\nAilima – Ihre Website. Einfach selbst ändern.\nwww.ailima.de · ${SMTP_USER}\nImpressum: https://www.ailima.de/impressum.html\n\nKein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder.`;
+  const plain = body.trim().replace(/\*\*(.+?)\*\*/g, '$1');
+  const text = `${plain}\n\nLive-Demo ausprobieren: ${DEMO_URL}\n\nViele Grüße\n${SMTP_FROM_NAME}\n\n--\nAilima – Ihre Website. Einfach selbst ändern.\nwww.ailima.de · ${SMTP_USER}\nImpressum: https://www.ailima.de/impressum.html\n\nKein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder.`;
   const paragraphs = body.trim().split(/\n{2,}/)
-    .map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+    .map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#0f2229">$1</strong>')}</p>`).join('');
   const html = `<!doctype html><html><body style="margin:0;padding:0;background:#ffffff">
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a2a2e;max-width:600px">
 ${paragraphs}
+<table cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 22px"><tr>
+  <td style="background:#3d8a96;border-radius:8px">
+    <a href="${DEMO_URL}" style="display:inline-block;padding:11px 22px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none">&#9654; Live-Demo ausprobieren</a>
+  </td>
+</tr></table>
 <p style="margin:0 0 22px">Viele Grüße<br>${escHtml(SMTP_FROM_NAME)}</p>
 <table cellpadding="0" cellspacing="0" border="0" style="border-top:3px solid #3d8a96;padding-top:14px;margin-top:4px">
   <tr>
@@ -558,6 +567,11 @@ ${paragraphs}
     attachments: [{ filename: 'ailima.png', path: path.join(__dirname, 'public', 'eddi.png'), cid: 'ailima-logo' }],
   };
 }
+
+app.post('/crm/preview-email', requireCRM, (req, res) => {
+  const { html } = buildMail(String(req.body.body || ''));
+  res.json({ html: html.replace('cid:ailima-logo', '/eddi.png') });
+});
 
 function smtpTransport() {
   return nodemailer.createTransport({
@@ -730,7 +744,9 @@ REGELN:
 - Ailima als Lösung nennen mit www.ailima.de
 - Ab €29/Monat erwähnen
 - CTA: kurzes 15-Minuten Telefonat oder Demo
-- NUR den E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur, kein Markdown`,
+- Markiere genau EINEN Kernsatz (den Nutzen von Ailima) mit **doppelten Sternchen**, sonst keine Formatierung
+- Keine URL im Text – ein Demo-Button wird automatisch eingefügt; ende mit einer kurzen Frage
+- NUR den E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur`,
         messages: [{ role: 'user', content:
           `Firma: ${lead.company}\nBranche: ${lead.industry||'lokales Unternehmen'}\nStadt: ${lead.city||''}\nAnsprechpartner: ${lead.contact||'unbekannt'}\nWebsite: ${lead.website||'keine'}` }],
       }),
