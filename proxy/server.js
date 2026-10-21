@@ -450,7 +450,7 @@ app.get('/crm/backup', requireCRM, (req, res) => {
 const nodemailer = require('nodemailer');
 const SMTP_HOST      = process.env.SMTP_HOST || 'tojopo.han-solo.net';
 const SMTP_PORT      = parseInt(process.env.SMTP_PORT) || 587;
-const SMTP_USER      = process.env.SMTP_USER || 'sales@soceting.de';
+const SMTP_USER      = process.env.SMTP_USER || 'info@ailima.de';
 const SMTP_PASS      = process.env.SMTP_PASS || '';
 const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || 'Achim Wolters';
 
