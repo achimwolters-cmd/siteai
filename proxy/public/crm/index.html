@@ -1690,6 +1690,8 @@ function openFuDraft(id) {
   if (!lead?.fuDraft) return;
   emailModalLeadId = id;
   emailModalMode = 'fudraft';
+  document.getElementById('btn-epm-send').disabled = false;
+  document.getElementById('btn-epm-send').innerHTML = '<span>⏳ In Warteschlange</span>';
   setEmailView('edit');
   document.getElementById('epm-to').textContent = `An: ${lead.email} · ${lead.company} · ${lead.fuDraft.kind === 'fu2' ? 'Follow-up 2' : 'Follow-up 1'}`;
   document.getElementById('epm-subject').value = lead.fuDraft.subject;
@@ -1699,6 +1701,44 @@ function openFuDraft(id) {
   document.getElementById('btn-epm-regen').style.display = 'none';
   document.getElementById('email-modal-overlay').classList.add('open');
 }
+
+// ── Follow-up-Vorschau ──
+async function openFuPreview(id, regenerate = false) {
+  const lead = allLeads.find(l => l.id === id);
+  if (!lead) return;
+  emailModalLeadId = id;
+  emailModalMode = 'fupreview';
+  document.getElementById('btn-epm-regen').style.display = '';
+  document.getElementById('btn-epm-send').disabled = false;
+  document.getElementById('btn-epm-send').innerHTML = '<span>📌 Diesen Text verwenden</span>';
+  document.getElementById('epm-to').textContent = `An: ${lead.email} · ${lead.company}`;
+  document.getElementById('epm-sig').textContent = 'Geht als Antwort im selben Mail-Verlauf raus. Demo-Button, Grußformel und Signatur kommen automatisch dazu.';
+  document.getElementById('epm-subject').value = '';
+  document.getElementById('epm-body').value = '';
+  document.getElementById('epm-status').textContent = '⏳ KI schreibt einen Vorschlag…';
+  setEmailView('edit');
+  document.getElementById('email-modal-overlay').classList.add('open');
+  try {
+    const r = await fetch(`/crm/followup-preview/${id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+      body: JSON.stringify({ regenerate })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    fuPreviewKind = d.kind;
+    document.getElementById('epm-subject').value = d.subject;
+    document.getElementById('epm-body').value = d.body;
+    const due = d.dueDate ? new Date(d.dueDate).toLocaleDateString('de-DE') : 'dem Fälligkeitstag';
+    document.getElementById('epm-to').textContent += ` · ${d.kind === 'fu2' ? 'Follow-up 2' : 'Follow-up 1'} fällig am ${due}`;
+    document.getElementById('epm-status').textContent = d.prepared
+      ? `📌 Dieser Text ist festgelegt und geht am ${due} so raus.`
+      : `Vorschlag – ohne Festlegen schreibt die KI am ${due} einen neuen Text. Mit „📌 Diesen Text verwenden" geht genau dieser raus.`;
+  } catch (e) {
+    document.getElementById('epm-status').textContent = '❌ ' + e.message;
+    document.getElementById('btn-epm-send').disabled = true;
+  }
+}
+let fuPreviewKind = 'fu1';
 
 // ── Antworten ──
 const REPLY_CAT = { interessiert: 'Interessiert', termin: 'Termin', frage: 'Frage', kein_interesse: 'Kein Interesse', sonstiges: 'Sonstiges' };
@@ -1776,10 +1816,12 @@ function outboxCard(l, type) {
     badge = `<span class="mbadge mbadge-${l.mailStatus}">${fuType} fällig</span>`;
     actions = `
       <button class="btn-outbox-fu" onclick="sendFollowUp('${l.id}')">📬 ${fuType} senden</button>
+      <button class="btn-outbox-preview" onclick="openFuPreview('${l.id}')">👁 Ansehen</button>
     `;
   } else {
     badge = `<span class="mbadge mbadge-${l.mailStatus}">FU geplant ${fuDate}</span>`;
-    actions = `<button class="btn-outbox-preview" onclick="openEmailModal('${l.id}',false)" style="opacity:0.7">Vorschau</button>`;
+    actions = `<button class="btn-outbox-preview" onclick="openFuPreview('${l.id}')">👁 Follow-up ansehen</button>
+      ${l.fuPrepared ? '<span style="font-size:12px;color:#166534;align-self:center">📌 Text festgelegt</span>' : ''}`;
   }
 
   return `<div class="outbox-card">
@@ -1801,6 +1843,7 @@ async function openEmailModal(leadId, generate) {
   emailModalLeadId = leadId;
   emailModalMode = 'initial';
   document.getElementById('btn-epm-regen').style.display = '';
+  document.getElementById('btn-epm-send').innerHTML = '<span>⏳ In Warteschlange</span>';
   const lead = allLeads.find(l => l.id === leadId);
   if (!lead) return;
 
@@ -1843,6 +1886,7 @@ async function generateEmailForModal(leadId) {
 
 async function regenEmail() {
   if (!emailModalLeadId) return;
+  if (emailModalMode === 'fupreview') return openFuPreview(emailModalLeadId, true);
   document.getElementById('epm-status').textContent = '⏳ Neue Version wird generiert…';
   document.getElementById('epm-subject').value = '';
   document.getElementById('epm-body').value = '';
@@ -1856,6 +1900,22 @@ async function sendEmail() {
   if (!subject || !body) { showToast('Bitte Betreff und Text ausfüllen', 'err'); return; }
 
   const btn = document.getElementById('btn-epm-send');
+  if (emailModalMode === 'fupreview') {
+    btn.disabled = true;
+    const r = await fetch(`/crm/followup-prepare/${emailModalLeadId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+      body: JSON.stringify({ subject, body, kind: fuPreviewKind })
+    });
+    const d = await r.json();
+    btn.disabled = false;
+    if (!r.ok) { document.getElementById('epm-status').textContent = '❌ ' + d.error; return; }
+    const i = allLeads.findIndex(l => l.id === emailModalLeadId);
+    if (i !== -1) allLeads[i] = d.lead;
+    closeEmailModal();
+    if (currentTab === 'outbox') renderOutbox();
+    showToast('📌 Follow-up-Text festgelegt', 'ok');
+    return;
+  }
   btn.disabled = true;
   btn.innerHTML = `<span class="epm-spinner"></span> Wird eingereiht…`;
   document.getElementById('epm-status').textContent = '';

@@ -532,6 +532,8 @@ const escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').repl
 const DEMO_URL = 'https://siteai-khmo.onrender.com/demo/?edit=sat_4ug6sat368k4ew976lr8z';
 
 function buildMail(body) {
+  // The AI sometimes adds its own closing despite instructions; the template adds one.
+  body = body.trim().replace(/\n+\s*(viele|beste|freundliche|herzliche|liebe|schöne)\s+grüße[\s\S]{0,80}$/i, '');
   const plain = body.trim().replace(/\*\*(.+?)\*\*/g, '$1');
   const text = `${plain}\n\nLive-Demo ausprobieren: ${DEMO_URL}\n\nViele Grüße\n${SMTP_FROM_NAME}\n\n--\nAilima – Ihre Website. Einfach selbst ändern.\nwww.ailima.de · ${SMTP_USER}\nImpressum: https://www.ailima.de/impressum.html\n\nKein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder.`;
   const paragraphs = body.trim().split(/\n{2,}/)
@@ -717,6 +719,7 @@ app.post('/crm/generate-email/:id', requireCRM, async (req, res) => {
     const idx = data.leads.findIndex(l => l.id === req.params.id);
     if (idx === -1) return res.status(404).json({ error: 'Lead nicht gefunden' });
     const lead = data.leads[idx];
+    if (lead.emailSentAt) return res.status(400).json({ error: 'Die erste Mail wurde bereits gesendet – hier gibt es nur noch Follow-ups' });
 
     const subjects = [
       `Ihre Website – selbst aktualisieren, ganz ohne Programmierer`,
@@ -920,7 +923,7 @@ function enqueue(lead, kind, subject, body, user) {
   const now = new Date().toISOString();
   return { ...lead,
     queuedMail: { kind, subject, body, queuedAt: now, queuedBy: user },
-    ...(kind === 'initial' ? { mailStatus: 'queued', emailDraft: { subject, body, generatedAt: lead.emailDraft?.generatedAt || now } } : {}),
+    ...(kind === 'initial' ? { mailStatus: 'queued', emailDraft: { subject, body, generatedAt: lead.emailDraft?.generatedAt || now } } : { fuPrepared: undefined }),
     sendError: undefined, updatedAt: now, updatedBy: user };
 }
 
@@ -990,9 +993,15 @@ app.post('/crm/queue/cancel/:id', requireCRM, async (req, res) => {
   }
 });
 
-async function generateFollowUp(lead) {
+async function generateFollowUp(lead, { ignorePrepared = false } = {}) {
   const isFU2 = !!lead.followUp1SentAt;
-  const sentDE = new Date(lead.emailSentAt).toLocaleDateString('de-DE');
+  if (!ignorePrepared && lead.fuPrepared?.kind === (isFU2 ? 'fu2' : 'fu1')) {
+    return { isFU2, subject: lead.fuPrepared.subject, body: lead.fuPrepared.body };
+  }
+  const lastSentDay = (lead.followUp1SentAt || lead.emailSentAt).slice(0, 10);
+  const sendDay = lead.followUp || new Date().toISOString().slice(0, 10);
+  const daysAgo = Math.max(1, Math.round((new Date(sendDay) - new Date(lastSentDay)) / 86400000));
+  const salutation = lead.contact ? `Sprich ${lead.contact} persönlich an („Guten Tag Frau/Herr …").` : 'Anrede genau: „Guten Tag," (kein Name, kein „Liebe …Team").';
 
   const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -1001,10 +1010,12 @@ async function generateFollowUp(lead) {
       model: 'claude-haiku-4-5',
       max_tokens: 350,
       system: `Du schreibst ${isFU2 ? 'letzte Abschluss-' : 'freundliche Follow-up-'}Mails für Ailima (KI-Website-Editor, www.ailima.de, ab €29/Monat).
-Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur, keine URL.`,
+Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. ${salutation}
+Die vorige Mail ging vor ${daysAgo} Tagen raus – nenne keinen anderen Zeitraum.
+NUR E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur, keine URL.`,
       messages: [{ role: 'user', content: isFU2
         ? `Letzte höfliche Abschlussnachricht an ${lead.company} (${lead.industry||''}). Haben auf 2 Mails nicht geantwortet. Tür offen lassen für die Zukunft. Kein Verkaufsdruck.`
-        : `Follow-up an ${lead.company} (${lead.industry||''}). Erste Mail: ${sentDE}. Keine Antwort. Neuen Gedanken einbringen: Website ist oft das erste was Kunden sehen – veraltete Infos kosten Vertrauen.` }],
+        : `Follow-up an ${lead.company} (${lead.industry||''}). Keine Antwort auf die erste Mail. Neuen Gedanken einbringen: Website ist oft das erste was Kunden sehen – veraltete Infos kosten Vertrauen.` }],
     }),
   });
   const cData = await claudeRes.json();
@@ -1015,6 +1026,28 @@ Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text ab de
 
   return { isFU2, subject, body };
 }
+
+// Preview the next follow-up without scheduling anything
+app.post('/crm/followup-preview/:id', requireCRM, async (req, res) => {
+  try {
+    const lead = loadCRM().leads.find(l => l.id === req.params.id);
+    if (!lead) return res.status(404).json({ error: 'Lead nicht gefunden' });
+    if (!lead.emailSentAt || lead.followUp2SentAt) return res.status(400).json({ error: 'Für diesen Lead ist kein Follow-up mehr vorgesehen' });
+    if (followUpBlocked(lead)) return res.status(400).json({ error: 'Lead hat geantwortet bzw. ist in Kontakt – kein Follow-up nötig' });
+    const { isFU2, subject, body } = await generateFollowUp(lead, { ignorePrepared: !!req.body.regenerate });
+    res.json({ kind: isFU2 ? 'fu2' : 'fu1', subject, body, prepared: !req.body.regenerate && !!lead.fuPrepared, dueDate: lead.followUp });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Keep a reviewed follow-up text for the due date
+app.post('/crm/followup-prepare/:id', requireCRM, async (req, res) => {
+  const { subject, body, kind } = req.body;
+  if (!subject || !body || !['fu1', 'fu2'].includes(kind)) return res.status(400).json({ error: 'Betreff und Text erforderlich' });
+  const data = await patchLeads([[req.params.id, l => ({ ...l, fuPrepared: { kind, subject, body, at: new Date().toISOString() }, updatedAt: new Date().toISOString(), updatedBy: req.crmUser })]]);
+  res.json({ lead: data.leads.find(l => l.id === req.params.id) });
+});
 
 // Generate a follow-up and put it into the queue
 app.post('/crm/followup/:id', requireCRM, async (req, res) => {
