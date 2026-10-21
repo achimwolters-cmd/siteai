@@ -450,11 +450,7 @@
           </div>
           <div class="discover-form-group">
             <label>Max. Ergebnisse</label>
-            <select id="disc-limit">
-              <option value="20">20</option>
-              <option value="30" selected>30</option>
-              <option value="50">50</option>
-            </select>
+            <input type="number" id="disc-limit" value="30" min="1" max="100" style="min-width:80px" />
           </div>
           <button class="btn-discover-search" id="btn-disc-search" onclick="runDiscovery()">Suchen</button>
         </div>
