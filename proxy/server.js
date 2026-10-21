@@ -324,6 +324,58 @@ async function saveCRM(data) {
   // to avoid triggering Railway auto-redeploys on every save
   fs.writeFileSync(CRM_FILE, JSON.stringify(data, null, 2));
   console.log(`[CRM] saved locally – ${data.leads.length} Leads`);
+  scheduleCRMUpload();
+}
+
+// Render's disk is wiped on every restart, so the CRM is mirrored to the private FTP folder.
+// Only on Render: a local dev server must never overwrite the production copy.
+const CRM_REMOTE_DIR = 'ailima-data';
+const CRM_FTP_ENABLED = !!process.env.RENDER && !!process.env.FTP_PASS;
+let crmFtpWritable = false;
+let crmReady = Promise.resolve();
+let crmUploadTimer = null;
+
+async function restoreCRMFromFtp() {
+  if (!CRM_FTP_ENABLED) return;
+  setupFtpNetrc();
+  const tmp = '/tmp/crm-remote.json';
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await run(`curl --netrc-file "${NETRC_FILE}" -sS --fail -o "${tmp}" "ftp://${FTP_HOST}/${CRM_REMOTE_DIR}/crm.json"`, 30000);
+      const data = JSON.parse(fs.readFileSync(tmp, 'utf8'));
+      if (!Array.isArray(data.leads)) throw new Error('ungültige CRM-Datei');
+      fs.writeFileSync(CRM_FILE, JSON.stringify(data, null, 2));
+      crmFtpWritable = true;
+      console.log(`[CRM] aus FTP wiederhergestellt – ${data.leads.length} Leads`);
+      return;
+    } catch (e) {
+      if (/\(78\)|550/.test(e.message)) {
+        crmFtpWritable = true;
+        console.log('[CRM] noch keine FTP-Kopie – starte mit CRM_SEED');
+        scheduleCRMUpload();
+        return;
+      }
+      console.error(`[CRM] FTP-Wiederherstellung Versuch ${attempt}:`, e.message);
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  }
+  // Uploading now could overwrite newer data with the stale seed.
+  console.error('[CRM] FTP nicht erreichbar – FTP-Sicherung für diese Laufzeit deaktiviert');
+}
+
+function scheduleCRMUpload() {
+  if (!crmFtpWritable) return;
+  clearTimeout(crmUploadTimer);
+  crmUploadTimer = setTimeout(async () => {
+    const tmp = '/tmp/crm-upload.json';
+    try {
+      fs.copyFileSync(CRM_FILE, tmp);
+      await run(`curl --netrc-file "${NETRC_FILE}" -sS -T "${tmp}" "ftp://${FTP_HOST}/${CRM_REMOTE_DIR}/crm.json.tmp" -Q "-RNFR crm.json.tmp" -Q "-RNTO crm.json"`, 30000);
+      console.log('[CRM] FTP-Sicherung aktualisiert');
+    } catch (e) {
+      console.error('[CRM] FTP-Sicherung fehlgeschlagen:', e.message);
+    }
+  }, 1500);
 }
 
 // Force-sync current crm.json state to hosting env var (Render or Railway)
@@ -364,7 +416,7 @@ function requireCRM(req, res, next) {
   if (!session) return res.status(401).json({ error: 'Nicht eingeloggt' });
   req.crmUser = session.user;
   req.crmName = session.name;
-  next();
+  crmReady.then(() => next());
 }
 
 // Login
@@ -1411,6 +1463,7 @@ function handleAutoBlogFairway(req, res) {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`SiteAI Proxy running on port ${PORT}`);
+  crmReady = restoreCRMFromFtp();
   if (!ANTHROPIC_API_KEY) console.warn('WARNING: ANTHROPIC_API_KEY not set!');
   if (!ADMIN_KEY) console.warn('WARNING: ADMIN_KEY not set!');
 });
