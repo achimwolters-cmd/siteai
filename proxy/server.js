@@ -910,7 +910,8 @@ async function processQueue() {
       console.error(`[Queue] Fehler bei ${next.company} (Versuch ${attempts}):`, e.message);
       patch = l => {
         if (!l.queuedMail) return l;
-        if (attempts < 3) return { ...l, queuedMail: { ...l.queuedMail, attempts, lastError: e.message } };
+        // Move to the back so one failing address doesn't block the rest of the queue.
+        if (attempts < 3) return { ...l, queuedMail: { ...l.queuedMail, attempts, lastError: e.message, queuedAt: new Date().toISOString() } };
         const { queuedMail, ...rest } = l;
         return { ...rest, sendError: e.message, updatedAt: stamp,
           ...(kind === 'initial' ? { mailStatus: 'draft', emailDraft: { subject, body, generatedAt: stamp } } : {}) };
