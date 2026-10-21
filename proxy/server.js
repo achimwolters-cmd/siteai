@@ -468,8 +468,30 @@ app.get('/crm/smtp-status', requireCRM, (req, res) => {
 });
 
 // OSM discovery: find local businesses via Overpass API
+const OVERPASS_MIRRORS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+];
+
+async function overpassQuery(query) {
+  for (const url of OVERPASS_MIRRORS) {
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(query),
+        signal: AbortSignal.timeout(28000),
+      });
+      if (!r.ok) continue;
+      return await r.json();
+    } catch(e) { /* try next mirror */ }
+  }
+  throw new Error('Overpass API nicht erreichbar – bitte später erneut versuchen');
+}
+
 app.post('/crm/discover', requireCRM, async (req, res) => {
-  const { city = 'Mönchengladbach', industry = 'Friseur / Kosmetik', limit = 30 } = req.body;
+  const { city = 'Mönchengladbach', industry = 'Friseur / Kosmetik', limit = 30, customSearch = '' } = req.body;
 
   const OSM_TAGS = {
     'Friseur / Kosmetik':       [['shop','hairdresser'],['shop','beauty'],['shop','cosmetics']],
@@ -480,10 +502,29 @@ app.post('/crm/discover', requireCRM, async (req, res) => {
     'Einzelhandel':             [['shop','clothes'],['shop','florist'],['shop','furniture'],['shop','gift']],
     'Hotel / Pension':          [['tourism','hotel'],['tourism','guest_house'],['tourism','hostel']],
     'Fitness':                  [['leisure','fitness_centre'],['leisure','sports_centre']],
+    'Zahnarzt':                 [['amenity','dentist']],
+    'Arzt / Praxis':            [['amenity','doctors'],['healthcare','doctor'],['healthcare','clinic']],
+    'Apotheke':                 [['amenity','pharmacy']],
+    'Autowerkstatt':            [['shop','car_repair'],['craft','car_repair']],
+    'Autohaus':                 [['shop','car']],
+    'Reinigung':                [['shop','dry_cleaning'],['shop','laundry']],
+    'Optiker':                  [['shop','optician']],
+    'Bäckerei':                 [['shop','bakery']],
+    'Immobilien':               [['office','estate_agent']],
   };
 
-  const tags = OSM_TAGS[industry] || [['amenity','*']];
-  const tagLines = tags.map(([k,v]) => `  node["${k}"="${v}"](area.searchArea);`).join('\n');
+  let tagLines, searchLabel;
+  const trimmed = customSearch.trim();
+  if (trimmed) {
+    // Free text: search by name containing the term
+    const safe = trimmed.replace(/['"\\]/g, '');
+    tagLines = `  node["name"~"${safe}",i](area.searchArea);\n  way["name"~"${safe}",i](area.searchArea);`;
+    searchLabel = trimmed;
+  } else {
+    const tags = OSM_TAGS[industry] || [['amenity','restaurant']];
+    tagLines = tags.map(([k,v]) => `  node["${k}"="${v}"](area.searchArea);\n  way["${k}"="${v}"](area.searchArea);`).join('\n');
+    searchLabel = industry;
+  }
 
   const query = `[out:json][timeout:25];
 area["name"="${city}"]["place"~"city|town|village"]->.searchArea;
@@ -493,14 +534,7 @@ ${tagLines}
 out body ${Math.min(parseInt(limit)*4, 200)};`;
 
   try {
-    const r = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'data=' + encodeURIComponent(query),
-      signal: AbortSignal.timeout(28000),
-    });
-    if (!r.ok) throw new Error(`Overpass HTTP ${r.status}`);
-    const data = await r.json();
+    const data = await overpassQuery(query);
 
     const crm = loadCRM();
     const existingNames  = new Set(crm.leads.map(l => (l.company||'').toLowerCase().replace(/[^a-z0-9]/g,'')));

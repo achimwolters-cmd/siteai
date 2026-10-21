@@ -424,7 +424,7 @@
           </div>
           <div class="discover-form-group">
             <label>Branche</label>
-            <select id="disc-industry">
+            <select id="disc-industry" onchange="document.getElementById('disc-custom').value=''">
               <option>Friseur / Kosmetik</option>
               <option>Restaurant / Café</option>
               <option>Handwerk</option>
@@ -433,7 +433,20 @@
               <option>Einzelhandel</option>
               <option>Hotel / Pension</option>
               <option>Fitness</option>
+              <option>Zahnarzt</option>
+              <option>Arzt / Praxis</option>
+              <option>Apotheke</option>
+              <option>Autowerkstatt</option>
+              <option>Autohaus</option>
+              <option>Reinigung</option>
+              <option>Optiker</option>
+              <option>Bäckerei</option>
+              <option>Immobilien</option>
             </select>
+          </div>
+          <div class="discover-form-group">
+            <label>Freitext (überschreibt Branche)</label>
+            <input type="text" id="disc-custom" placeholder="z.B. Zahnarzt, Autohaus…" oninput="if(this.value) document.getElementById('disc-industry').style.opacity=0.4; else document.getElementById('disc-industry').style.opacity=1" style="min-width:190px" />
           </div>
           <div class="discover-form-group">
             <label>Max. Ergebnisse</label>
@@ -1074,16 +1087,17 @@ async function copySeed() {
 
 // ── LEAD DISCOVERY ──
 async function runDiscovery() {
-  const city     = document.getElementById('disc-city').value;
-  const industry = document.getElementById('disc-industry').value;
-  const limit    = document.getElementById('disc-limit').value;
+  const city         = document.getElementById('disc-city').value;
+  const industry     = document.getElementById('disc-industry').value;
+  const limit        = document.getElementById('disc-limit').value;
+  const customSearch = document.getElementById('disc-custom').value.trim();
   const btn      = document.getElementById('btn-disc-search');
   const status   = document.getElementById('disc-status');
   const wrap     = document.getElementById('disc-results-wrap');
 
   btn.disabled = true;
   btn.textContent = '⏳ Suche…';
-  status.textContent = `Suche ${industry} in ${city}…`;
+  status.textContent = `Suche ${customSearch || industry} in ${city}…`;
   wrap.style.display = 'none';
   discResults = [];
   importedDiscIds = new Set();
@@ -1091,7 +1105,7 @@ async function runDiscovery() {
   try {
     const r = await fetch('/crm/discover', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
-      body: JSON.stringify({ city, industry, limit: parseInt(limit) })
+      body: JSON.stringify({ city, industry, limit: parseInt(limit), customSearch })
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error);
