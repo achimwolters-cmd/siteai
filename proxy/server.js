@@ -439,6 +439,27 @@ app.delete('/crm/leads/:id', requireCRM, async (req, res) => {
   }
 });
 
+app.post('/crm/leads/archive', requireCRM, async (req, res) => {
+  try {
+    const ids = new Set(req.body.ids || []);
+    const archived = req.body.archived !== false;
+    const data = loadCRM();
+    const now = new Date().toISOString();
+    let updated = 0;
+    for (const l of data.leads) {
+      if (!ids.has(l.id)) continue;
+      l.archived = archived;
+      l.updatedAt = now;
+      l.updatedBy = req.crmUser;
+      updated++;
+    }
+    await saveCRM(data);
+    res.json({ updated });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Export CRM seed (for Railway CRM_SEED env var)
 app.get('/crm/backup', requireCRM, (req, res) => {
   const data = loadCRM();

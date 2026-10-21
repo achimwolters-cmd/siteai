@@ -91,6 +91,8 @@
     .btn-bulk-status:hover{background:#e6b030}
     .btn-bulk-followup{background:#5db0be;color:#fff}
     .btn-bulk-followup:hover{background:var(--teal)}
+    .btn-bulk-archive{background:#475569;color:#fff}
+    .btn-bulk-archive:hover{background:#334155}
     .btn-bulk-clear{background:none;border:1px solid rgba(255,255,255,0.25);color:rgba(255,255,255,0.6);padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer}
     .btn-bulk-clear:hover{border-color:#fff;color:#fff}
     .bulk-spinner{color:rgba(255,255,255,0.5);font-size:13px}
@@ -378,6 +380,7 @@
         <button class="filter-btn" data-filter="termin" onclick="setFilter('termin',this)">📅 Termin</button>
         <button class="filter-btn" data-filter="gewonnen" onclick="setFilter('gewonnen',this)">✅ Gewonnen</button>
         <button class="filter-btn" data-filter="kein_interesse" onclick="setFilter('kein_interesse',this)">❌ Kein Interesse</button>
+        <button class="filter-btn" data-filter="archiv" onclick="setFilter('archiv',this)">🗄 Archiv</button>
       </div>
       <div class="toolbar-search">
         <input type="text" id="search-input" placeholder="🔍 Suchen…" oninput="renderTable()" />
@@ -392,6 +395,7 @@
       <button class="btn-bulk btn-bulk-mail" onclick="bulkOpenMail()">✉ Alle anmailen</button>
       <button class="btn-bulk btn-bulk-status" onclick="bulkSetStatus('angeschrieben')">📧 Angeschrieben</button>
       <button class="btn-bulk btn-bulk-followup" onclick="bulkSetFollowUp()">📅 Follow-up +7 Tage</button>
+      <button class="btn-bulk btn-bulk-archive" id="btn-bulk-archive" onclick="bulkArchive()">🗄 Archivieren</button>
       <span class="bulk-sep">|</span>
       <button class="btn-bulk-clear" onclick="clearSelection()">Auswahl aufheben</button>
       <span class="bulk-spinner" id="bulk-spinner" style="display:none">⏳ Wird gespeichert…</span>
@@ -797,7 +801,8 @@ function renderStats() {
   const counts = {};
   Object.keys(STATUS_LABELS).forEach(s => counts[s] = 0);
   let drafts = 0, sent = 0, fu_pending = 0;
-  allLeads.forEach(l => {
+  const active = activeLeads();
+  active.forEach(l => {
     if (counts[l.status] !== undefined) counts[l.status]++;
     if (l.mailStatus === 'draft') drafts++;
     if (l.mailStatus === 'sent' || l.mailStatus === 'fu1_sent') {
@@ -807,7 +812,7 @@ function renderStats() {
     if (l.mailStatus === 'sent' || l.mailStatus === 'fu1_sent' || l.mailStatus === 'fu2_sent') sent++;
   });
   document.getElementById('stats-bar').innerHTML = `
-    <div class="stat-item"><div class="stat-num">${allLeads.length}</div><div class="stat-label">Gesamt</div></div>
+    <div class="stat-item"><div class="stat-num">${active.length}</div><div class="stat-label">Gesamt</div></div>
     <div class="stat-item"><div class="stat-num">${counts.angeschrieben}</div><div class="stat-label">Angeschrieben</div></div>
     <div class="stat-item"><div class="stat-num">${counts.in_kontakt}</div><div class="stat-label">In Kontakt</div></div>
     <div class="stat-item"><div class="stat-num">${counts.termin}</div><div class="stat-label">Termine</div></div>
@@ -815,12 +820,12 @@ function renderStats() {
     <div class="stat-item"><div class="stat-num" style="color:#b7791f">${drafts}</div><div class="stat-label">📝 Entwürfe</div></div>
     <div class="stat-item"><div class="stat-num" style="color:#e53e3e">${fu_pending}</div><div class="stat-label">📬 FU fällig</div></div>
   `;
-  document.getElementById('badge-leads').textContent = allLeads.length;
+  document.getElementById('badge-leads').textContent = active.length;
 }
 
 function updateOutboxBadge() {
   const badge = document.getElementById('badge-outbox');
-  const count = allLeads.filter(l => {
+  const count = activeLeads().filter(l => {
     if (l.mailStatus === 'draft') return true;
     if ((l.mailStatus === 'sent' || l.mailStatus === 'fu1_sent') && l.followUp) {
       return new Date(l.followUp) <= new Date();
@@ -836,6 +841,18 @@ function updateOutboxBadge() {
 }
 
 // ── Filter & Table ──
+const activeLeads = () => allLeads.filter(l => !l.archived);
+
+function visibleLeads() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  return allLeads.filter(l => {
+    if (currentFilter === 'archiv') { if (!l.archived) return false; }
+    else if (l.archived) return false;
+    else if (currentFilter !== 'all' && l.status !== currentFilter) return false;
+    if (q && !`${l.company} ${l.contact} ${l.email} ${l.notes}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
 function setFilter(f, btn) {
   currentFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -844,12 +861,7 @@ function setFilter(f, btn) {
 }
 
 function renderTable() {
-  const q = document.getElementById('search-input').value.toLowerCase();
-  let leads = allLeads.filter(l => {
-    if (currentFilter !== 'all' && l.status !== currentFilter) return false;
-    if (q && !`${l.company} ${l.contact} ${l.email} ${l.notes}`.toLowerCase().includes(q)) return false;
-    return true;
-  });
+  let leads = visibleLeads();
 
   const tbody = document.getElementById('leads-body');
   document.getElementById('empty-state').style.display = leads.length ? 'none' : 'block';
@@ -934,12 +946,7 @@ function toggleSelect(id) {
 }
 
 function toggleSelectAll() {
-  const q = document.getElementById('search-input').value.toLowerCase();
-  const visible = allLeads.filter(l => {
-    if (currentFilter !== 'all' && l.status !== currentFilter) return false;
-    if (q && !`${l.company} ${l.contact} ${l.email} ${l.notes}`.toLowerCase().includes(q)) return false;
-    return true;
-  });
+  const visible = visibleLeads();
   const allChecked = visible.every(l => selectedIds.has(l.id));
   if (allChecked) visible.forEach(l => selectedIds.delete(l.id));
   else visible.forEach(l => selectedIds.add(l.id));
@@ -952,17 +959,31 @@ function updateBulkBar() {
   const bar = document.getElementById('bulk-bar');
   document.getElementById('bulk-count').textContent = selectedIds.size;
   bar.classList.toggle('visible', selectedIds.size > 0);
+  document.getElementById('btn-bulk-archive').textContent = currentFilter === 'archiv' ? '↩ Wiederherstellen' : '🗄 Archivieren';
   const cbAll = document.getElementById('cb-all');
   if (cbAll) {
-    const q = document.getElementById('search-input').value.toLowerCase();
-    const visible = allLeads.filter(l => {
-      if (currentFilter !== 'all' && l.status !== currentFilter) return false;
-      if (q && !`${l.company} ${l.contact} ${l.email} ${l.notes}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
+    const visible = visibleLeads();
     cbAll.checked = visible.length > 0 && visible.every(l => selectedIds.has(l.id));
     cbAll.indeterminate = !cbAll.checked && visible.some(l => selectedIds.has(l.id));
   }
+}
+
+async function bulkArchive() {
+  const archived = currentFilter !== 'archiv';
+  const ids = [...selectedIds];
+  if (!ids.length) return;
+  if (archived && !confirm(`${ids.length} Leads archivieren? Sie verschwinden aus der Liste, bleiben aber im Filter „Archiv" erhalten.`)) return;
+  const r = await fetch('/crm/leads/archive', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+    body: JSON.stringify({ ids, archived })
+  });
+  if (r.status === 401) { doLogout(); return; }
+  const d = await r.json();
+  if (!r.ok) { showToast('❌ ' + d.error, 'err'); return; }
+  allLeads.forEach(l => { if (selectedIds.has(l.id)) l.archived = archived; });
+  selectedIds.clear();
+  updateBulkBar(); renderStats(); renderTable(); updateOutboxBadge();
+  showToast(archived ? `🗄 ${d.updated} Leads archiviert` : `↩ ${d.updated} Leads wiederhergestellt`, 'ok');
 }
 
 async function bulkUpdate(bodyFn, label) {
@@ -1390,15 +1411,15 @@ function updateDiscFooter() {
 function renderOutbox() {
   const now = new Date();
 
-  const drafts = allLeads.filter(l => l.mailStatus === 'draft' && l.email);
-  const fuReady = allLeads.filter(l => {
+  const drafts = activeLeads().filter(l => l.mailStatus === 'draft' && l.email);
+  const fuReady = activeLeads().filter(l => {
     if (l.mailStatus !== 'sent' && l.mailStatus !== 'fu1_sent') return false;
     if (!l.email) return false;
     if (l.followUp2SentAt) return false;
     const fuDate = l.followUp ? new Date(l.followUp) : null;
     return fuDate && fuDate <= now;
   });
-  const fuPending = allLeads.filter(l => {
+  const fuPending = activeLeads().filter(l => {
     if (l.mailStatus !== 'sent' && l.mailStatus !== 'fu1_sent') return false;
     if (!l.email) return false;
     if (l.followUp2SentAt) return false;

@@ -5,7 +5,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const UA = 'AilimaCRM/1.0 (achim@ailima.de)';
-const OUT = path.join(__dirname, '..', 'lead-pool.json');
+const OUT = process.env.POOL_FILE || path.join(__dirname, '..', 'lead-pool.json');
 
 const REGION = { name: 'München & Umland', bbox: '47.95,11.25,48.30,11.85' };
 
