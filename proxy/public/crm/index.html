@@ -450,7 +450,7 @@
           </div>
           <div class="discover-form-group">
             <label>Max. Ergebnisse</label>
-            <input type="number" id="disc-limit" value="30" min="1" max="100" style="min-width:80px" />
+            <select id="disc-limit"></select>
           </div>
           <button class="btn-discover-search" id="btn-disc-search" onclick="runDiscovery()">Suchen</button>
         </div>
@@ -655,6 +655,14 @@ const MAIL_STATUS_LABELS = {
 
 // ── Init ──
 window.onload = () => {
+  // Populate limit dropdown 1-50
+  const sel = document.getElementById('disc-limit');
+  for (let i = 1; i <= 50; i++) {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = i;
+    if (i === 30) o.selected = true;
+    sel.appendChild(o);
+  }
   if (crmToken) { showApp(); loadLeads(); checkSmtp(); }
   document.getElementById('login-password').addEventListener('keydown', e => {
     if (e.key === 'Enter') doLogin();
