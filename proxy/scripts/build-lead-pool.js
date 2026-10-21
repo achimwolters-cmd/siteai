@@ -47,6 +47,25 @@ const INDUSTRIES = {
   'Coworking':                 [['amenity','coworking_space'],['office','coworking']],
 };
 
+// Catch-all pass: every remaining business with a website, grouped by its main OSM key.
+const CATCH_ALL = {
+  shop:       'Weitere Geschäfte',
+  office:     'Weitere Dienstleister & Büros',
+  craft:      'Handwerk',
+  healthcare: 'Weitere Gesundheitsanbieter',
+  amenity:    'Weitere Dienstleister & Büros',
+  tourism:    'Freizeit, Kultur & Tourismus',
+  leisure:    'Freizeit, Kultur & Tourismus',
+};
+const NOT_A_BUSINESS = new Set([
+  'school','kindergarten','childcare','university','college','place_of_worship','townhall','police','fire_station',
+  'courthouse','prison','library','community_centre','social_facility','social_centre','post_office','bank','atm',
+  'parking','fuel','toilets','hospital','grave_yard','public_bookcase','shelter','recycling','bus_station','embassy',
+  'park','playground','pitch','nature_reserve','garden','track','stadium','common','dog_park','marina','slipway',
+  'information','artwork','viewpoint','attraction','picnic_site','camp_site','yes','vacant','government','religion',
+  'association','ngo','political_party','educational_institution','research','charity','diplomatic','union',
+]);
+
 const MIRRORS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
@@ -121,7 +140,27 @@ async function collect(existing) {
     save([...byId.values()]);
     await sleep(5000);
   }
+  if (!only || only === 'catch-all') await collectCatchAll(byId);
   return [...byId.values()];
+}
+
+async function collectCatchAll(byId) {
+  for (const [key, industry] of Object.entries(CATCH_ALL)) {
+    console.log(`▶ Sammel-Durchlauf ${key} → ${industry}`);
+    const els = await overpass(`[out:json][timeout:170][bbox:${REGION.bbox}];(nwr["${key}"]["name"]["website"];nwr["${key}"]["name"]["contact:website"];);out center tags;`);
+    let added = 0;
+    for (const el of els) {
+      const t = el.tags || {};
+      if (t['brand:wikidata'] || NOT_A_BUSINESS.has(t[key])) continue;
+      const lead = toLead(el, industry);
+      if (byId.has(lead.osmId)) continue;
+      lead.osmType = `${key}=${t[key]}`;
+      byId.set(lead.osmId, lead); added++;
+    }
+    console.log(`   ${els.length} gefunden, ${added} neu`);
+    save([...byId.values()]);
+    await sleep(5000);
+  }
 }
 
 // ── Impressum email extraction ──
