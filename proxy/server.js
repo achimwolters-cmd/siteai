@@ -499,7 +499,9 @@ async function overpassQuery(query) {
 }
 
 app.post('/crm/discover', requireCRM, async (req, res) => {
-  const { city = 'Mönchengladbach', industry = 'Friseur / Kosmetik', limit = 30, customSearch = '' } = req.body;
+  const { city = 'Mönchengladbach', country = 'de', industry = 'Friseur / Kosmetik', limit = 30, customSearch = '' } = req.body;
+  const COUNTRY_CODES = { de: 'DE', at: 'AT', ch: 'CH' };
+  const countryCode = COUNTRY_CODES[country] || 'DE';
 
   const OSM_TAGS = {
     'Friseur / Kosmetik':       [['shop','hairdresser'],['shop','beauty'],['shop','cosmetics']],
@@ -535,7 +537,8 @@ app.post('/crm/discover', requireCRM, async (req, res) => {
   }
 
   const query = `[out:json][timeout:25];
-area["name"="${city}"]["place"~"city|town|village"]->.searchArea;
+area["ISO3166-1"="${countryCode}"]->.country;
+area["name"="${city}"]["place"~"city|town|village"](area.country)->.searchArea;
 (
 ${tagLines}
 );

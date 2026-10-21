@@ -407,20 +407,16 @@
         <p style="font-size:14px;color:var(--mid);margin-bottom:20px">Sucht automatisch lokale Unternehmen über OpenStreetMap</p>
         <div class="discover-form">
           <div class="discover-form-group">
-            <label>Stadt</label>
-            <select id="disc-city">
-              <option>Mönchengladbach</option>
-              <option>Düsseldorf</option>
-              <option>Krefeld</option>
-              <option>Neuss</option>
-              <option>Viersen</option>
-              <option>Grevenbroich</option>
-              <option>Dormagen</option>
-              <option>Ratingen</option>
-              <option>Köln</option>
-              <option>Bonn</option>
-              <option>Aachen</option>
+            <label>Land</label>
+            <select id="disc-country">
+              <option value="de">🇩🇪 Deutschland</option>
+              <option value="at">🇦🇹 Österreich</option>
+              <option value="ch">🇨🇭 Schweiz</option>
             </select>
+          </div>
+          <div class="discover-form-group">
+            <label>Stadt</label>
+            <input type="text" id="disc-city" value="Mönchengladbach" placeholder="z.B. Düsseldorf" style="min-width:160px" />
           </div>
           <div class="discover-form-group">
             <label>Branche</label>
@@ -1091,7 +1087,8 @@ async function copySeed() {
 
 // ── LEAD DISCOVERY ──
 async function runDiscovery() {
-  const city         = document.getElementById('disc-city').value;
+  const city         = document.getElementById('disc-city').value.trim();
+  const country      = document.getElementById('disc-country').value;
   const industry     = document.getElementById('disc-industry').value;
   const limit        = document.getElementById('disc-limit').value;
   const customSearch = document.getElementById('disc-custom').value.trim();
@@ -1109,7 +1106,7 @@ async function runDiscovery() {
   try {
     const r = await fetch('/crm/discover', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
-      body: JSON.stringify({ city, industry, limit: parseInt(limit), customSearch })
+      body: JSON.stringify({ city, country, industry, limit: parseInt(limit), customSearch })
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error);
