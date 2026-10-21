@@ -216,6 +216,31 @@
     .btn-import-all:hover{background:#1a454d}
     .discover-empty{text-align:center;padding:32px;color:var(--mid);font-size:14px}
 
+    /* ── LEAD POOL ── */
+    .pool-card-wrap{background:#fff;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:20px}
+    .pool-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+    .pool-head h2{font-size:17px;font-weight:800;color:var(--dark)}
+    .pool-head p{font-size:13px;color:var(--mid);margin-top:4px}
+    .btn-pool-reload{padding:7px 14px;border:2px solid #e8edf0;border-radius:8px;background:#fff;font-size:12px;font-weight:600;color:var(--mid);cursor:pointer}
+    .btn-pool-reload:hover{border-color:var(--teal);color:var(--teal)}
+    .pool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+    .pool-tile{border:2px solid #e8edf0;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.15s;background:#fafcfd;text-align:left;font-family:inherit}
+    .pool-tile:hover{border-color:var(--teal);transform:translateY(-2px);box-shadow:0 6px 18px rgba(61,138,150,0.12)}
+    .pool-tile.active{border-color:var(--teal);background:#eef7f8}
+    .pool-tile-icon{font-size:22px}
+    .pool-tile-name{font-size:14px;font-weight:700;color:var(--dark);margin-top:8px}
+    .pool-tile-num{font-size:30px;font-weight:800;color:var(--teal);margin-top:6px;line-height:1}
+    .pool-tile-sub{font-size:11px;color:var(--mid);margin-top:6px}
+    .pool-filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:20px 0 12px}
+    .pool-filters input[type=text]{padding:8px 12px;border:2px solid #e8edf0;border-radius:8px;font-size:14px;font-family:inherit;outline:none;min-width:180px}
+    .pool-filters input[type=text]:focus{border-color:var(--teal)}
+    .pool-filters label{font-size:13px;color:var(--mid);display:flex;align-items:center;gap:6px;cursor:pointer}
+    .pool-count{font-size:13px;color:var(--mid);margin-left:auto}
+    .pool-empty{padding:28px;text-align:center;color:var(--mid);font-size:14px}
+    details.live-search summary{cursor:pointer;font-size:14px;font-weight:700;color:var(--mid);list-style:none}
+    details.live-search summary::-webkit-details-marker{display:none}
+    details.live-search[open] summary{margin-bottom:16px}
+
     /* ── EMAIL PREVIEW MODAL ── */
     #email-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1500;display:none;align-items:center;justify-content:center;padding:20px}
     #email-modal-overlay.open{display:flex}
@@ -401,10 +426,49 @@
 
   <!-- ── TAB: DISCOVER ── -->
   <div class="view-panel" id="view-discover">
-    <div style="padding:20px 24px">
-      <div style="background:#fff;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
-        <h2 style="font-size:17px;font-weight:800;color:var(--dark);margin-bottom:6px">🔍 Neue Leads finden</h2>
-        <p style="font-size:14px;color:var(--mid);margin-bottom:20px">Sucht automatisch lokale Unternehmen über OpenStreetMap</p>
+    <div style="padding:20px 24px;overflow:auto;flex:1">
+      <div class="pool-card-wrap">
+        <div class="pool-head">
+          <div>
+            <h2>📦 Lead-Pool <span id="pool-region" style="color:var(--teal)"></span></h2>
+            <p id="pool-meta">Wird geladen…</p>
+          </div>
+          <button class="btn-pool-reload" onclick="loadPoolOverview(true)">↻ Pool neu laden</button>
+        </div>
+        <div class="pool-grid" id="pool-grid"></div>
+        <div id="pool-list" style="display:none">
+          <div class="pool-filters">
+            <input type="text" id="pool-city" list="pool-city-list" placeholder="📍 Ort oder PLZ" oninput="schedulePoolSearch()" />
+            <datalist id="pool-city-list"></datalist>
+            <input type="text" id="pool-q" placeholder="🔍 Name, Straße…" oninput="schedulePoolSearch()" />
+            <label><input type="checkbox" id="pool-only-email" checked onchange="runPoolSearch()" /> nur mit E-Mail</label>
+            <span class="pool-count" id="pool-count"></span>
+          </div>
+          <div class="discover-results-wrap" style="max-height:460px">
+            <table class="discover-table">
+              <thead>
+                <tr>
+                  <th style="width:36px"><input type="checkbox" id="pool-cb-all" onclick="togglePoolAll(this.checked)" /></th>
+                  <th>Firma</th>
+                  <th>Ort</th>
+                  <th>E-Mail</th>
+                  <th>Telefon</th>
+                  <th>Web</th>
+                </tr>
+              </thead>
+              <tbody id="pool-tbody"></tbody>
+            </table>
+          </div>
+          <div class="discover-footer">
+            <div style="font-size:13px;color:var(--mid)"><b id="pool-sel-count">0</b> ausgewählt</div>
+            <button class="btn-import-all" id="btn-pool-import" onclick="importPoolSelected()">Ausgewählte ins CRM übernehmen</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pool-card-wrap">
+        <details class="live-search">
+        <summary>🌍 Andere Stadt live suchen (OpenStreetMap, kann langsam sein) ▾</summary>
         <div class="discover-form">
           <div class="discover-form-group">
             <label>Land</label>
@@ -471,6 +535,7 @@
             <button class="btn-import-all" onclick="importAllDiscovered()">Alle importieren</button>
           </div>
         </div>
+        </details>
       </div>
     </div>
   </div>
@@ -724,6 +789,7 @@ function switchTab(tab) {
   document.getElementById('tab-' + tab).classList.add('active');
   document.getElementById('view-' + tab).classList.add('active');
   if (tab === 'outbox') renderOutbox();
+  if (tab === 'discover' && !poolOverview) loadPoolOverview();
 }
 
 // ── Stats ──
@@ -1083,6 +1149,137 @@ async function copySeed() {
   const btn = document.querySelector('.btn-copy');
   btn.textContent = '✓ Kopiert!';
   setTimeout(() => btn.textContent = '📋 Kopieren', 2000);
+}
+
+// ── LEAD POOL ──
+const POOL_ICONS = {
+  'Friseur / Kosmetik': '💇', 'Physiotherapie': '🦴', 'Restaurant / Café': '🍽',
+  'Handwerk': '🔧', 'Fitness / Yoga': '🧘', 'Arztpraxis': '🩺',
+};
+let poolOverview = null;
+let poolIndustry = '';
+let poolResults = [];
+let poolSelected = new Set();
+let poolTimer = null;
+
+async function loadPoolOverview(reload = false) {
+  const meta = document.getElementById('pool-meta');
+  meta.textContent = reload ? 'Pool wird neu geladen…' : 'Wird geladen…';
+  try {
+    const r = await fetch('/crm/pool' + (reload ? '?reload=1' : ''), { headers: { 'x-crm-token': crmToken } });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    poolOverview = d;
+    document.getElementById('pool-region').textContent = '· ' + d.region;
+    const totalAvail = Object.values(d.industries).reduce((a, i) => a + i.available, 0);
+    meta.textContent = `${totalAvail.toLocaleString('de-DE')} Leads mit E-Mail verfügbar · Stand ${new Date(d.updatedAt).toLocaleDateString('de-DE')}`;
+    document.getElementById('pool-city-list').innerHTML = d.cities.map(c => `<option value="${esc(c)}">`).join('');
+    renderPoolGrid();
+    if (poolIndustry) runPoolSearch();
+  } catch (e) {
+    meta.textContent = '⚠️ ' + e.message;
+  }
+}
+
+function renderPoolGrid() {
+  const entries = Object.entries(poolOverview.industries).sort((a, b) => b[1].available - a[1].available);
+  document.getElementById('pool-grid').innerHTML = entries.map(([name, i]) => `
+    <button class="pool-tile ${name === poolIndustry ? 'active' : ''}" onclick="selectPoolIndustry('${esc(name)}')">
+      <div class="pool-tile-icon">${POOL_ICONS[name] || '🏢'}</div>
+      <div class="pool-tile-name">${esc(name)}</div>
+      <div class="pool-tile-num">${i.available.toLocaleString('de-DE')}</div>
+      <div class="pool-tile-sub">verfügbar mit E-Mail · ${i.total.toLocaleString('de-DE')} Firmen gesamt</div>
+    </button>`).join('');
+}
+
+function selectPoolIndustry(name) {
+  poolIndustry = name;
+  poolSelected.clear();
+  renderPoolGrid();
+  document.getElementById('pool-list').style.display = 'block';
+  runPoolSearch();
+}
+
+function schedulePoolSearch() {
+  clearTimeout(poolTimer);
+  poolTimer = setTimeout(runPoolSearch, 300);
+}
+
+async function runPoolSearch() {
+  const tbody = document.getElementById('pool-tbody');
+  tbody.innerHTML = `<tr><td colspan="6" class="pool-empty">⏳ Lädt…</td></tr>`;
+  const r = await fetch('/crm/pool/search', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+    body: JSON.stringify({
+      industry: poolIndustry,
+      city: document.getElementById('pool-city').value,
+      q: document.getElementById('pool-q').value,
+      onlyEmail: document.getElementById('pool-only-email').checked,
+      limit: 500,
+    })
+  });
+  const d = await r.json();
+  if (!r.ok) { tbody.innerHTML = `<tr><td colspan="6" class="pool-empty">⚠️ ${esc(d.error)}</td></tr>`; return; }
+  poolResults = d.leads;
+  document.getElementById('pool-count').textContent =
+    d.total > d.leads.length ? `${d.leads.length} von ${d.total.toLocaleString('de-DE')} angezeigt` : `${d.total} Treffer`;
+  renderPoolTable();
+}
+
+function renderPoolTable() {
+  const tbody = document.getElementById('pool-tbody');
+  if (!poolResults.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="pool-empty">Keine passenden Leads – Filter anpassen.</td></tr>`;
+  } else {
+    tbody.innerHTML = poolResults.map(p => `
+      <tr>
+        <td><input type="checkbox" ${poolSelected.has(p.osmId) ? 'checked' : ''} onclick="togglePoolLead('${p.osmId}', this.checked)" /></td>
+        <td><strong>${esc(p.company)}</strong>${p.street ? `<div style="font-size:11px;color:var(--mid)">${esc(p.street)}</div>` : ''}</td>
+        <td style="color:var(--mid)">${esc([p.postcode, p.city].filter(Boolean).join(' ') || '–')}</td>
+        <td>${p.email ? `<span style="color:var(--teal)">${esc(p.email)}</span>` : '<span style="color:#cbd5e1">–</span>'}</td>
+        <td style="color:var(--mid)">${esc(p.phone || '–')}</td>
+        <td>${p.website ? `<a href="${esc(p.website)}" target="_blank" rel="noopener" style="text-decoration:none">🌐</a>` : ''}</td>
+      </tr>`).join('');
+  }
+  updatePoolSelection();
+}
+
+function togglePoolLead(id, on) {
+  on ? poolSelected.add(id) : poolSelected.delete(id);
+  updatePoolSelection();
+}
+
+function togglePoolAll(on) {
+  poolResults.forEach(p => on ? poolSelected.add(p.osmId) : poolSelected.delete(p.osmId));
+  renderPoolTable();
+}
+
+function updatePoolSelection() {
+  document.getElementById('pool-sel-count').textContent = poolSelected.size;
+  const all = document.getElementById('pool-cb-all');
+  all.checked = poolResults.length > 0 && poolResults.every(p => poolSelected.has(p.osmId));
+}
+
+async function importPoolSelected() {
+  if (!poolSelected.size) { showToast('Bitte zuerst Leads auswählen', 'err'); return; }
+  const btn = document.getElementById('btn-pool-import');
+  btn.disabled = true; btn.textContent = '⏳ Wird übernommen…';
+  try {
+    const r = await fetch('/crm/pool/import', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+      body: JSON.stringify({ osmIds: [...poolSelected] })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    allLeads.unshift(...d.added);
+    poolSelected.clear();
+    renderStats(); renderTable(); updateOutboxBadge();
+    showToast(`✅ ${d.added.length} Leads ins CRM übernommen`, 'ok');
+    await loadPoolOverview();
+  } catch (e) {
+    showToast('❌ ' + e.message, 'err');
+  }
+  btn.disabled = false; btn.textContent = 'Ausgewählte ins CRM übernehmen';
 }
 
 // ── LEAD DISCOVERY ──

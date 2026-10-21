@@ -738,6 +738,107 @@ Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text, kein
   }
 });
 
+// ── CRM: Lead-Pool (vorab gesammelte Firmen, liegt privat auf dem FTP) ──
+const POOL_LOCAL = '/tmp/lead-pool.json';
+let leadPool = null;
+
+async function loadPool(force = false) {
+  if (leadPool && !force) return leadPool;
+  setupFtpNetrc();
+  await run(`curl --netrc-file "${NETRC_FILE}" -sS -o "${POOL_LOCAL}" "ftp://${FTP_HOST}/ailima-data/lead-pool.json"`, 60000);
+  leadPool = JSON.parse(fs.readFileSync(POOL_LOCAL, 'utf8'));
+  return leadPool;
+}
+
+const normName = s => (s || '').toLowerCase().replace(/\b(gmbh|ug|ag|kg|ohg|gbr|e\.k\.|e\.v\.)\b/g, '').replace(/[^a-z0-9äöüß]/g, '');
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+
+function crmIndex() {
+  const leads = loadCRM().leads;
+  return {
+    ids:    new Set(leads.map(l => l.osmId).filter(Boolean)),
+    names:  new Set(leads.map(l => normName(l.company)).filter(Boolean)),
+    emails: new Set(leads.map(l => (l.email || '').toLowerCase()).filter(Boolean)),
+    hosts:  new Set(leads.map(l => hostOf(l.website)).filter(Boolean)),
+  };
+}
+
+const inCRM = (p, idx) =>
+  idx.ids.has(p.osmId) || idx.names.has(normName(p.company)) ||
+  (p.email && idx.emails.has(p.email)) || (p.website && idx.hosts.has(hostOf(p.website)));
+
+app.get('/crm/pool', requireCRM, async (req, res) => {
+  try {
+    const pool = await loadPool(req.query.reload === '1');
+    const idx = crmIndex();
+    const industries = {};
+    const cities = {};
+    for (const p of pool.leads) {
+      const i = industries[p.industry] ||= { total: 0, withEmail: 0, available: 0 };
+      i.total++;
+      if (p.email) i.withEmail++;
+      if (p.email && !inCRM(p, idx)) i.available++;
+      if (p.city) cities[p.city] = (cities[p.city] || 0) + 1;
+    }
+    const topCities = Object.entries(cities).sort((a, b) => b[1] - a[1]).slice(0, 40).map(([c]) => c);
+    res.json({ region: pool.region, updatedAt: pool.updatedAt, industries, cities: topCities });
+  } catch (e) {
+    res.status(500).json({ error: 'Lead-Pool nicht verfügbar: ' + e.message });
+  }
+});
+
+app.post('/crm/pool/search', requireCRM, async (req, res) => {
+  try {
+    const { industry = '', city = '', q = '', onlyEmail = true, limit = 50 } = req.body;
+    const pool = await loadPool();
+    const idx = crmIndex();
+    const needle = q.trim().toLowerCase();
+    const cityNeedle = city.trim().toLowerCase();
+    const matches = pool.leads.filter(p =>
+      (!industry || p.industry === industry) &&
+      (!onlyEmail || p.email) &&
+      (!cityNeedle || (p.city || '').toLowerCase().includes(cityNeedle) || (p.postcode || '').startsWith(cityNeedle)) &&
+      (!needle || `${p.company} ${p.street} ${p.website}`.toLowerCase().includes(needle)) &&
+      !inCRM(p, idx)
+    );
+    const max = Math.max(1, Math.min(parseInt(limit) || 50, 500));
+    res.json({ leads: matches.slice(0, max), total: matches.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/crm/pool/import', requireCRM, async (req, res) => {
+  try {
+    const ids = new Set(req.body.osmIds || []);
+    const pool = await loadPool();
+    const data = loadCRM();
+    const idx = crmIndex();
+    const now = new Date().toISOString();
+    const added = [];
+    for (const p of pool.leads) {
+      if (!ids.has(p.osmId) || inCRM(p, idx)) continue;
+      const lead = {
+        id: crypto.randomBytes(8).toString('hex'),
+        osmId: p.osmId, company: p.company, industry: p.industry,
+        email: p.email, phone: p.phone, website: p.website,
+        address: [p.street, [p.postcode, p.city].filter(Boolean).join(' ')].filter(Boolean).join(', '),
+        city: p.city, status: 'neu', channel: 'email', notes: '',
+        createdBy: req.crmUser, createdByName: req.crmName, createdAt: now,
+        updatedAt: now, updatedBy: req.crmUser,
+      };
+      idx.ids.add(p.osmId);
+      idx.names.add(normName(p.company));
+      data.leads.unshift(lead);
+      added.push(lead);
+    }
+    await saveCRM(data);
+    res.json({ added });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ---------- admin endpoints ----------
 
 // List all clients

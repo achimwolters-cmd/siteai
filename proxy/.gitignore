@@ -5,3 +5,4 @@ crm.json
 crm_seed.txt
 public/versions/
 *.log
+lead-pool.json
