@@ -475,19 +475,27 @@ const OVERPASS_MIRRORS = [
 ];
 
 async function overpassQuery(query) {
+  const errors = [];
   for (const url of OVERPASS_MIRRORS) {
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
       const r = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'AilimaCRM/1.0 (achim@ailima.de)',
+        },
         body: 'data=' + encodeURIComponent(query),
-        signal: AbortSignal.timeout(28000),
+        signal: controller.signal,
       });
-      if (!r.ok) continue;
+      clearTimeout(timer);
+      if (!r.ok) { errors.push(`${url}: HTTP ${r.status}`); continue; }
       return await r.json();
-    } catch(e) { /* try next mirror */ }
+    } catch(e) { errors.push(`${url}: ${e.message}`); }
   }
-  throw new Error('Overpass API nicht erreichbar – bitte später erneut versuchen');
+  console.error('[Overpass] alle Mirror fehlgeschlagen:', errors);
+  throw new Error('Overpass API nicht erreichbar (' + errors.map(e => e.split(': ')[1]).join(', ') + ')');
 }
 
 app.post('/crm/discover', requireCRM, async (req, res) => {
