@@ -575,12 +575,26 @@ app.post('/crm/preview-email', requireCRM, (req, res) => {
   res.json({ html: html.replace('cid:ailima-logo', '/eddi.png') });
 });
 
-function smtpTransport() {
+function smtpTransport(port = SMTP_PORT) {
   return nodemailer.createTransport({
-    host: SMTP_HOST, port: SMTP_PORT, secure: false,
+    host: SMTP_HOST, port, secure: port === 465,
+    name: domainOf(SMTP_USER) || 'ailima.de',
+    connectionTimeout: 20000, greetingTimeout: 20000, socketTimeout: 60000,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
     tls: { rejectUnauthorized: false },
   });
+}
+
+// Port 587 occasionally times out from Render's shared egress IPs; 465 is the fallback.
+async function sendWithFallback(message) {
+  try {
+    return await smtpTransport().sendMail(message);
+  } catch (e) {
+    const network = /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ENETUNREACH/i.test(`${e.code} ${e.message}`);
+    if (!network || SMTP_PORT === 465) throw e;
+    console.warn(`[SMTP] Port ${SMTP_PORT} nicht erreichbar (${e.message}) – versuche 465`);
+    return await smtpTransport(465).sendMail(message);
+  }
 }
 
 // SMTP health-check endpoint (used by CRM UI)
@@ -845,7 +859,7 @@ async function deliver(lead, subject, body, kind) {
   const thread = kind !== 'initial' && lead.emailMessageId
     ? { inReplyTo: lead.emailMessageId, references: [lead.emailMessageId, ...(lead.followUpMessageIds || [])].join(' ') }
     : {};
-  const info = await smtpTransport().sendMail({
+  const info = await sendWithFallback({
     from: `"${SMTP_FROM_NAME}" <${SMTP_USER}>`,
     to: lead.email,
     subject,
