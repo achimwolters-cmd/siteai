@@ -41,6 +41,8 @@
     .btn-logout:hover{color:#fff;border-color:rgba(255,255,255,0.5)}
     .btn-backup{font-size:13px;color:rgba(255,255,255,0.5);background:none;border:1px solid rgba(255,255,255,0.15);padding:6px 14px;border-radius:50px;cursor:pointer;transition:all 0.2s}
     .btn-backup:hover{color:#5db0be;border-color:#5db0be}
+    .smtp-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#e53e3e;margin-right:4px;vertical-align:middle}
+    .smtp-dot.ok{background:#38a169}
 
     /* Backup Modal */
     .backup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px}
@@ -56,18 +58,26 @@
     .btn-copy:hover{background:var(--teal-d)}
     .btn-close-backup{padding:11px 20px;border-radius:10px;border:2px solid #e8edf0;background:#fff;font-size:14px;font-weight:600;color:var(--mid);cursor:pointer}
 
+    /* ── Nav Tabs ── */
+    .nav-tabs{background:#fff;border-bottom:2px solid #e8edf0;display:flex;align-items:center;padding:0 24px;gap:0}
+    .nav-tab{padding:14px 20px;font-size:14px;font-weight:600;color:var(--mid);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:8px;transition:all 0.15s;background:none;border-left:none;border-right:none;border-top:none}
+    .nav-tab:hover{color:var(--teal)}
+    .nav-tab.active{color:var(--teal);border-bottom-color:var(--teal)}
+    .nav-tab-badge{background:#e8f4fd;color:#1a6fc4;font-size:11px;font-weight:800;padding:2px 7px;border-radius:50px;min-width:20px;text-align:center}
+    .nav-tab-badge.warn{background:#fff3cd;color:#b7791f}
+    .nav-tab-badge.new{background:#d1fae5;color:#065f46}
+
     /* ── Toolbar ── */
-    .toolbar{background:#fff;padding:16px 24px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #e8edf0;flex-wrap:wrap}
-    .btn-add{display:flex;align-items:center;gap:8px;background:var(--teal);color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s}
+    .toolbar{background:#fff;padding:14px 24px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e8edf0;flex-wrap:wrap}
+    .btn-add{display:flex;align-items:center;gap:8px;background:var(--teal);color:#fff;border:none;padding:9px 18px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s}
     .btn-add:hover{background:var(--teal-d)}
-    .toolbar-filters{display:flex;gap:8px;flex:1;flex-wrap:wrap}
-    .filter-btn{padding:8px 16px;border-radius:50px;border:2px solid #e8edf0;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--mid);transition:all 0.2s}
+    .toolbar-filters{display:flex;gap:7px;flex:1;flex-wrap:wrap}
+    .filter-btn{padding:7px 14px;border-radius:50px;border:2px solid #e8edf0;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--mid);transition:all 0.2s}
     .filter-btn.active,.filter-btn:hover{border-color:var(--teal);color:var(--teal)}
-    .toolbar-search input{padding:9px 14px;border:2px solid #e8edf0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;width:200px;transition:border-color 0.2s}
+    .toolbar-search input{padding:8px 14px;border:2px solid #e8edf0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;width:200px;transition:border-color 0.2s}
     .toolbar-search input:focus{border-color:var(--teal)}
-    .btn-export{padding:9px 16px;border:2px solid #e8edf0;border-radius:10px;font-size:13px;font-weight:600;color:var(--mid);background:#fff;cursor:pointer;transition:all 0.2s}
+    .btn-export{padding:8px 14px;border:2px solid #e8edf0;border-radius:10px;font-size:13px;font-weight:600;color:var(--mid);background:#fff;cursor:pointer;transition:all 0.2s}
     .btn-export:hover{border-color:var(--teal);color:var(--teal)}
-    .mail-account-hint{font-size:12px;color:var(--mid);background:#f7fbfc;border:1px solid #e8edf0;border-radius:8px;padding:6px 12px;white-space:nowrap}
 
     /* ── Bulk action bar ── */
     .bulk-bar{display:none;align-items:center;gap:12px;padding:12px 24px;background:#0f2229;border-bottom:1px solid rgba(255,255,255,0.08);flex-wrap:wrap}
@@ -91,8 +101,8 @@
     tr.row-selected td{background:#f0f9fb!important}
 
     /* ── Stats Bar ── */
-    .stats-bar{background:#fff;border-bottom:1px solid #e8edf0;padding:0 24px;display:flex;gap:0}
-    .stat-item{padding:12px 24px;border-right:1px solid #e8edf0;text-align:center}
+    .stats-bar{background:#fff;border-bottom:1px solid #e8edf0;padding:0 24px;display:flex;gap:0;overflow-x:auto}
+    .stat-item{padding:12px 20px;border-right:1px solid #e8edf0;text-align:center;flex-shrink:0}
     .stat-num{font-size:20px;font-weight:800;color:var(--dark)}
     .stat-label{font-size:11px;color:var(--mid);margin-top:2px}
 
@@ -100,7 +110,7 @@
     .table-wrap{flex:1;overflow:auto;padding:20px 24px}
     table{width:100%;table-layout:fixed;border-collapse:collapse;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
     th{background:#f7fbfc;padding:12px 16px;text-align:left;font-size:12px;font-weight:700;color:var(--mid);letter-spacing:0.5px;text-transform:uppercase;border-bottom:1px solid #e8edf0;overflow:hidden}
-    td{padding:14px 16px;border-bottom:1px solid #f0f4f6;font-size:14px;vertical-align:middle;overflow:hidden;max-width:0}
+    td{padding:12px 16px;border-bottom:1px solid #f0f4f6;font-size:14px;vertical-align:middle;overflow:hidden;max-width:0}
     tr:last-child td{border-bottom:none}
     tr:hover td{background:#fafcfd}
     .td-company{font-weight:700;color:var(--dark)}
@@ -115,6 +125,14 @@
     .badge-gewonnen{background:#d1fae5;color:#065f46}
     .badge-kein_interesse{background:#fee2e2;color:#991b1b}
 
+    /* Mail Status Badges */
+    .mbadge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:50px;font-size:11px;font-weight:700;white-space:nowrap}
+    .mbadge-draft{background:#fef9c3;color:#854d0e}
+    .mbadge-sent{background:#dcfce7;color:#14532d}
+    .mbadge-fu1_sent{background:#dbeafe;color:#1e3a8a}
+    .mbadge-fu2_sent{background:#ede9fe;color:#4c1d95}
+    .mbadge-none{background:#f1f5f9;color:#94a3b8;font-size:10px}
+
     /* Avatar */
     .avatar{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
     .av-silke{background:#3d8a96}
@@ -123,13 +141,17 @@
     .av-rene{background:#1a454d}
 
     /* Action buttons */
-    .td-actions{display:flex;gap:6px;opacity:0;transition:opacity 0.2s}
+    .td-actions{display:flex;gap:5px;opacity:0;transition:opacity 0.2s;flex-wrap:wrap}
     tr:hover .td-actions{opacity:1}
-    .btn-edit,.btn-del{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s}
+    .btn-edit,.btn-del,.btn-mail-action,.btn-fu-action{padding:5px 11px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s}
     .btn-edit{background:#f0f4f6;color:var(--mid)}
     .btn-edit:hover{background:var(--teal);color:#fff}
     .btn-del{background:#fee2e2;color:#991b1b}
     .btn-del:hover{background:#fca5a5}
+    .btn-mail-action{background:#e8f4fd;color:#1a6fc4}
+    .btn-mail-action:hover{background:var(--teal);color:#fff}
+    .btn-fu-action{background:#fff3cd;color:#b7791f}
+    .btn-fu-action:hover{background:#f6c443;color:#5a3e00}
 
     .td-notes{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mid);font-size:13px}
     .td-date{font-size:13px;color:var(--mid)}
@@ -142,7 +164,7 @@
     .empty-state .es-icon{font-size:48px;margin-bottom:16px}
     .empty-state h3{font-size:18px;font-weight:700;margin-bottom:8px;color:var(--dark)}
 
-    /* ── Modal ── */
+    /* ── Modal (lead form) ── */
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
     .modal-overlay.open{display:flex}
     .modal{background:#fff;border-radius:20px;width:100%;max-width:560px;max-height:90vh;overflow:auto;box-shadow:0 32px 80px rgba(0,0,0,0.3)}
@@ -167,6 +189,96 @@
     .dup-warning.visible{display:block}
     .dup-warning strong{display:block;margin-bottom:4px;font-size:13px;color:#5a3e00}
     .dup-warning a{color:var(--teal);font-weight:700;cursor:pointer;text-decoration:underline}
+
+    /* ── LEAD DISCOVERY PANEL ── */
+    #discover-panel{display:none;background:#fff;border-bottom:2px solid #e8edf0;padding:20px 24px}
+    #discover-panel.open{display:block}
+    .discover-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px}
+    .discover-form-group{display:flex;flex-direction:column;gap:5px}
+    .discover-form-group label{font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:0.5px}
+    .discover-form-group select,.discover-form-group input{padding:9px 13px;border:2px solid #e8edf0;border-radius:8px;font-size:14px;font-family:inherit;outline:none;min-width:160px;background:#fff}
+    .discover-form-group select:focus,.discover-form-group input:focus{border-color:var(--teal)}
+    .btn-discover-search{padding:9px 22px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;height:40px}
+    .btn-discover-search:hover{background:var(--teal-d)}
+    .btn-discover-search:disabled{background:#94a3b8;cursor:not-allowed}
+    .discover-status{font-size:13px;color:var(--mid);margin-bottom:12px;min-height:20px}
+    .discover-results-wrap{overflow:auto;max-height:320px;border:1px solid #e8edf0;border-radius:10px}
+    .discover-table{width:100%;border-collapse:collapse;font-size:13px}
+    .discover-table th{background:#f7fbfc;padding:9px 14px;text-align:left;font-weight:700;color:var(--mid);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e8edf0;position:sticky;top:0}
+    .discover-table td{padding:9px 14px;border-bottom:1px solid #f0f4f6}
+    .discover-table tr:last-child td{border-bottom:none}
+    .discover-table tr:hover td{background:#fafcfd}
+    .btn-import-one{padding:4px 12px;background:var(--teal);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+    .btn-import-one:hover{background:var(--teal-d)}
+    .btn-import-one.imported{background:#94a3b8;cursor:default}
+    .discover-footer{display:flex;align-items:center;justify-content:space-between;margin-top:14px;flex-wrap:wrap;gap:10px}
+    .btn-import-all{padding:9px 22px;background:#0f2229;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+    .btn-import-all:hover{background:#1a454d}
+    .discover-empty{text-align:center;padding:32px;color:var(--mid);font-size:14px}
+
+    /* ── EMAIL PREVIEW MODAL ── */
+    #email-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1500;display:none;align-items:center;justify-content:center;padding:20px}
+    #email-modal-overlay.open{display:flex}
+    .email-modal{background:#fff;border-radius:20px;width:100%;max-width:700px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,0.3)}
+    .epm-header{padding:22px 28px 0;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
+    .epm-header-left h2{font-size:17px;font-weight:800;color:var(--dark)}
+    .epm-header-left .epm-to{font-size:13px;color:var(--mid);margin-top:4px}
+    .epm-subject-wrap{padding:14px 28px 0;flex-shrink:0}
+    .epm-subject-label{font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+    .epm-subject-wrap input{width:100%;padding:10px 12px;border:2px solid #e8edf0;border-radius:8px;font-size:14px;font-family:inherit;outline:none}
+    .epm-subject-wrap input:focus{border-color:var(--teal)}
+    .epm-body-wrap{padding:14px 28px 0;flex:1;overflow:hidden;display:flex;flex-direction:column}
+    .epm-body-label{font-size:11px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+    .epm-body-wrap textarea{flex:1;width:100%;min-height:260px;padding:12px;border:2px solid #e8edf0;border-radius:8px;font-size:14px;font-family:inherit;outline:none;resize:none;line-height:1.6}
+    .epm-body-wrap textarea:focus{border-color:var(--teal)}
+    .epm-signature{padding:6px 28px;font-size:12px;color:#94a3b8;font-style:italic;flex-shrink:0}
+    .epm-status-bar{padding:6px 28px;font-size:13px;flex-shrink:0;min-height:28px}
+    .epm-footer{padding:14px 28px 20px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #f0f4f6;flex-shrink:0;flex-wrap:wrap}
+    .btn-epm-regen{padding:10px 18px;background:#f0f4f6;color:var(--mid);border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer}
+    .btn-epm-regen:hover{background:#e8edf0;color:var(--dark)}
+    .btn-epm-cancel{padding:10px 18px;border:2px solid #e8edf0;background:#fff;color:var(--mid);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer}
+    .btn-epm-cancel:hover{border-color:var(--teal);color:var(--teal)}
+    .btn-epm-send{padding:10px 28px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px}
+    .btn-epm-send:hover{background:var(--teal-d)}
+    .btn-epm-send:disabled{background:#94a3b8;cursor:not-allowed}
+    .epm-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ── View panels ── */
+    .view-panel{display:none;flex:1;flex-direction:column;overflow:hidden}
+    .view-panel.active{display:flex}
+
+    /* Outbox view */
+    .outbox-wrap{flex:1;overflow:auto;padding:20px 24px}
+    .outbox-section{margin-bottom:28px}
+    .outbox-section-title{font-size:13px;font-weight:700;color:var(--mid);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    .outbox-section-count{background:#f1f5f9;color:var(--mid);font-size:11px;font-weight:800;padding:2px 8px;border-radius:50px}
+    .outbox-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+    .outbox-card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 10px rgba(0,0,0,0.07);border:2px solid transparent;transition:border-color 0.15s}
+    .outbox-card:hover{border-color:#e8edf0}
+    .outbox-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:12px}
+    .outbox-card-company{font-weight:700;font-size:15px;color:var(--dark)}
+    .outbox-card-meta{font-size:12px;color:var(--mid);margin-top:2px}
+    .outbox-card-badge{flex-shrink:0}
+    .outbox-card-subject{font-size:13px;color:var(--dark);margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .outbox-card-preview{font-size:12px;color:var(--mid);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:12px}
+    .outbox-card-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn-outbox-send{padding:8px 18px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+    .btn-outbox-send:hover{background:var(--teal-d)}
+    .btn-outbox-preview{padding:8px 14px;background:#f0f4f6;color:var(--mid);border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+    .btn-outbox-preview:hover{background:#e8edf0;color:var(--dark)}
+    .btn-outbox-fu{padding:8px 18px;background:#fff3cd;color:#92400e;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+    .btn-outbox-fu:hover{background:#f6c443;color:#5a3e00}
+    .outbox-empty{text-align:center;padding:60px 20px;color:var(--mid)}
+    .outbox-empty .oe-icon{font-size:48px;margin-bottom:16px}
+    .outbox-empty h3{font-size:18px;font-weight:700;color:var(--dark);margin-bottom:8px}
+    .outbox-empty p{font-size:14px}
+
+    /* Toast notification */
+    #toast{position:fixed;bottom:28px;right:28px;background:#0f2229;color:#fff;padding:14px 22px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.3);transform:translateY(80px);opacity:0;transition:all 0.3s;z-index:9999;max-width:360px}
+    #toast.show{transform:translateY(0);opacity:1}
+    #toast.toast-ok{background:#065f46}
+    #toast.toast-err{background:#991b1b}
   </style>
 </head>
 <body>
@@ -208,67 +320,160 @@
     </div>
     <div class="header-right">
       <span class="header-user" id="header-user"></span>
-      <button class="btn-backup" id="btn-forcesync" onclick="forceSync()" title="Aktuelle Daten sofort zu Railway synchronisieren">☁️ Sync</button>
+      <button class="btn-backup" id="btn-forcesync" onclick="forceSync()">☁️ Sync</button>
       <button class="btn-backup" onclick="openBackup()">💾 Backup</button>
       <button class="btn-logout" onclick="doLogout()">Abmelden</button>
     </div>
   </header>
 
+  <!-- Navigation Tabs -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tab-leads" onclick="switchTab('leads')">
+      📋 Leads <span class="nav-tab-badge" id="badge-leads">0</span>
+    </button>
+    <button class="nav-tab" id="tab-discover" onclick="switchTab('discover')">
+      🔍 Leads finden
+    </button>
+    <button class="nav-tab" id="tab-outbox" onclick="switchTab('outbox')">
+      📤 Ausgang <span class="nav-tab-badge warn" id="badge-outbox" style="display:none">0</span>
+    </button>
+  </div>
+
   <div class="stats-bar" id="stats-bar"></div>
 
-  <div class="toolbar">
-    <button class="btn-add" onclick="openModal()">+ Neuer Kontakt</button>
-    <div class="toolbar-filters" id="filter-btns">
-      <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">Alle</button>
-      <button class="filter-btn" data-filter="neu" onclick="setFilter('neu',this)">🆕 Neu</button>
-      <button class="filter-btn" data-filter="angeschrieben" onclick="setFilter('angeschrieben',this)">📧 Angeschrieben</button>
-      <button class="filter-btn" data-filter="in_kontakt" onclick="setFilter('in_kontakt',this)">💬 In Kontakt</button>
-      <button class="filter-btn" data-filter="termin" onclick="setFilter('termin',this)">📅 Termin</button>
-      <button class="filter-btn" data-filter="gewonnen" onclick="setFilter('gewonnen',this)">✅ Gewonnen</button>
-      <button class="filter-btn" data-filter="kein_interesse" onclick="setFilter('kein_interesse',this)">❌ Kein Interesse</button>
+  <!-- ── TAB: LEADS ── -->
+  <div class="view-panel active" id="view-leads">
+    <div class="toolbar">
+      <button class="btn-add" onclick="openModal()">+ Neuer Kontakt</button>
+      <div class="toolbar-filters" id="filter-btns">
+        <button class="filter-btn active" data-filter="all" onclick="setFilter('all',this)">Alle</button>
+        <button class="filter-btn" data-filter="neu" onclick="setFilter('neu',this)">🆕 Neu</button>
+        <button class="filter-btn" data-filter="angeschrieben" onclick="setFilter('angeschrieben',this)">📧 Angeschrieben</button>
+        <button class="filter-btn" data-filter="in_kontakt" onclick="setFilter('in_kontakt',this)">💬 In Kontakt</button>
+        <button class="filter-btn" data-filter="termin" onclick="setFilter('termin',this)">📅 Termin</button>
+        <button class="filter-btn" data-filter="gewonnen" onclick="setFilter('gewonnen',this)">✅ Gewonnen</button>
+        <button class="filter-btn" data-filter="kein_interesse" onclick="setFilter('kein_interesse',this)">❌ Kein Interesse</button>
+      </div>
+      <div class="toolbar-search">
+        <input type="text" id="search-input" placeholder="🔍 Suchen…" oninput="renderTable()" />
+      </div>
+      <button class="btn-export" onclick="exportCSV()">⬇ Export</button>
     </div>
-    <div class="toolbar-search">
-      <input type="text" id="search-input" placeholder="🔍 Suchen…" oninput="renderTable()" />
+
+    <!-- Bulk action bar -->
+    <div class="bulk-bar" id="bulk-bar">
+      <span><span class="bulk-count" id="bulk-count">0</span> ausgewählt</span>
+      <span class="bulk-sep">|</span>
+      <button class="btn-bulk btn-bulk-mail" onclick="bulkOpenMail()">✉ Alle anmailen</button>
+      <button class="btn-bulk btn-bulk-status" onclick="bulkSetStatus('angeschrieben')">📧 Angeschrieben</button>
+      <button class="btn-bulk btn-bulk-followup" onclick="bulkSetFollowUp()">📅 Follow-up +7 Tage</button>
+      <span class="bulk-sep">|</span>
+      <button class="btn-bulk-clear" onclick="clearSelection()">Auswahl aufheben</button>
+      <span class="bulk-spinner" id="bulk-spinner" style="display:none">⏳ Wird gespeichert…</span>
+      <span class="bulk-spinner" id="bulk-mail-status" style="display:none"></span>
     </div>
-    <button class="btn-export" onclick="exportCSV()">⬇ Export</button>
-    <span class="mail-account-hint" id="mail-account-hint" title="Stelle dieses Konto in Apple Mail → Einstellungen → Verfassen als Standardkonto ein"></span>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="cb-col"><input type="checkbox" id="cb-all" onclick="toggleSelectAll()" title="Alle markieren" /></th>
+            <th style="width:22%">Firma</th>
+            <th style="width:18%">Ansprechpartner</th>
+            <th style="width:10%">Status</th>
+            <th style="width:9%">Mail</th>
+            <th style="width:12%">Notizen</th>
+            <th style="width:9%">Follow-up</th>
+            <th style="width:10%">Erfasst von</th>
+            <th style="width:8%">Aktualisiert</th>
+            <th style="width:2%"></th>
+          </tr>
+        </thead>
+        <tbody id="leads-body"></tbody>
+      </table>
+      <div class="empty-state" id="empty-state" style="display:none">
+        <div class="es-icon">📋</div>
+        <h3>Noch keine Einträge</h3>
+        <p>Füge deinen ersten Kontakt hinzu oder suche neue Leads</p>
+      </div>
+    </div>
   </div>
 
-  <!-- Bulk action bar -->
-  <div class="bulk-bar" id="bulk-bar">
-    <span><span class="bulk-count" id="bulk-count">0</span> ausgewählt</span>
-    <span class="bulk-sep">|</span>
-    <button class="btn-bulk btn-bulk-mail" onclick="bulkOpenMail()">✉ Alle anmailen</button>
-    <button class="btn-bulk btn-bulk-status" onclick="bulkSetStatus('angeschrieben')">📧 Angeschrieben</button>
-    <button class="btn-bulk btn-bulk-followup" onclick="bulkSetFollowUp()">📅 Follow-up +7 Tage</button>
-    <span class="bulk-sep">|</span>
-    <button class="btn-bulk-clear" onclick="clearSelection()">Auswahl aufheben</button>
-    <span class="bulk-spinner" id="bulk-spinner" style="display:none">⏳ Wird gespeichert…</span>
-    <span class="bulk-spinner" id="bulk-mail-status" style="display:none"></span>
+  <!-- ── TAB: DISCOVER ── -->
+  <div class="view-panel" id="view-discover">
+    <div style="padding:20px 24px">
+      <div style="background:#fff;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
+        <h2 style="font-size:17px;font-weight:800;color:var(--dark);margin-bottom:6px">🔍 Neue Leads finden</h2>
+        <p style="font-size:14px;color:var(--mid);margin-bottom:20px">Sucht automatisch lokale Unternehmen über OpenStreetMap</p>
+        <div class="discover-form">
+          <div class="discover-form-group">
+            <label>Stadt</label>
+            <select id="disc-city">
+              <option>Mönchengladbach</option>
+              <option>Düsseldorf</option>
+              <option>Krefeld</option>
+              <option>Neuss</option>
+              <option>Viersen</option>
+              <option>Grevenbroich</option>
+              <option>Dormagen</option>
+              <option>Ratingen</option>
+              <option>Köln</option>
+              <option>Bonn</option>
+              <option>Aachen</option>
+            </select>
+          </div>
+          <div class="discover-form-group">
+            <label>Branche</label>
+            <select id="disc-industry">
+              <option>Friseur / Kosmetik</option>
+              <option>Restaurant / Café</option>
+              <option>Handwerk</option>
+              <option>Physiotherapie / Wellness</option>
+              <option>Kanzlei / Beratung</option>
+              <option>Einzelhandel</option>
+              <option>Hotel / Pension</option>
+              <option>Fitness</option>
+            </select>
+          </div>
+          <div class="discover-form-group">
+            <label>Max. Ergebnisse</label>
+            <select id="disc-limit">
+              <option value="20">20</option>
+              <option value="30" selected>30</option>
+              <option value="50">50</option>
+            </select>
+          </div>
+          <button class="btn-discover-search" id="btn-disc-search" onclick="runDiscovery()">Suchen</button>
+        </div>
+        <div class="discover-status" id="disc-status"></div>
+        <div id="disc-results-wrap" style="display:none">
+          <div class="discover-results-wrap">
+            <table class="discover-table">
+              <thead>
+                <tr>
+                  <th>Firma</th>
+                  <th>Adresse</th>
+                  <th>Telefon</th>
+                  <th>Website</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="disc-tbody"></tbody>
+            </table>
+          </div>
+          <div class="discover-footer">
+            <div id="disc-footer-status" style="font-size:13px;color:var(--mid)"></div>
+            <button class="btn-import-all" onclick="importAllDiscovered()">Alle importieren</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th class="cb-col"><input type="checkbox" id="cb-all" onclick="toggleSelectAll()" title="Alle markieren" /></th>
-          <th>Firma</th>
-          <th>Ansprechpartner</th>
-          <th>Status</th>
-          <th>Kanal</th>
-          <th>Notizen</th>
-          <th>Follow-up</th>
-          <th>Erfasst von</th>
-          <th>Aktualisiert</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="leads-body"></tbody>
-    </table>
-    <div class="empty-state" id="empty-state" style="display:none">
-      <div class="es-icon">📋</div>
-      <h3>Noch keine Einträge</h3>
-      <p>Füge deinen ersten Kontakt hinzu</p>
+  <!-- ── TAB: OUTBOX ── -->
+  <div class="view-panel" id="view-outbox">
+    <div class="outbox-wrap">
+      <div id="outbox-content"></div>
     </div>
   </div>
 </div>
@@ -277,12 +482,12 @@
 <div class="backup-overlay" id="backup-overlay">
   <div class="backup-box">
     <h2>💾 Daten sichern</h2>
-    <p>Damit deine Daten nach jedem Deploy erhalten bleiben, musst du den Wert unten einmalig in Railway als Umgebungsvariable <b>CRM_SEED</b> eintragen:</p>
+    <p>Damit deine Daten nach jedem Deploy erhalten bleiben, musst du den Wert unten einmalig in Render als Umgebungsvariable <b>CRM_SEED</b> eintragen:</p>
     <ol>
       <li>Unten auf <b>Kopieren</b> klicken</li>
-      <li><b>railway.app</b> → dein Projekt → <b>Variables</b></li>
+      <li><b>render.com</b> → dein Service → <b>Environment</b></li>
       <li>Variable <b>CRM_SEED</b> suchen und Wert ersetzen</li>
-      <li><b>Deploy</b> auslösen – fertig ✓</li>
+      <li><b>Manual Deploy</b> auslösen – fertig ✓</li>
     </ol>
     <textarea class="backup-textarea" id="backup-seed" readonly></textarea>
     <div class="backup-actions">
@@ -292,7 +497,7 @@
   </div>
 </div>
 
-<!-- MODAL -->
+<!-- LEAD FORM MODAL -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
     <div class="modal-header">
@@ -374,6 +579,39 @@
   </div>
 </div>
 
+<!-- EMAIL PREVIEW MODAL -->
+<div id="email-modal-overlay">
+  <div class="email-modal">
+    <div class="epm-header">
+      <div class="epm-header-left">
+        <h2>✉ E-Mail vorschau & senden</h2>
+        <div class="epm-to" id="epm-to"></div>
+      </div>
+      <button class="modal-close" onclick="closeEmailModal()">×</button>
+    </div>
+    <div class="epm-subject-wrap">
+      <div class="epm-subject-label">Betreff</div>
+      <input type="text" id="epm-subject" placeholder="Betreff…" />
+    </div>
+    <div class="epm-body-wrap">
+      <div class="epm-body-label">E-Mail Text</div>
+      <textarea id="epm-body" placeholder="E-Mail Text…"></textarea>
+    </div>
+    <div class="epm-signature" id="epm-sig"></div>
+    <div class="epm-status-bar" id="epm-status"></div>
+    <div class="epm-footer">
+      <button class="btn-epm-regen" onclick="regenEmail()">↻ Neu generieren</button>
+      <button class="btn-epm-cancel" onclick="closeEmailModal()">Abbrechen</button>
+      <button class="btn-epm-send" id="btn-epm-send" onclick="sendEmail()">
+        <span>📤 Senden</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
 <script>
 const API = '';
 let crmToken = localStorage.getItem('crm_token') || '';
@@ -383,23 +621,32 @@ let allLeads = [];
 let currentFilter = 'all';
 let editingId = null;
 let selectedIds = new Set();
+let currentTab = 'leads';
+
+// Discovery state
+let discResults = [];
+let importedDiscIds = new Set();
+
+// Email modal state
+let emailModalLeadId = null;
 
 const STATUS_LABELS = {
-  neu: '🆕 Neu',
-  angeschrieben: '📧 Angeschrieben',
-  in_kontakt: '💬 In Kontakt',
-  termin: '📅 Termin',
-  gewonnen: '✅ Gewonnen',
-  kein_interesse: '❌ Kein Interesse',
+  neu: '🆕 Neu', angeschrieben: '📧 Angeschrieben', in_kontakt: '💬 In Kontakt',
+  termin: '📅 Termin', gewonnen: '✅ Gewonnen', kein_interesse: '❌ Kein Interesse',
 };
 const CHANNEL_LABELS = {
-  email: '📧 E-Mail', telefon: '📞 Telefon', persönlich: '🤝 Persönlich',
-  linkedin: '💼 LinkedIn', instagram: '📸 Instagram', empfehlung: '⭐ Empfehlung',
+  email: '📧', telefon: '📞', persönlich: '🤝', linkedin: '💼', instagram: '📸', empfehlung: '⭐',
+};
+const MAIL_STATUS_LABELS = {
+  draft:    ['📝 Entwurf', 'mbadge-draft'],
+  sent:     ['✅ Gesendet', 'mbadge-sent'],
+  fu1_sent: ['↩ FU 1', 'mbadge-fu1_sent'],
+  fu2_sent: ['↩ FU 2', 'mbadge-fu2_sent'],
 };
 
 // ── Init ──
 window.onload = () => {
-  if (crmToken) { showApp(); loadLeads(); }
+  if (crmToken) { showApp(); loadLeads(); checkSmtp(); }
   document.getElementById('login-password').addEventListener('keydown', e => {
     if (e.key === 'Enter') doLogin();
   });
@@ -409,8 +656,7 @@ async function doLogin() {
   const user = document.getElementById('login-user').value;
   const pw   = document.getElementById('login-password').value;
   const r = await fetch('/crm/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user, password: pw })
   });
   const d = await r.json();
@@ -419,7 +665,7 @@ async function doLogin() {
   localStorage.setItem('crm_token', crmToken);
   localStorage.setItem('crm_user', crmUser);
   localStorage.setItem('crm_name', crmName);
-  showApp(); loadLeads();
+  showApp(); loadLeads(); checkSmtp();
 }
 
 async function doLogout() {
@@ -434,12 +680,17 @@ function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('header-user').textContent = crmName;
-  // Apple Mail hint: show which account to use
-  const fromEmail = USER_EMAILS[crmUser] || '';
-  if (fromEmail) {
-    const hint = document.getElementById('mail-account-hint');
-    if (hint) hint.textContent = `📧 Apple Mail: Standardkonto → ${fromEmail}`;
-  }
+}
+
+async function checkSmtp() {
+  try {
+    const r = await fetch('/crm/smtp-status', { headers: { 'x-crm-token': crmToken } });
+    const d = await r.json();
+    const dot = document.createElement('span');
+    dot.className = 'smtp-dot' + (d.configured ? ' ok' : '');
+    dot.title = d.configured ? `SMTP konfiguriert: ${d.user}` : 'SMTP nicht konfiguriert – SMTP_PASS in Render setzen';
+    document.getElementById('header-user').prepend(dot);
+  } catch(e) {}
 }
 
 async function loadLeads() {
@@ -449,21 +700,63 @@ async function loadLeads() {
   allLeads = d.leads || [];
   renderStats();
   renderTable();
+  updateOutboxBadge();
 }
 
+// ── Tab switching ──
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view-panel').forEach(v => v.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('view-' + tab).classList.add('active');
+  if (tab === 'outbox') renderOutbox();
+}
+
+// ── Stats ──
 function renderStats() {
   const counts = {};
   Object.keys(STATUS_LABELS).forEach(s => counts[s] = 0);
-  allLeads.forEach(l => { if (counts[l.status] !== undefined) counts[l.status]++; });
+  let drafts = 0, sent = 0, fu_pending = 0;
+  allLeads.forEach(l => {
+    if (counts[l.status] !== undefined) counts[l.status]++;
+    if (l.mailStatus === 'draft') drafts++;
+    if (l.mailStatus === 'sent' || l.mailStatus === 'fu1_sent') {
+      const fu = l.followUp ? new Date(l.followUp) : null;
+      if (fu && fu <= new Date()) fu_pending++;
+    }
+    if (l.mailStatus === 'sent' || l.mailStatus === 'fu1_sent' || l.mailStatus === 'fu2_sent') sent++;
+  });
   document.getElementById('stats-bar').innerHTML = `
     <div class="stat-item"><div class="stat-num">${allLeads.length}</div><div class="stat-label">Gesamt</div></div>
     <div class="stat-item"><div class="stat-num">${counts.angeschrieben}</div><div class="stat-label">Angeschrieben</div></div>
     <div class="stat-item"><div class="stat-num">${counts.in_kontakt}</div><div class="stat-label">In Kontakt</div></div>
     <div class="stat-item"><div class="stat-num">${counts.termin}</div><div class="stat-label">Termine</div></div>
     <div class="stat-item"><div class="stat-num" style="color:#065f46">${counts.gewonnen}</div><div class="stat-label">Gewonnen</div></div>
+    <div class="stat-item"><div class="stat-num" style="color:#b7791f">${drafts}</div><div class="stat-label">📝 Entwürfe</div></div>
+    <div class="stat-item"><div class="stat-num" style="color:#e53e3e">${fu_pending}</div><div class="stat-label">📬 FU fällig</div></div>
   `;
+  document.getElementById('badge-leads').textContent = allLeads.length;
 }
 
+function updateOutboxBadge() {
+  const badge = document.getElementById('badge-outbox');
+  const count = allLeads.filter(l => {
+    if (l.mailStatus === 'draft') return true;
+    if ((l.mailStatus === 'sent' || l.mailStatus === 'fu1_sent') && l.followUp) {
+      return new Date(l.followUp) <= new Date();
+    }
+    return false;
+  }).length;
+  if (count > 0) {
+    badge.style.display = '';
+    badge.textContent = count;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ── Filter & Table ──
 function setFilter(f, btn) {
   currentFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -490,19 +783,53 @@ function renderTable() {
     const updLabel = l.updatedAt ? new Date(l.updatedAt).toLocaleDateString('de-DE') : '–';
     const updBy = l.updatedByName || l.updatedBy || '';
     const websiteUrl = l.website ? (l.website.startsWith('http') ? l.website : 'https://' + l.website) : '';
-        const websiteLabel = l.website ? l.website.replace(/^https?:\/\//, '') : '';
+    const websiteLabel = l.website ? l.website.replace(/^https?:\/\//, '').replace(/\/$/, '') : '';
     const isSelected = selectedIds.has(l.id);
+
+    // Mail status badge
+    const ms = l.mailStatus;
+    let mailBadge = '';
+    if (ms && MAIL_STATUS_LABELS[ms]) {
+      const [label, cls] = MAIL_STATUS_LABELS[ms];
+      mailBadge = `<span class="mbadge ${cls}">${label}</span>`;
+    } else {
+      mailBadge = `<span class="mbadge mbadge-none">–</span>`;
+    }
+
+    // Mail action button
+    let mailAction = '';
+    if (!ms || ms === 'none') {
+      mailAction = `<button class="btn-mail-action" onclick="openEmailModal('${l.id}',true)">✉ Generieren</button>`;
+    } else if (ms === 'draft') {
+      mailAction = `<button class="btn-mail-action" onclick="openEmailModal('${l.id}',false)">📤 Senden</button>`;
+    } else if (ms === 'sent' || ms === 'fu1_sent') {
+      const fuDate = l.followUp ? new Date(l.followUp) : null;
+      const fuDue = fuDate && fuDate <= new Date();
+      mailAction = fuDue
+        ? `<button class="btn-fu-action" onclick="sendFollowUp('${l.id}')">📬 FU senden</button>`
+        : `<button class="btn-fu-action" onclick="sendFollowUp('${l.id}')" style="opacity:0.5">↩ Follow-up</button>`;
+    }
+
     return `<tr class="${isSelected ? 'row-selected' : ''}">
       <td class="cb-col"><input type="checkbox" ${isSelected ? 'checked' : ''} onclick="toggleSelect('${l.id}')" /></td>
-      <td><div class="td-company">${esc(l.company)}</div><div class="td-contact">${esc(l.industry||'')}</div>${websiteLabel ? `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;"><a href="${esc(websiteUrl)}" target="_blank" style="font-size:12px;color:var(--teal);text-decoration:none;" title="${esc(websiteUrl)}">🌐 ${esc(websiteLabel)}</a></div>` : ''}</td>
-      <td><div>${esc(l.contact||'–')}</div>${l.email ? `<div><a href="${buildMailto(l.email, l.company)}" style="font-size:13px;color:var(--teal);text-decoration:none;" title="E-Mail schreiben">✉ ${esc(l.email)}</a></div>` : '<div class="td-contact">–</div>'}<div class="td-contact">${l.phone ? `<a href="tel:${esc(l.phone)}" style="color:inherit;text-decoration:none;">📞 ${esc(l.phone)}</a>` : ''}</div></td>
+      <td>
+        <div class="td-company">${esc(l.company)}</div>
+        <div class="td-contact">${esc(l.industry||'')}</div>
+        ${websiteLabel ? `<a href="${esc(websiteUrl)}" target="_blank" style="font-size:11px;color:var(--teal);text-decoration:none;overflow:hidden;display:block;text-overflow:ellipsis;white-space:nowrap" title="${esc(websiteUrl)}">🌐 ${esc(websiteLabel)}</a>` : ''}
+      </td>
+      <td>
+        <div>${esc(l.contact||'–')}</div>
+        ${l.email ? `<a href="mailto:${esc(l.email)}" style="font-size:12px;color:var(--teal);text-decoration:none">✉ ${esc(l.email)}</a>` : '<div class="td-contact">–</div>'}
+        ${l.phone ? `<div class="td-contact">${esc(l.phone)}</div>` : ''}
+      </td>
       <td><span class="badge badge-${l.status}">${STATUS_LABELS[l.status]||l.status}</span></td>
-      <td>${CHANNEL_LABELS[l.channel]||l.channel||'–'}</td>
+      <td>${mailBadge}</td>
       <td class="td-notes" title="${esc(l.notes||'')}">${esc(l.notes||'–')}</td>
       <td class="td-followup ${fu}">${fuLabel}</td>
       <td><div style="display:flex;align-items:center;gap:6px"><span class="avatar ${avClass}">${initials}</span><span style="font-size:12px;color:var(--mid)">${esc(l.createdByName||l.createdBy||'')}</span></div></td>
       <td class="td-date">${updLabel}<br><span style="font-size:11px;color:#aaa">${esc(updBy)}</span></td>
       <td><div class="td-actions">
+        ${mailAction}
         <button class="btn-edit" onclick="openEdit('${l.id}')">Bearbeiten</button>
         <button class="btn-del" onclick="deleteLead('${l.id}')">×</button>
       </div></td>
@@ -520,63 +847,11 @@ function followUpClass(dateStr) {
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-const USER_EMAILS = {
-  silke: 'silke@ailima.de',
-  achim: 'achim@ailima.de',
-  emily: 'emily@ailima.de',
-  rene:  'rene@ailima.de',
-};
-
-function buildMailto(email, company) {
-  const fromEmail = USER_EMAILS[crmUser] || '';
-  const subject = `Ihre Website – selbst aktualisieren, ganz ohne Programmierer`;
-  const body = `Guten Tag,
-
-mein Name ist ${crmName}, ich bin Mitarbeiter bei Ailima.
-
-Kennen Sie das? Man möchte schnell etwas auf der eigenen
-Website ändern – einen Preis, eine Öffnungszeit, ein Foto –
-und wartet dann Tage auf die Agentur. Oder der Webdesigner
-ist einfach nicht mehr erreichbar. Und die Änderung kostet
-jedes Mal Geld, auch wenn sie nur zwei Minuten dauert.
-
-Genau dafür haben wir Ailima entwickelt.
-
-Ailima ist ein KI-Assistent, der direkt auf Ihrer Website
-arbeitet – und Ihnen ermöglicht, alles selbst zu ändern.
-Sofort. Ohne Wartezeiten. Ohne Agentur. Ohne Extrakosten.
-
-So einfach geht's:
-
-  → Sie tippen, was sich ändern soll
-  → Ailima versteht und setzt es sofort um
-  → Sie prüfen und veröffentlichen mit einem Klick
-
-Das bedeutet für ${company}:
-
-  ✓ Öffnungszeiten und Preise selbst anpassen – in Sekunden
-  ✓ Neue Angebote oder Aktionen sofort online stellen
-  ✓ Texte und Fotos aktuell halten – wann immer Sie wollen
-  ✓ Kein Umbau, kein neues System – läuft auf Ihrer Seite
-
-Einen ersten Eindruck bekommen Sie hier:
-→ www.ailima.de
-
-Darf ich Ihnen das kurz auf unserer Demoseite zeigen?
-Eine kurze Demo reicht – und Sie sehen sofort,
-wie viel einfacher das sein kann.
-
-Herzliche Grüße`;
-  const from = fromEmail ? `from=${encodeURIComponent(fromEmail)}&` : '';
-  return `mailto:${email}?${from}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-}
-
 // ── Bulk selection ──
 function toggleSelect(id) {
   if (selectedIds.has(id)) selectedIds.delete(id);
   else selectedIds.add(id);
-  updateBulkBar();
-  renderTable();
+  updateBulkBar(); renderTable();
 }
 
 function toggleSelectAll() {
@@ -589,22 +864,15 @@ function toggleSelectAll() {
   const allChecked = visible.every(l => selectedIds.has(l.id));
   if (allChecked) visible.forEach(l => selectedIds.delete(l.id));
   else visible.forEach(l => selectedIds.add(l.id));
-  updateBulkBar();
-  renderTable();
+  updateBulkBar(); renderTable();
 }
 
-function clearSelection() {
-  selectedIds.clear();
-  updateBulkBar();
-  renderTable();
-}
+function clearSelection() { selectedIds.clear(); updateBulkBar(); renderTable(); }
 
 function updateBulkBar() {
   const bar = document.getElementById('bulk-bar');
-  const count = document.getElementById('bulk-count');
-  count.textContent = selectedIds.size;
+  document.getElementById('bulk-count').textContent = selectedIds.size;
   bar.classList.toggle('visible', selectedIds.size > 0);
-  // sync header checkbox
   const cbAll = document.getElementById('cb-all');
   if (cbAll) {
     const q = document.getElementById('search-input').value.toLowerCase();
@@ -622,15 +890,13 @@ async function bulkUpdate(bodyFn, label) {
   if (!selectedIds.size) return;
   const ids = [...selectedIds];
   const spinner = document.getElementById('bulk-spinner');
-  spinner.style.display = '';
-  spinner.textContent = `⏳ Speichere 0/${ids.length}…`;
+  spinner.style.display = ''; spinner.textContent = `⏳ 0/${ids.length}…`;
   let failed = 0;
   for (let i = 0; i < ids.length; i++) {
     const id = ids[i];
-    spinner.textContent = `⏳ Speichere ${i+1}/${ids.length}…`;
+    spinner.textContent = `⏳ ${i+1}/${ids.length}…`;
     const r = await fetch(`/crm/leads/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+      method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
       body: JSON.stringify(bodyFn())
     });
     if (r.status === 401) { doLogout(); return; }
@@ -639,64 +905,51 @@ async function bulkUpdate(bodyFn, label) {
     const idx = allLeads.findIndex(l => l.id === id);
     if (idx !== -1) allLeads[idx] = d.lead;
   }
-  if (failed > 0) {
-    spinner.textContent = `⚠️ ${failed} Einträge nicht gespeichert – bitte nochmal versuchen`;
-    setTimeout(() => { spinner.style.display = 'none'; }, 5000);
-  } else {
-    spinner.textContent = `✓ Alle ${ids.length} gespeichert`;
-    setTimeout(() => { spinner.style.display = 'none'; }, 2000);
-  }
-  renderStats();
-  renderTable();
+  spinner.textContent = failed > 0 ? `⚠️ ${failed} nicht gespeichert` : `✓ Alle ${ids.length} gespeichert`;
+  setTimeout(() => { spinner.style.display = 'none'; }, 2500);
+  renderStats(); renderTable();
 }
 
-async function bulkSetStatus(status) {
-  await bulkUpdate(() => ({ status }), 'Status');
-}
+async function bulkSetStatus(status) { await bulkUpdate(() => ({ status }), 'Status'); }
 
 async function bulkSetFollowUp() {
-  const followUp = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const followUp = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
   await bulkUpdate(() => ({ followUp }), 'Follow-up');
 }
 
 async function bulkOpenMail() {
-  const leads = [...selectedIds]
-    .map(id => allLeads.find(l => l.id === id))
-    .filter(l => l && l.email);
-  if (!leads.length) { alert('Keine Kontakte mit E-Mail-Adresse ausgewählt.'); return; }
-
+  const leads = [...selectedIds].map(id => allLeads.find(l => l.id === id)).filter(l => l && l.email);
+  if (!leads.length) { showToast('Keine Kontakte mit E-Mail-Adresse ausgewählt', 'err'); return; }
   const status = document.getElementById('bulk-mail-status');
   for (let i = 0; i < leads.length; i++) {
     const l = leads[i];
     status.style.display = '';
-    status.textContent = `✉ Öffne ${i + 1} von ${leads.length}…`;
+    status.textContent = `✉ ${i+1}/${leads.length}…`;
     const a = document.createElement('a');
     a.href = buildMailto(l.email, l.company);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    // Pause so Apple Mail can process each message before the next opens
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
     await new Promise(r => setTimeout(r, 800));
   }
   status.textContent = `✓ ${leads.length} Fenster geöffnet`;
   setTimeout(() => { status.style.display = 'none'; }, 3000);
 }
 
+function buildMailto(email, company) {
+  const subject = `Ihre Website – selbst aktualisieren, ganz ohne Programmierer`;
+  const body = `Guten Tag,\n\nmein Name ist ${crmName}, ich bin bei Ailima.\n\nKennen Sie das? Man möchte schnell etwas auf der eigenen Website ändern – einen Preis, eine Öffnungszeit, ein Foto – und wartet dann auf die Agentur. Ailima löst genau das.\n\nAilima ist ein KI-Assistent, der direkt auf Ihrer Website läuft. Sie tippen, was sich ändern soll – Ailima setzt es sofort um. Kein Programmierer, keine Agentur, kein Warten. Ab €29/Monat.\n\n→ www.ailima.de\n\nDarf ich Ihnen das kurz zeigen?\n\nHerzliche Grüße\n${crmName}`;
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+// ── Lead Form ──
 function normalizeName(s) {
-  return (s || '').toLowerCase()
-    .replace(/\b(gmbh|ug|ag|kg|ohg|gbr|e\.k\.|e\.v\.|co\.|&)\b/g, '')
-    .replace(/[^a-z0-9äöüß]/g, '')
-    .trim();
+  return (s||'').toLowerCase().replace(/\b(gmbh|ug|ag|kg|ohg|gbr|e\.k\.|e\.v\.|co\.|&)\b/g,'').replace(/[^a-z0-9äöüß]/g,'').trim();
 }
 
 function checkDuplicate() {
   const warn = document.getElementById('dup-warning');
   const company = document.getElementById('f-company').value.trim();
   const email   = document.getElementById('f-email').value.trim().toLowerCase();
-
-  // Don't check when editing an existing lead
   if (editingId) { warn.classList.remove('visible'); return; }
-
   const normCompany = normalizeName(company);
   const matches = allLeads.filter(l => {
     if (email && l.email && l.email.toLowerCase() === email) return true;
@@ -704,19 +957,16 @@ function checkDuplicate() {
     if (normCompany.length >= 4 && normCompany.includes(normalizeName(l.company)) && normalizeName(l.company).length >= 4) return true;
     return false;
   });
-
-  if (matches.length === 0) { warn.classList.remove('visible'); return; }
-
+  if (!matches.length) { warn.classList.remove('visible'); return; }
   const list = matches.map(l => {
     const badge = `<span class="badge badge-${l.status}" style="font-size:11px;padding:2px 8px">${STATUS_LABELS[l.status]||l.status}</span>`;
-    return `<a onclick="closeModal();openEdit('${l.id}')">${l.company}</a> ${badge} – erfasst von ${l.createdByName||l.createdBy}`;
+    return `<a onclick="closeModal();openEdit('${l.id}')">${l.company}</a> ${badge}`;
   }).join('<br>');
-
-  warn.innerHTML = `<strong>⚠️ Mögliches Duplikat gefunden:</strong>${list}`;
+  warn.innerHTML = `<strong>⚠️ Mögliches Duplikat:</strong>${list}`;
   warn.classList.add('visible');
 }
 
-function openModal(id) {
+function openModal() {
   editingId = null;
   document.getElementById('modal-title').textContent = 'Neuer Kontakt';
   ['company','contact','email','phone','website','notes','followup'].forEach(f => document.getElementById('f-'+f).value = '');
@@ -750,68 +1000,61 @@ function closeModal() { document.getElementById('modal').classList.remove('open'
 
 async function saveLead() {
   const company = document.getElementById('f-company').value.trim();
-  if (!company) { alert('Firmenname ist Pflicht'); return; }
+  if (!company) { showToast('Firmenname ist Pflicht', 'err'); return; }
   const body = {
-    company,
-    contact:  document.getElementById('f-contact').value.trim(),
-    email:    document.getElementById('f-email').value.trim(),
-    phone:    document.getElementById('f-phone').value.trim(),
-    website:  document.getElementById('f-website').value.trim(),
+    company, contact: document.getElementById('f-contact').value.trim(),
+    email: document.getElementById('f-email').value.trim(),
+    phone: document.getElementById('f-phone').value.trim(),
+    website: document.getElementById('f-website').value.trim(),
     industry: document.getElementById('f-industry').value,
-    status:   document.getElementById('f-status').value,
-    channel:  document.getElementById('f-channel').value,
-    notes:    document.getElementById('f-notes').value.trim(),
+    status: document.getElementById('f-status').value,
+    channel: document.getElementById('f-channel').value,
+    notes: document.getElementById('f-notes').value.trim(),
     followUp: document.getElementById('f-followup').value,
   };
   const url = editingId ? `/crm/leads/${editingId}` : '/crm/leads';
   const method = editingId ? 'PUT' : 'POST';
   const r = await fetch(url, { method, headers: { 'Content-Type':'application/json','x-crm-token':crmToken }, body: JSON.stringify(body) });
   if (r.status === 401) { doLogout(); return; }
-  if (!r.ok) { alert('Fehler beim Speichern'); return; }
+  if (!r.ok) { showToast('Fehler beim Speichern', 'err'); return; }
   const d = await r.json();
   closeModal();
   if (editingId) {
     const idx = allLeads.findIndex(l => l.id === editingId);
     if (idx !== -1) allLeads[idx] = d.lead;
-  } else {
-    allLeads.unshift(d.lead);
-  }
-  renderStats();
-  renderTable();
+  } else { allLeads.unshift(d.lead); }
+  renderStats(); renderTable(); updateOutboxBadge();
 }
 
 async function deleteLead(id) {
   if (!confirm('Diesen Eintrag wirklich löschen?')) return;
   const r = await fetch(`/crm/leads/${id}`, { method: 'DELETE', headers: { 'x-crm-token': crmToken } });
   if (r.status === 401) { doLogout(); return; }
-  loadLeads();
+  allLeads = allLeads.filter(l => l.id !== id);
+  renderStats(); renderTable(); updateOutboxBadge();
 }
 
 function exportCSV() {
-  const rows = [['Firma','Ansprechpartner','E-Mail','Telefon','Website','Branche','Status','Kanal','Notizen','Follow-up','Erfasst von','Aktualisiert']];
-  allLeads.forEach(l => rows.push([l.company,l.contact,l.email,l.phone,l.website,l.industry,l.status,l.channel,l.notes,l.followUp,l.createdByName||l.createdBy,l.updatedAt?.slice(0,10)]));
+  const rows = [['Firma','Ansprechpartner','E-Mail','Telefon','Website','Branche','Status','Kanal','Mail-Status','Notizen','Follow-up','Erfasst von','Aktualisiert']];
+  allLeads.forEach(l => rows.push([l.company,l.contact,l.email,l.phone,l.website,l.industry,l.status,l.channel,l.mailStatus||'',l.notes,l.followUp,l.createdByName||l.createdBy,l.updatedAt?.slice(0,10)]));
   const csv = rows.map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+  a.href = 'data:text/csv;charset=utf-8,﻿' + encodeURIComponent(csv);
   a.download = `ailima-akquise-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
 
-// Close modal on overlay click
+// ── CRM ops ──
 document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
 
 async function forceSync() {
   const btn = document.getElementById('btn-forcesync');
-  btn.textContent = '⏳ Sync…';
-  btn.disabled = true;
+  btn.textContent = '⏳ Sync…'; btn.disabled = true;
   try {
     const r = await fetch('/crm/forcesync', { method: 'POST', headers: { 'x-crm-token': crmToken } });
     const d = await r.json();
-    if (r.ok) { btn.textContent = '✅ Sync OK'; }
-    else { btn.textContent = '❌ Sync fehlgeschlagen'; }
-  } catch(e) {
-    btn.textContent = '❌ Fehler';
-  }
+    btn.textContent = r.ok ? '✅ Sync OK' : '❌ Fehler';
+  } catch(e) { btn.textContent = '❌ Fehler'; }
   setTimeout(() => { btn.textContent = '☁️ Sync'; btn.disabled = false; }, 3000);
 }
 
@@ -823,11 +1066,329 @@ async function openBackup() {
 }
 function closeBackup() { document.getElementById('backup-overlay').classList.remove('open'); }
 async function copySeed() {
-  const val = document.getElementById('backup-seed').value;
-  await navigator.clipboard.writeText(val);
+  await navigator.clipboard.writeText(document.getElementById('backup-seed').value);
   const btn = document.querySelector('.btn-copy');
   btn.textContent = '✓ Kopiert!';
   setTimeout(() => btn.textContent = '📋 Kopieren', 2000);
+}
+
+// ── LEAD DISCOVERY ──
+async function runDiscovery() {
+  const city     = document.getElementById('disc-city').value;
+  const industry = document.getElementById('disc-industry').value;
+  const limit    = document.getElementById('disc-limit').value;
+  const btn      = document.getElementById('btn-disc-search');
+  const status   = document.getElementById('disc-status');
+  const wrap     = document.getElementById('disc-results-wrap');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Suche…';
+  status.textContent = `Suche ${industry} in ${city}…`;
+  wrap.style.display = 'none';
+  discResults = [];
+  importedDiscIds = new Set();
+
+  try {
+    const r = await fetch('/crm/discover', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+      body: JSON.stringify({ city, industry, limit: parseInt(limit) })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+
+    discResults = d.leads;
+    status.textContent = `${d.leads.length} neue Unternehmen gefunden (${d.total} gesamt in OSM, ${d.total - d.leads.length} bereits im CRM)`;
+
+    renderDiscovery();
+    document.getElementById('disc-footer-status').textContent = `${discResults.length} bereit zum Importieren`;
+    wrap.style.display = discResults.length ? 'block' : 'none';
+
+    if (!discResults.length) {
+      status.textContent = `Keine neuen Unternehmen gefunden. Bereits alle in Mönchengladbach erfasst oder andere Branche versuchen.`;
+    }
+  } catch(e) {
+    status.textContent = `Fehler: ${e.message}`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Suchen';
+}
+
+function renderDiscovery() {
+  document.getElementById('disc-tbody').innerHTML = discResults.map((b, i) =>
+    `<tr>
+      <td><strong>${esc(b.company)}</strong></td>
+      <td style="color:var(--mid)">${esc(b.address||'–')}</td>
+      <td style="color:var(--mid)">${esc(b.phone||'–')}</td>
+      <td>${b.website ? `<a href="${esc(b.website.startsWith('http')?b.website:'https://'+b.website)}" target="_blank" style="color:var(--teal);font-size:12px;text-decoration:none">🌐</a>` : '–'}</td>
+      <td>
+        <button class="btn-import-one ${importedDiscIds.has(i)?'imported':''}"
+          id="disc-btn-${i}"
+          onclick="importOne(${i})"
+          ${importedDiscIds.has(i)?'disabled':''}>
+          ${importedDiscIds.has(i)?'✓ Importiert':'Importieren'}
+        </button>
+      </td>
+    </tr>`
+  ).join('') || `<tr><td colspan="5" class="discover-empty">Keine Ergebnisse</td></tr>`;
+}
+
+async function importOne(idx) {
+  const b = discResults[idx];
+  const r = await fetch('/crm/leads', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+    body: JSON.stringify({
+      company: b.company, industry: b.industry, city: b.city,
+      phone: b.phone, website: b.website, email: b.email,
+      address: b.address, status: 'neu', channel: 'email',
+    })
+  });
+  if (!r.ok) { showToast('Fehler beim Importieren', 'err'); return; }
+  const d = await r.json();
+  allLeads.unshift(d.lead);
+  importedDiscIds.add(idx);
+  renderDiscovery();
+  updateDiscFooter();
+  renderStats(); updateOutboxBadge();
+  showToast(`${b.company} importiert`, 'ok');
+}
+
+async function importAllDiscovered() {
+  const toImport = discResults.filter((_, i) => !importedDiscIds.has(i));
+  if (!toImport.length) { showToast('Alle bereits importiert', 'ok'); return; }
+  const btn = document.querySelector('.btn-import-all');
+  btn.disabled = true; btn.textContent = `⏳ 0/${toImport.length}…`;
+  let done = 0;
+  for (let i = 0; i < discResults.length; i++) {
+    if (importedDiscIds.has(i)) continue;
+    await importOne(i);
+    done++;
+    btn.textContent = `⏳ ${done}/${toImport.length}…`;
+  }
+  btn.disabled = false; btn.textContent = 'Alle importieren';
+  showToast(`${done} Unternehmen importiert`, 'ok');
+}
+
+function updateDiscFooter() {
+  const remaining = discResults.filter((_, i) => !importedDiscIds.has(i)).length;
+  document.getElementById('disc-footer-status').textContent = `${remaining} noch nicht importiert`;
+}
+
+// ── OUTBOX ──
+function renderOutbox() {
+  const now = new Date();
+
+  const drafts = allLeads.filter(l => l.mailStatus === 'draft' && l.email);
+  const fuReady = allLeads.filter(l => {
+    if (l.mailStatus !== 'sent' && l.mailStatus !== 'fu1_sent') return false;
+    if (!l.email) return false;
+    if (l.followUp2SentAt) return false;
+    const fuDate = l.followUp ? new Date(l.followUp) : null;
+    return fuDate && fuDate <= now;
+  });
+  const fuPending = allLeads.filter(l => {
+    if (l.mailStatus !== 'sent' && l.mailStatus !== 'fu1_sent') return false;
+    if (!l.email) return false;
+    if (l.followUp2SentAt) return false;
+    const fuDate = l.followUp ? new Date(l.followUp) : null;
+    return fuDate && fuDate > now;
+  });
+
+  let html = '';
+
+  if (!drafts.length && !fuReady.length && !fuPending.length) {
+    html = `<div class="outbox-empty">
+      <div class="oe-icon">📭</div>
+      <h3>Ausgang leer</h3>
+      <p>Keine ausstehenden E-Mails. Super!</p>
+    </div>`;
+  } else {
+    if (drafts.length) {
+      html += `<div class="outbox-section">
+        <div class="outbox-section-title">📝 Entwürfe – bereit zum Senden <span class="outbox-section-count">${drafts.length}</span></div>
+        <div class="outbox-cards">${drafts.map(l => outboxCard(l, 'draft')).join('')}</div>
+      </div>`;
+    }
+    if (fuReady.length) {
+      html += `<div class="outbox-section">
+        <div class="outbox-section-title">📬 Follow-up fällig <span class="outbox-section-count" style="background:#fff3cd;color:#92400e">${fuReady.length}</span></div>
+        <div class="outbox-cards">${fuReady.map(l => outboxCard(l, 'fu')).join('')}</div>
+      </div>`;
+    }
+    if (fuPending.length) {
+      html += `<div class="outbox-section">
+        <div class="outbox-section-title" style="color:#94a3b8">⏳ Follow-up geplant <span class="outbox-section-count">${fuPending.length}</span></div>
+        <div class="outbox-cards">${fuPending.map(l => outboxCard(l, 'fu-pending')).join('')}</div>
+      </div>`;
+    }
+  }
+
+  document.getElementById('outbox-content').innerHTML = html;
+}
+
+function outboxCard(l, type) {
+  const metaParts = [l.industry, l.city].filter(Boolean);
+  const meta = metaParts.join(' · ');
+  const fuDate = l.followUp ? new Date(l.followUp).toLocaleDateString('de-DE') : '';
+  const subjectPreview = l.emailDraft?.subject || l.emailSubject || '';
+  const bodyPreview = l.emailDraft?.body || '';
+
+  let badge = '', actions = '';
+
+  if (type === 'draft') {
+    badge = `<span class="mbadge mbadge-draft">📝 Entwurf</span>`;
+    actions = `
+      <button class="btn-outbox-send" onclick="openEmailModal('${l.id}',false)">📤 Senden</button>
+      <button class="btn-outbox-preview" onclick="openEmailModal('${l.id}',false)">Vorschau</button>
+    `;
+  } else if (type === 'fu') {
+    const fuType = l.followUp1SentAt ? 'Follow-up 2' : 'Follow-up 1';
+    badge = `<span class="mbadge mbadge-${l.mailStatus}">${fuType} fällig</span>`;
+    actions = `
+      <button class="btn-outbox-fu" onclick="sendFollowUp('${l.id}')">📬 ${fuType} senden</button>
+    `;
+  } else {
+    badge = `<span class="mbadge mbadge-${l.mailStatus}">FU geplant ${fuDate}</span>`;
+    actions = `<button class="btn-outbox-preview" onclick="openEmailModal('${l.id}',false)" style="opacity:0.7">Vorschau</button>`;
+  }
+
+  return `<div class="outbox-card">
+    <div class="outbox-card-top">
+      <div>
+        <div class="outbox-card-company">${esc(l.company)}</div>
+        <div class="outbox-card-meta">${esc(l.email||'')} ${meta ? '· '+esc(meta) : ''}</div>
+      </div>
+      <div class="outbox-card-badge">${badge}</div>
+    </div>
+    ${subjectPreview ? `<div class="outbox-card-subject">📋 ${esc(subjectPreview)}</div>` : ''}
+    ${bodyPreview ? `<div class="outbox-card-preview">${esc(bodyPreview)}</div>` : ''}
+    <div class="outbox-card-actions">${actions}</div>
+  </div>`;
+}
+
+// ── EMAIL MODAL ──
+async function openEmailModal(leadId, generate) {
+  emailModalLeadId = leadId;
+  const lead = allLeads.find(l => l.id === leadId);
+  if (!lead) return;
+
+  document.getElementById('epm-to').textContent = `An: ${lead.email||'(keine E-Mail)'} · ${lead.company}`;
+  document.getElementById('epm-sig').textContent = `– Achim Wolters · Ailima · www.ailima.de · sales@soceting.de`;
+  document.getElementById('epm-status').textContent = '';
+  document.getElementById('btn-epm-send').disabled = !lead.email;
+
+  if (generate || !lead.emailDraft) {
+    document.getElementById('epm-subject').value = '';
+    document.getElementById('epm-body').value = '';
+    document.getElementById('epm-status').textContent = '⏳ KI generiert E-Mail…';
+    document.getElementById('email-modal-overlay').classList.add('open');
+    await generateEmailForModal(leadId);
+  } else {
+    document.getElementById('epm-subject').value = lead.emailDraft.subject || '';
+    document.getElementById('epm-body').value = lead.emailDraft.body || '';
+    document.getElementById('email-modal-overlay').classList.add('open');
+  }
+}
+
+async function generateEmailForModal(leadId) {
+  try {
+    const r = await fetch(`/crm/generate-email/${leadId}`, {
+      method: 'POST', headers: { 'x-crm-token': crmToken }
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    document.getElementById('epm-subject').value = d.draft.subject;
+    document.getElementById('epm-body').value = d.draft.body;
+    document.getElementById('epm-status').textContent = '✓ E-Mail generiert – bitte prüfen und ggf. anpassen';
+    const idx = allLeads.findIndex(l => l.id === leadId);
+    if (idx !== -1) allLeads[idx] = d.lead;
+    renderTable(); updateOutboxBadge(); renderStats();
+  } catch(e) {
+    document.getElementById('epm-status').textContent = `❌ Fehler: ${e.message}`;
+  }
+}
+
+async function regenEmail() {
+  if (!emailModalLeadId) return;
+  document.getElementById('epm-status').textContent = '⏳ Neue Version wird generiert…';
+  document.getElementById('epm-subject').value = '';
+  document.getElementById('epm-body').value = '';
+  await generateEmailForModal(emailModalLeadId);
+}
+
+async function sendEmail() {
+  if (!emailModalLeadId) return;
+  const subject = document.getElementById('epm-subject').value.trim();
+  const body    = document.getElementById('epm-body').value.trim();
+  if (!subject || !body) { showToast('Bitte Betreff und Text ausfüllen', 'err'); return; }
+
+  const btn = document.getElementById('btn-epm-send');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="epm-spinner"></span> Sende…`;
+  document.getElementById('epm-status').textContent = '⏳ Sende E-Mail…';
+
+  try {
+    const r = await fetch(`/crm/send-email/${emailModalLeadId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+      body: JSON.stringify({ subject, body })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+
+    const idx = allLeads.findIndex(l => l.id === emailModalLeadId);
+    if (idx !== -1) allLeads[idx] = d.lead;
+    renderStats(); renderTable(); updateOutboxBadge();
+    if (currentTab === 'outbox') renderOutbox();
+    closeEmailModal();
+    showToast(`✅ Mail an ${d.lead.company} gesendet`, 'ok');
+  } catch(e) {
+    document.getElementById('epm-status').textContent = `❌ ${e.message}`;
+    btn.disabled = false;
+    btn.innerHTML = `<span>📤 Senden</span>`;
+  }
+}
+
+function closeEmailModal() {
+  document.getElementById('email-modal-overlay').classList.remove('open');
+  emailModalLeadId = null;
+}
+
+document.getElementById('email-modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('email-modal-overlay')) closeEmailModal();
+});
+
+// ── FOLLOW-UP ──
+async function sendFollowUp(leadId) {
+  const lead = allLeads.find(l => l.id === leadId);
+  if (!lead) return;
+  const fuNum = lead.followUp1SentAt ? 2 : 1;
+  if (!confirm(`Follow-up ${fuNum} an ${lead.company} (${lead.email}) senden?\n\nDie KI generiert automatisch einen kurzen Text.`)) return;
+
+  showToast(`⏳ Follow-up ${fuNum} wird generiert und gesendet…`);
+  try {
+    const r = await fetch(`/crm/followup/${leadId}`, {
+      method: 'POST', headers: { 'x-crm-token': crmToken }
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    const idx = allLeads.findIndex(l => l.id === leadId);
+    if (idx !== -1) allLeads[idx] = d.lead;
+    renderStats(); renderTable(); updateOutboxBadge();
+    if (currentTab === 'outbox') renderOutbox();
+    showToast(`✅ Follow-up ${d.fuType} an ${lead.company} gesendet`, 'ok');
+  } catch(e) {
+    showToast(`❌ ${e.message}`, 'err');
+  }
+}
+
+// ── TOAST ──
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (type === 'ok' ? ' toast-ok' : type === 'err' ? ' toast-err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ''; }, 3500);
 }
 </script>
 </body>

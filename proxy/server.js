@@ -446,6 +446,238 @@ app.get('/crm/backup', requireCRM, (req, res) => {
   res.json({ seed });
 });
 
+// ── CRM: Mail-System ─────────────────────────────────────────
+const nodemailer = require('nodemailer');
+const SMTP_HOST      = process.env.SMTP_HOST || 'tojopo.han-solo.net';
+const SMTP_PORT      = parseInt(process.env.SMTP_PORT) || 587;
+const SMTP_USER      = process.env.SMTP_USER || 'sales@soceting.de';
+const SMTP_PASS      = process.env.SMTP_PASS || '';
+const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || 'Achim Wolters';
+
+function smtpTransport() {
+  return nodemailer.createTransport({
+    host: SMTP_HOST, port: SMTP_PORT, secure: false,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    tls: { rejectUnauthorized: false },
+  });
+}
+
+// SMTP health-check endpoint (used by CRM UI)
+app.get('/crm/smtp-status', requireCRM, (req, res) => {
+  res.json({ configured: !!SMTP_PASS, host: SMTP_HOST, user: SMTP_USER });
+});
+
+// OSM discovery: find local businesses via Overpass API
+app.post('/crm/discover', requireCRM, async (req, res) => {
+  const { city = 'Mönchengladbach', industry = 'Friseur / Kosmetik', limit = 30 } = req.body;
+
+  const OSM_TAGS = {
+    'Friseur / Kosmetik':       [['shop','hairdresser'],['shop','beauty'],['shop','cosmetics']],
+    'Restaurant / Café':        [['amenity','restaurant'],['amenity','cafe'],['amenity','bar']],
+    'Handwerk':                 [['craft','plumber'],['craft','electrician'],['craft','carpenter'],['craft','painter']],
+    'Physiotherapie / Wellness':[['amenity','physiotherapist'],['healthcare','physiotherapist'],['shop','massage'],['leisure','spa']],
+    'Kanzlei / Beratung':       [['office','lawyer'],['office','accountant'],['office','insurance']],
+    'Einzelhandel':             [['shop','clothes'],['shop','florist'],['shop','furniture'],['shop','gift']],
+    'Hotel / Pension':          [['tourism','hotel'],['tourism','guest_house'],['tourism','hostel']],
+    'Fitness':                  [['leisure','fitness_centre'],['leisure','sports_centre']],
+  };
+
+  const tags = OSM_TAGS[industry] || [['amenity','*']];
+  const tagLines = tags.map(([k,v]) => `  node["${k}"="${v}"](area.searchArea);`).join('\n');
+
+  const query = `[out:json][timeout:25];
+area["name"="${city}"]["place"~"city|town|village"]->.searchArea;
+(
+${tagLines}
+);
+out body ${Math.min(parseInt(limit)*4, 200)};`;
+
+  try {
+    const r = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(query),
+      signal: AbortSignal.timeout(28000),
+    });
+    if (!r.ok) throw new Error(`Overpass HTTP ${r.status}`);
+    const data = await r.json();
+
+    const crm = loadCRM();
+    const existingNames  = new Set(crm.leads.map(l => (l.company||'').toLowerCase().replace(/[^a-z0-9]/g,'')));
+    const existingEmails = new Set(crm.leads.map(l => (l.email||'').toLowerCase()).filter(Boolean));
+
+    const results = (data.elements || [])
+      .filter(el => el.tags?.name)
+      .map(el => ({
+        company:  el.tags.name,
+        industry,
+        city,
+        phone:    el.tags.phone || el.tags['contact:phone'] || el.tags['phone:mobile'] || '',
+        website:  el.tags.website || el.tags['contact:website'] || '',
+        email:    el.tags.email || el.tags['contact:email'] || '',
+        address:  [el.tags['addr:street'], el.tags['addr:housenumber']].filter(Boolean).join(' '),
+      }))
+      .filter(b => {
+        const norm = b.company.toLowerCase().replace(/[^a-z0-9]/g,'');
+        if (existingNames.has(norm)) return false;
+        if (b.email && existingEmails.has(b.email.toLowerCase())) return false;
+        return true;
+      })
+      .slice(0, parseInt(limit));
+
+    res.json({ leads: results, total: data.elements?.length || 0 });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Generate AI email for a lead
+app.post('/crm/generate-email/:id', requireCRM, async (req, res) => {
+  try {
+    const data = loadCRM();
+    const idx = data.leads.findIndex(l => l.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'Lead nicht gefunden' });
+    const lead = data.leads[idx];
+
+    const subjects = [
+      `Ihre Website – selbst aktualisieren, ganz ohne Programmierer`,
+      `Öffnungszeiten, Preise, Aktionen – sofort selbst anpassen`,
+      `Website aktuell halten ohne Agentur – für ${lead.company}`,
+      `Kleine Website-Änderungen – jetzt in Sekunden, nicht Tagen`,
+    ];
+    const subject = subjects[Math.floor(Math.random() * subjects.length)];
+
+    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 700,
+        system: `Du schreibst professionelle deutsche Kaltakquise-Mails für Ailima.
+
+Was ist Ailima: Ein KI-Assistent, der direkt auf der Website des Kunden läuft. Der Unternehmer tippt einfach auf Deutsch, was geändert werden soll – Ailima setzt es um. Kein Programmierer, keine Agentur, kein Warten. Ab €29/Monat. Website: www.ailima.de
+
+REGELN:
+- Immer Sie-Form, natürliche Geschäftssprache
+- Ansprechpartner falls bekannt namentlich ansprechen, sonst: "Guten Tag,"
+- Maximal 160 Wörter
+- Konkretes Problem der Branche ansprechen (z.B. Friseur: Öffnungszeiten, Preise, Mitarbeiter ändern sich)
+- Ailima als Lösung nennen mit www.ailima.de
+- Ab €29/Monat erwähnen
+- CTA: kurzes 15-Minuten Telefonat oder Demo
+- NUR den E-Mail-Text, keine Betreffzeile, keine Signatur, kein Markdown`,
+        messages: [{ role: 'user', content:
+          `Firma: ${lead.company}\nBranche: ${lead.industry||'lokales Unternehmen'}\nStadt: ${lead.city||''}\nAnsprechpartner: ${lead.contact||'unbekannt'}\nWebsite: ${lead.website||'keine'}` }],
+      }),
+    });
+    const cData = await claudeRes.json();
+    if (!claudeRes.ok) throw new Error(cData.error?.message);
+
+    const body = (cData.content?.[0]?.text || '').trim();
+    const draft = { subject, body, generatedAt: new Date().toISOString() };
+
+    data.leads[idx] = { ...lead, emailDraft: draft, mailStatus: 'draft',
+      updatedAt: new Date().toISOString(), updatedBy: req.crmUser, updatedByName: req.crmName };
+    await saveCRM(data);
+    res.json({ draft, lead: data.leads[idx] });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Send approved email via SMTP
+app.post('/crm/send-email/:id', requireCRM, async (req, res) => {
+  if (!SMTP_PASS) return res.status(500).json({ error: 'SMTP_PASS nicht in Render konfiguriert' });
+  try {
+    const data = loadCRM();
+    const idx = data.leads.findIndex(l => l.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'Lead nicht gefunden' });
+    const lead = data.leads[idx];
+    if (!lead.email) return res.status(400).json({ error: 'Keine E-Mail-Adresse eingetragen' });
+
+    const { subject, body } = req.body;
+    if (!subject || !body) return res.status(400).json({ error: 'Betreff und Text erforderlich' });
+
+    const signature = `\n\n--\n${SMTP_FROM_NAME}\nAilima – KI-gestützter Website-Editor\nwww.ailima.de · ${SMTP_USER}`;
+
+    await smtpTransport().sendMail({
+      from: `"${SMTP_FROM_NAME}" <${SMTP_USER}>`,
+      to: lead.email,
+      subject,
+      text: body + signature,
+    });
+
+    const now = new Date().toISOString();
+    data.leads[idx] = { ...lead,
+      status: 'angeschrieben', mailStatus: 'sent',
+      emailSentAt: now, emailSubject: subject,
+      followUp: new Date(Date.now() + 7*86400000).toISOString().slice(0,10),
+      channel: 'email',
+      updatedAt: now, updatedBy: req.crmUser, updatedByName: req.crmName,
+    };
+    await saveCRM(data);
+    res.json({ ok: true, lead: data.leads[idx] });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Send follow-up email
+app.post('/crm/followup/:id', requireCRM, async (req, res) => {
+  if (!SMTP_PASS) return res.status(500).json({ error: 'SMTP_PASS nicht in Render konfiguriert' });
+  try {
+    const data = loadCRM();
+    const idx = data.leads.findIndex(l => l.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'Lead nicht gefunden' });
+    const lead = data.leads[idx];
+    if (!lead.email)       return res.status(400).json({ error: 'Keine E-Mail-Adresse' });
+    if (!lead.emailSentAt) return res.status(400).json({ error: 'Erste Mail noch nicht gesendet' });
+    if (lead.followUp2SentAt) return res.status(400).json({ error: 'Follow-up 2 bereits gesendet – Sequenz abgeschlossen' });
+
+    const isFU2 = !!lead.followUp1SentAt;
+    const sentDE = new Date(lead.emailSentAt).toLocaleDateString('de-DE');
+
+    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 350,
+        system: `Du schreibst ${isFU2 ? 'letzte Abschluss-' : 'freundliche Follow-up-'}Mails für Ailima (KI-Website-Editor, www.ailima.de, ab €29/Monat).
+Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text, keine Betreffzeile, keine Signatur.`,
+        messages: [{ role: 'user', content: isFU2
+          ? `Letzte höfliche Abschlussnachricht an ${lead.company} (${lead.industry||''}). Haben auf 2 Mails nicht geantwortet. Tür offen lassen für die Zukunft. Kein Verkaufsdruck.`
+          : `Follow-up an ${lead.company} (${lead.industry||''}). Erste Mail: ${sentDE}. Keine Antwort. Neuen Gedanken einbringen: Website ist oft das erste was Kunden sehen – veraltete Infos kosten Vertrauen.` }],
+      }),
+    });
+    const cData = await claudeRes.json();
+    const body = (cData.content?.[0]?.text || '').trim();
+    const origSubject = lead.emailSubject || `Ihre Website – selbst aktualisieren, ganz ohne Programmierer`;
+    const subject = isFU2 ? `Letzte Nachricht von Ailima – ${origSubject}` : `Re: ${origSubject}`;
+    const signature = `\n\n--\n${SMTP_FROM_NAME}\nAilima – KI-gestützter Website-Editor\nwww.ailima.de · ${SMTP_USER}`;
+
+    await smtpTransport().sendMail({
+      from: `"${SMTP_FROM_NAME}" <${SMTP_USER}>`,
+      to: lead.email,
+      subject,
+      text: body + signature,
+    });
+
+    const now = new Date().toISOString();
+    const fuKey = isFU2 ? 'followUp2SentAt' : 'followUp1SentAt';
+    data.leads[idx] = { ...lead,
+      [fuKey]: now,
+      mailStatus: isFU2 ? 'fu2_sent' : 'fu1_sent',
+      followUp: isFU2 ? '' : new Date(Date.now() + 7*86400000).toISOString().slice(0,10),
+      updatedAt: now, updatedBy: req.crmUser, updatedByName: req.crmName,
+    };
+    await saveCRM(data);
+    res.json({ ok: true, fuType: isFU2 ? 2 : 1, lead: data.leads[idx] });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ---------- admin endpoints ----------
 
 // List all clients
