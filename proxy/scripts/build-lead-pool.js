@@ -118,47 +118,52 @@ function toLead(el, industry) {
   };
 }
 
-async function collect(existing) {
-  const byId = new Map(existing.map(l => [l.osmId, l]));
-  const only = argVal('--only');
-  const known = new Set(existing.map(l => l.industry));
-  for (const [industry, tags] of Object.entries(INDUSTRIES)) {
-    if (only && only !== industry) continue;
-    if (!only && known.has(industry)) { console.log(`▷ ${industry}: schon im Pool, übersprungen`); continue; }
-    console.log(`▶ ${industry}`);
-    const lines = tags.map(([k, v]) => `nwr["${k}"="${v}"]["name"];`).join('');
-    const els = await overpass(`[out:json][timeout:170][bbox:${REGION.bbox}];(${lines});out center tags;`);
-    let added = 0;
-    for (const el of els) {
-      if (el.tags?.['brand:wikidata']) continue;
-      const lead = toLead(el, industry === 'Handwerk+' ? 'Handwerk' : industry);
-      const prev = byId.get(lead.osmId);
-      if (prev) { Object.assign(prev, { ...lead, industry: prev.industry, email: prev.email || lead.email }); continue; }
-      byId.set(lead.osmId, lead); added++;
-    }
-    console.log(`   ${els.length} gefunden, ${added} neu`);
-    save([...byId.values()]);
-    await sleep(5000);
+let doneGroups = new Set();
+
+function addElements(byId, els, classify) {
+  let added = 0;
+  for (const el of els) {
+    if (el.tags?.['brand:wikidata']) continue;
+    const industry = classify(el);
+    if (!industry) continue;
+    const lead = toLead(el, industry);
+    const prev = byId.get(lead.osmId);
+    if (prev) { Object.assign(prev, { ...lead, industry: prev.industry, email: prev.email || lead.email }); continue; }
+    byId.set(lead.osmId, lead); added++;
   }
-  if (!only || only === 'catch-all') await collectCatchAll(byId);
-  return [...byId.values()];
+  return added;
 }
 
-async function collectCatchAll(byId) {
+// Several industries per Overpass query: the public servers queue every request, so fewer requests = much faster.
+async function runBatches(byId, onBatchDone) {
+  const pending = Object.entries(INDUSTRIES).filter(([name]) => !doneGroups.has(name));
+  for (let i = 0; i < pending.length; i += 5) {
+    const batch = pending.slice(i, i + 5);
+    console.log(`▶ ${batch.map(([n]) => n).join(', ')}`);
+    const lines = batch.flatMap(([, tags]) => tags.map(([k, v]) => `nwr["${k}"="${v}"]["name"];`)).join('');
+    const els = await overpass(`[out:json][timeout:170][bbox:${REGION.bbox}];(${lines});out center tags;`);
+    const added = addElements(byId, els, el => {
+      const hit = batch.find(([, tags]) => tags.some(([k, v]) => el.tags?.[k] === v));
+      return hit && (hit[0] === 'Handwerk+' ? 'Handwerk' : hit[0]);
+    });
+    batch.forEach(([n]) => doneGroups.add(n));
+    console.log(`   ${els.length} gefunden, ${added} neu`);
+    await onBatchDone();
+    await sleep(5000);
+  }
   for (const [key, industry] of Object.entries(CATCH_ALL)) {
+    const group = `catch:${key}`;
+    if (doneGroups.has(group)) continue;
     console.log(`▶ Sammel-Durchlauf ${key} → ${industry}`);
     const els = await overpass(`[out:json][timeout:170][bbox:${REGION.bbox}];(nwr["${key}"]["name"]["website"];nwr["${key}"]["name"]["contact:website"];);out center tags;`);
-    let added = 0;
-    for (const el of els) {
+    const added = addElements(byId, els, el => {
       const t = el.tags || {};
-      if (t['brand:wikidata'] || NOT_A_BUSINESS.has(t[key])) continue;
-      const lead = toLead(el, industry);
-      if (byId.has(lead.osmId)) continue;
-      lead.osmType = `${key}=${t[key]}`;
-      byId.set(lead.osmId, lead); added++;
-    }
+      if (NOT_A_BUSINESS.has(t[key]) || byId.has(`${el.type}/${el.id}`)) return null;
+      return industry;
+    });
+    doneGroups.add(group);
     console.log(`   ${els.length} gefunden, ${added} neu`);
-    save([...byId.values()]);
+    await onBatchDone();
     await sleep(5000);
   }
 }
@@ -240,7 +245,7 @@ async function enrich(leads) {
 }
 
 function save(leads) {
-  fs.writeFileSync(OUT, JSON.stringify({ region: REGION.name, updatedAt: new Date().toISOString(), leads }, null, 1));
+  fs.writeFileSync(OUT, JSON.stringify({ region: REGION.name, updatedAt: new Date().toISOString(), doneGroups: [...doneGroups], leads }, null, 1));
 }
 
 function upload() {
@@ -250,22 +255,34 @@ function upload() {
   const netrc = path.join(require('os').tmpdir(), 'ailima-pool-netrc');
   fs.writeFileSync(netrc, `machine ${env.FTP_HOST}\nlogin ${env.FTP_USER}\npassword ${env.FTP_PASS}\n`, { mode: 0o600 });
   try {
-    execFileSync('curl', ['--netrc-file', netrc, '-sS', '-T', OUT, `ftp://${env.FTP_HOST}/ailima-data/lead-pool.json`]);
+    execFileSync('curl', ['--netrc-file', netrc, '-sS', '-T', OUT, `ftp://${env.FTP_HOST}/ailima-data/lead-pool.json.tmp`,
+      '-Q', '-RNFR lead-pool.json.tmp', '-Q', '-RNTO lead-pool.json']);
   } finally { fs.unlinkSync(netrc); }
   console.log('▶ Pool hochgeladen');
 }
 
-(async () => {
-  const existing = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')).leads : [];
-  const leads = args.includes('--skip-osm') ? existing : await collect(existing);
-  if (args.includes('--upload')) upload();
-  await enrich(leads);
-  save(leads);
-  const withMail = leads.filter(l => l.email).length;
-  console.log(`✓ Pool: ${leads.length} Firmen, ${withMail} mit E-Mail`);
+function report(leads) {
+  console.log(`✓ Pool: ${leads.length} Firmen, ${leads.filter(l => l.email).length} mit E-Mail`);
   for (const ind of [...new Set(leads.map(l => l.industry))]) {
     const all = leads.filter(l => l.industry === ind);
     console.log(`   ${ind}: ${all.length} (${all.filter(l => l.email).length} mit E-Mail)`);
   }
-  if (args.includes('--upload')) upload();
+}
+
+(async () => {
+  const file = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : { leads: [] };
+  doneGroups = new Set(file.doneGroups || file.leads.map(l => l.industry));
+  if (argVal('--done')) argVal('--done').split(',').forEach(g => doneGroups.add(g.trim()));
+  const byId = new Map(file.leads.map(l => [l.osmId, l]));
+  const all = () => [...byId.values()];
+  const doUpload = args.includes('--upload');
+  const afterBatch = async () => {
+    save(all());
+    await enrich(all());
+    save(all());
+    if (doUpload) upload();
+  };
+  if (!args.includes('--skip-osm')) await runBatches(byId, afterBatch);
+  else await afterBatch();
+  report(all());
 })().catch(e => { console.error('✗', e.message); process.exit(1); });
