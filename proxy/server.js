@@ -822,20 +822,42 @@ function estimateSchedule(leads) {
   return etas;
 }
 
-async function deliver(lead, subject, body) {
-  await smtpTransport().sendMail({
+// Background jobs await network calls; they must patch the *current* CRM state, not a stale snapshot.
+async function patchLeads(patches, mutateData) {
+  const data = loadCRM();
+  for (const [id, apply] of patches) {
+    const idx = data.leads.findIndex(l => l.id === id);
+    if (idx !== -1) data.leads[idx] = apply(data.leads[idx]);
+  }
+  if (mutateData) mutateData(data);
+  await saveCRM(data);
+  return data;
+}
+
+// Statuses where the conversation is handled personally – no automatic follow-ups.
+const NO_FOLLOWUP_STATUS = new Set(['in_kontakt', 'termin', 'gewonnen', 'kein_interesse']);
+const followUpBlocked = l => NO_FOLLOWUP_STATUS.has(l.status) || !!l.replyAt || !!l.emailBounced || l.archived;
+
+async function deliver(lead, subject, body, kind) {
+  const thread = kind !== 'initial' && lead.emailMessageId
+    ? { inReplyTo: lead.emailMessageId, references: [lead.emailMessageId, ...(lead.followUpMessageIds || [])].join(' ') }
+    : {};
+  const info = await smtpTransport().sendMail({
     from: `"${SMTP_FROM_NAME}" <${SMTP_USER}>`,
     to: lead.email,
     subject,
+    ...thread,
     ...buildMail(body),
   });
+  return info.messageId;
 }
 
-function applySent(lead, kind, subject, now) {
+function applySent(lead, kind, subject, now, messageId) {
   const in7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-  if (kind === 'initial') return { ...lead, status: 'angeschrieben', mailStatus: 'sent', emailSentAt: now, emailSubject: subject, followUp: in7, channel: 'email', emailDraft: null };
-  if (kind === 'fu1') return { ...lead, mailStatus: 'fu1_sent', followUp1SentAt: now, followUp: in7 };
-  return { ...lead, mailStatus: 'fu2_sent', followUp2SentAt: now, followUp: '' };
+  if (kind === 'initial') return { ...lead, status: 'angeschrieben', mailStatus: 'sent', emailSentAt: now, emailSubject: subject, emailMessageId: messageId, followUp: in7, channel: 'email', emailDraft: null };
+  const followUpMessageIds = [...(lead.followUpMessageIds || []), messageId].filter(Boolean);
+  if (kind === 'fu1') return { ...lead, mailStatus: 'fu1_sent', followUp1SentAt: now, followUp: in7, followUpMessageIds };
+  return { ...lead, mailStatus: 'fu2_sent', followUp2SentAt: now, followUp: '', followUpMessageIds };
 }
 
 async function processQueue() {
@@ -855,26 +877,30 @@ async function processQueue() {
     lastAttemptAt = now.getTime();
 
     const { kind, subject, body } = next.queuedMail;
-    const idx = data.leads.findIndex(l => l.id === next.id);
     const stamp = now.toISOString();
+    if (kind !== 'initial' && followUpBlocked(next)) {
+      await patchLeads([[next.id, l => { const { queuedMail, ...rest } = l; return { ...rest, updatedAt: stamp }; }]]);
+      console.log(`[Queue] Follow-up an ${next.company} verworfen – Lead hat geantwortet bzw. Status ${next.status}`);
+      return;
+    }
+    let patch;
     try {
-      await deliver(next, subject, body);
-      const { queuedMail, sendError, ...rest } = applySent(next, kind, subject, stamp);
-      data.leads[idx] = { ...rest, updatedAt: stamp };
+      const messageId = await deliver(next, subject, body, kind);
+      patch = l => { const { queuedMail, sendError, ...rest } = applySent(l, kind, subject, stamp, messageId); return { ...rest, updatedAt: stamp }; };
       console.log(`[Queue] gesendet (${kind}) an ${next.company}`);
     } catch (e) {
       const attempts = (next.queuedMail.attempts || 0) + 1;
       console.error(`[Queue] Fehler bei ${next.company} (Versuch ${attempts}):`, e.message);
-      if (attempts >= 3) {
-        const { queuedMail, ...rest } = next;
-        data.leads[idx] = { ...rest, sendError: e.message, updatedAt: stamp,
+      patch = l => {
+        if (!l.queuedMail) return l;
+        if (attempts < 3) return { ...l, queuedMail: { ...l.queuedMail, attempts, lastError: e.message } };
+        const { queuedMail, ...rest } = l;
+        return { ...rest, sendError: e.message, updatedAt: stamp,
           ...(kind === 'initial' ? { mailStatus: 'draft', emailDraft: { subject, body, generatedAt: stamp } } : {}) };
-      } else {
-        data.leads[idx] = { ...next, queuedMail: { ...next.queuedMail, attempts, lastError: e.message } };
-      }
+      };
     }
     nextGapMs = pickGap();
-    await saveCRM(data);
+    await patchLeads([[next.id, patch]]);
   } catch (e) {
     console.error('[Queue]', e.message);
   } finally {
@@ -964,6 +990,32 @@ app.post('/crm/queue/cancel/:id', requireCRM, async (req, res) => {
   }
 });
 
+async function generateFollowUp(lead) {
+  const isFU2 = !!lead.followUp1SentAt;
+  const sentDE = new Date(lead.emailSentAt).toLocaleDateString('de-DE');
+
+  const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5',
+      max_tokens: 350,
+      system: `Du schreibst ${isFU2 ? 'letzte Abschluss-' : 'freundliche Follow-up-'}Mails für Ailima (KI-Website-Editor, www.ailima.de, ab €29/Monat).
+Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur, keine URL.`,
+      messages: [{ role: 'user', content: isFU2
+        ? `Letzte höfliche Abschlussnachricht an ${lead.company} (${lead.industry||''}). Haben auf 2 Mails nicht geantwortet. Tür offen lassen für die Zukunft. Kein Verkaufsdruck.`
+        : `Follow-up an ${lead.company} (${lead.industry||''}). Erste Mail: ${sentDE}. Keine Antwort. Neuen Gedanken einbringen: Website ist oft das erste was Kunden sehen – veraltete Infos kosten Vertrauen.` }],
+    }),
+  });
+  const cData = await claudeRes.json();
+  const body = (cData.content?.[0]?.text || '').trim();
+  if (!body) throw new Error('KI hat keinen Text geliefert');
+  const origSubject = lead.emailSubject || `Ihre Website – selbst aktualisieren, ganz ohne Programmierer`;
+  const subject = `Re: ${origSubject.replace(/^(re:\s*)+/i, '')}`;
+
+  return { isFU2, subject, body };
+}
+
 // Generate a follow-up and put it into the queue
 app.post('/crm/followup/:id', requireCRM, async (req, res) => {
   if (!SMTP_PASS) return res.status(500).json({ error: 'SMTP_PASS nicht in Render konfiguriert' });
@@ -976,29 +1028,9 @@ app.post('/crm/followup/:id', requireCRM, async (req, res) => {
     if (!lead.emailSentAt) return res.status(400).json({ error: 'Erste Mail noch nicht gesendet' });
     if (lead.followUp2SentAt) return res.status(400).json({ error: 'Follow-up 2 bereits gesendet – Sequenz abgeschlossen' });
     if (lead.queuedMail) return res.status(400).json({ error: 'Für diesen Lead wartet schon eine Mail in der Warteschlange' });
+    if (followUpBlocked(lead)) return res.status(400).json({ error: 'Lead hat geantwortet bzw. ist in Kontakt – kein Follow-up nötig' });
 
-    const isFU2 = !!lead.followUp1SentAt;
-    const sentDE = new Date(lead.emailSentAt).toLocaleDateString('de-DE');
-
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: 350,
-        system: `Du schreibst ${isFU2 ? 'letzte Abschluss-' : 'freundliche Follow-up-'}Mails für Ailima (KI-Website-Editor, www.ailima.de, ab €29/Monat).
-Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur, keine URL.`,
-        messages: [{ role: 'user', content: isFU2
-          ? `Letzte höfliche Abschlussnachricht an ${lead.company} (${lead.industry||''}). Haben auf 2 Mails nicht geantwortet. Tür offen lassen für die Zukunft. Kein Verkaufsdruck.`
-          : `Follow-up an ${lead.company} (${lead.industry||''}). Erste Mail: ${sentDE}. Keine Antwort. Neuen Gedanken einbringen: Website ist oft das erste was Kunden sehen – veraltete Infos kosten Vertrauen.` }],
-      }),
-    });
-    const cData = await claudeRes.json();
-    const body = (cData.content?.[0]?.text || '').trim();
-    if (!body) return res.status(500).json({ error: 'KI hat keinen Text geliefert' });
-    const origSubject = lead.emailSubject || `Ihre Website – selbst aktualisieren, ganz ohne Programmierer`;
-    const subject = isFU2 ? `Letzte Nachricht von Ailima – ${origSubject}` : `Re: ${origSubject}`;
-
+    const { isFU2, subject, body } = await generateFollowUp(lead);
     data.leads[idx] = enqueue(lead, isFU2 ? 'fu2' : 'fu1', subject, body, req.crmUser);
     await saveCRM(data);
     const q = queueResponse(data.leads);
@@ -1006,6 +1038,232 @@ Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text ab de
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── CRM: Posteingang – Antworten & Rückläufer automatisch erkennen ──
+const { ImapFlow } = require('imapflow');
+const { simpleParser } = require('mailparser');
+const IMAP_HOST = process.env.IMAP_HOST || SMTP_HOST;
+const IMAP_PORT = parseInt(process.env.IMAP_PORT) || 993;
+const FREEMAIL = new Set(['gmx.de','gmx.net','web.de','gmail.com','googlemail.com','t-online.de','outlook.com','outlook.de',
+  'hotmail.com','hotmail.de','yahoo.com','yahoo.de','icloud.com','me.com','freenet.de','posteo.de','aol.com','live.de','mail.de','arcor.de']);
+const inbox = { lastCheck: null, lastError: '', processed: 0, running: false };
+
+const domainOf = e => (e || '').toLowerCase().split('@')[1] || '';
+const normId = id => (id || '').trim().replace(/^<|>$/g, '').toLowerCase();
+
+function isBounce(mail) {
+  const from = (mail.from?.value?.[0]?.address || '').toLowerCase();
+  const ct = (mail.headers.get('content-type')?.value || '').toLowerCase();
+  return /mailer-daemon|postmaster/.test(from) || ct === 'multipart/report' ||
+    /undeliverable|unzustellbar|delivery status notification|returned mail|nicht zugestellt|failure notice/i.test(mail.subject || '');
+}
+
+function isAutoReply(mail) {
+  const auto = String(mail.headers.get('auto-submitted') || '').toLowerCase();
+  return (auto && auto !== 'no') || mail.headers.has('x-autoreply') || mail.headers.has('x-autorespond') ||
+    /abwesen|out of office|automatische antwort|auto-?reply|autoreply|urlaub|nicht im büro|vacation/i.test(mail.subject || '');
+}
+
+function stripQuoted(text) {
+  const lines = (text || '').split('\n');
+  const cut = lines.findIndex(l => /^>|^-{2,}\s*(original|ursprüngliche)|^am .+ schrieb|^on .+ wrote|^von:\s|^from:\s/i.test(l.trim()));
+  return (cut > 0 ? lines.slice(0, cut) : lines).join('\n').trim().slice(0, 2000);
+}
+
+function findLeadForReply(leads, mail) {
+  const refs = [mail.inReplyTo, ...(Array.isArray(mail.references) ? mail.references : [mail.references])].filter(Boolean).map(normId);
+  if (refs.length) {
+    const byThread = leads.find(l => [l.emailMessageId, ...(l.followUpMessageIds || [])].map(normId).some(id => id && refs.includes(id)));
+    if (byThread) return byThread;
+  }
+  const from = (mail.from?.value?.[0]?.address || '').toLowerCase();
+  const contacted = leads.filter(l => l.emailSentAt && l.email);
+  const byAddress = contacted.find(l => l.email.toLowerCase() === from);
+  if (byAddress) return byAddress;
+  const dom = domainOf(from);
+  if (!dom || FREEMAIL.has(dom)) return null;
+  return contacted.find(l => domainOf(l.email) === dom || hostOf(l.website) === dom) || null;
+}
+
+function findLeadForBounce(leads, mail) {
+  const text = `${mail.text || ''}\n${(mail.attachments || []).map(a => a.content?.toString('utf8') || '').join('\n')}`.toLowerCase();
+  const recip = text.match(/(?:final|original)-recipient:\s*rfc822;\s*<?([^\s>]+@[^\s>]+)/i)?.[1];
+  const contacted = leads.filter(l => l.emailSentAt && l.email);
+  if (recip) { const hit = contacted.find(l => l.email.toLowerCase() === recip.toLowerCase()); if (hit) return hit; }
+  return contacted.find(l => text.includes(l.email.toLowerCase())) || null;
+}
+
+async function classifyReply(lead, text) {
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5', max_tokens: 200,
+        system: 'Du ordnest Antworten auf Akquise-Mails für Ailima (KI-Website-Editor) ein. Antworte NUR mit JSON: {"category":"interessiert|termin|frage|kein_interesse|sonstiges","summary":"ein kurzer deutscher Satz"}. "termin" nur wenn ein konkreter Termin/Rückruf vereinbart oder angefragt wird.',
+        messages: [{ role: 'user', content: `Antwort von ${lead.company}:\n\n${text.slice(0, 1500)}` }],
+      }),
+    });
+    const d = await r.json();
+    const parsed = JSON.parse((d.content?.[0]?.text || '').match(/\{[\s\S]*\}/)?.[0] || '{}');
+    return { category: parsed.category || 'sonstiges', summary: parsed.summary || '' };
+  } catch {
+    return { category: 'sonstiges', summary: '' };
+  }
+}
+
+const STATUS_RANK = { neu: 0, angeschrieben: 1, in_kontakt: 2, termin: 3, gewonnen: 4 };
+function statusForCategory(current, category) {
+  if (category === 'kein_interesse') return current === 'gewonnen' ? current : 'kein_interesse';
+  const target = category === 'termin' ? 'termin' : 'in_kontakt';
+  return (STATUS_RANK[current] ?? 0) >= STATUS_RANK[target] ? current : target;
+}
+
+async function checkInbox() {
+  if (inbox.running || !SMTP_PASS) return;
+  inbox.running = true;
+  const client = new ImapFlow({ host: IMAP_HOST, port: IMAP_PORT, secure: true, auth: { user: SMTP_USER, pass: SMTP_PASS }, logger: false });
+  try {
+    await crmReady;
+    await client.connect();
+    const lock = await client.getMailboxLock('INBOX');
+    try {
+      const data = loadCRM();
+      const st = data.inboxState || {};
+      const validity = String(client.mailbox.uidValidity);
+      const sentTimes = sentTimestamps(data.leads);
+      if (st.uidValidity !== validity || !st.lastUid) {
+        // First run: only look at mail since the first campaign mail (max. 30 days back).
+        const since = new Date(Math.max(Date.now() - 30 * 86400000, sentTimes.length ? Math.min(...sentTimes) : Date.now()));
+        const uids = await client.search({ since }, { uid: true });
+        st.uidValidity = validity;
+        st.lastUid = uids.length ? Math.min(...uids) - 1 : (client.mailbox.uidNext - 1);
+      }
+      let changed = false;
+      const patches = [];
+      const messages = [];
+      for await (const msg of client.fetch(`${st.lastUid + 1}:*`, { uid: true, source: true }, { uid: true })) {
+        if (msg.uid > st.lastUid) messages.push(msg);
+      }
+      for (const msg of messages) {
+        st.lastUid = Math.max(st.lastUid, msg.uid);
+        changed = true;
+        const mail = await simpleParser(msg.source);
+        const now = new Date().toISOString();
+        if (isBounce(mail)) {
+          const lead = findLeadForBounce(data.leads, mail);
+          if (!lead) continue;
+          patches.push([lead.id, l => { const { queuedMail, ...rest } = l; return { ...rest,
+            emailBounced: true, mailStatus: 'bounced', followUp: '', updatedAt: now,
+            notes: `${l.notes ? l.notes + '\n' : ''}⚠️ Mail unzustellbar (${new Date().toLocaleDateString('de-DE')})` }; }]);
+          inbox.processed++;
+          console.log(`[Inbox] Rückläufer: ${lead.company}`);
+          continue;
+        }
+        const lead = findLeadForReply(data.leads, mail);
+        if (!lead) continue;
+        const text = stripQuoted(mail.text || '');
+        if (isAutoReply(mail)) {
+          patches.push([lead.id, l => ({ ...l, lastAutoReply: { at: now, subject: mail.subject || '', text: text.slice(0, 500) } })]);
+          continue;
+        }
+        const { category, summary } = await classifyReply(lead, text);
+        const reply = { at: (mail.date || new Date()).toISOString(), from: mail.from?.text || '', subject: mail.subject || '', text, category, summary };
+        patches.push([lead.id, l => {
+          const { queuedMail, fuDraft, ...rest } = l;
+          return { ...rest, ...(queuedMail?.kind === 'initial' ? { queuedMail } : {}),
+            replies: [...(l.replies || []), reply], replyAt: now, newReply: true, mailStatus: 'replied', followUp: '',
+            status: statusForCategory(l.status, category), updatedAt: now };
+        }]);
+        inbox.processed++;
+        console.log(`[Inbox] Antwort von ${lead.company} → ${category}`);
+      }
+      if (changed) await patchLeads(patches, d => { d.inboxState = st; });
+    } finally {
+      lock.release();
+    }
+    await client.logout();
+    inbox.lastError = '';
+  } catch (e) {
+    inbox.lastError = e.message;
+    console.error('[Inbox]', e.message);
+    try { client.close(); } catch {}
+  } finally {
+    inbox.lastCheck = new Date().toISOString();
+    inbox.running = false;
+  }
+}
+setInterval(checkInbox, 3 * 60000);
+setTimeout(checkInbox, 20000);
+
+app.get('/crm/inbox-status', requireCRM, (req, res) => res.json({ enabled: !!SMTP_PASS, ...inbox, autoFollowUp: loadCRM().settings?.autoFollowUp || 'draft' }));
+app.post('/crm/inbox-check', requireCRM, async (req, res) => { await checkInbox(); res.json({ ...inbox, leads: loadCRM().leads }); });
+
+// ── CRM: Automatische Follow-ups ──
+// Modus 'off' | 'draft' (zur Freigabe im Ausgang) | 'auto' (direkt in die Warteschlange)
+let autoFuBusy = false;
+async function runAutoFollowUps() {
+  if (autoFuBusy || !SMTP_PASS || !ANTHROPIC_API_KEY) return;
+  autoFuBusy = true;
+  try {
+    await crmReady;
+    const data = loadCRM();
+    const mode = data.settings?.autoFollowUp || 'draft';
+    if (mode === 'off') return;
+    const today = new Date().toISOString().slice(0, 10);
+    const due = data.leads.filter(l => !followUpBlocked(l) && !l.queuedMail && !l.fuDraft && l.email &&
+      (l.mailStatus === 'sent' || l.mailStatus === 'fu1_sent') && !l.followUp2SentAt && l.followUp && l.followUp <= today).slice(0, 10);
+    if (!due.length) return;
+    const patches = [];
+    for (const lead of due) {
+      try {
+        const { isFU2, subject, body } = await generateFollowUp(lead);
+        const kind = isFU2 ? 'fu2' : 'fu1';
+        patches.push([lead.id, l => {
+          if (followUpBlocked(l) || l.queuedMail || l.fuDraft) return l;
+          return mode === 'auto'
+            ? enqueue(l, kind, subject, body, 'auto')
+            : { ...l, fuDraft: { kind, subject, body, createdAt: new Date().toISOString() } };
+        }]);
+        console.log(`[Auto-FU] ${kind} für ${lead.company} → ${mode === 'auto' ? 'Warteschlange' : 'Entwurf'}`);
+      } catch (e) {
+        console.error(`[Auto-FU] ${lead.company}:`, e.message);
+      }
+    }
+    if (patches.length) await patchLeads(patches);
+  } finally {
+    autoFuBusy = false;
+  }
+}
+setInterval(runAutoFollowUps, 15 * 60000);
+setTimeout(runAutoFollowUps, 60000);
+
+app.post('/crm/settings', requireCRM, async (req, res) => {
+  const data = loadCRM();
+  const { autoFollowUp } = req.body;
+  if (!['off', 'draft', 'auto'].includes(autoFollowUp)) return res.status(400).json({ error: 'Ungültiger Modus' });
+  data.settings = { ...(data.settings || {}), autoFollowUp };
+  await saveCRM(data);
+  res.json({ settings: data.settings });
+  if (autoFollowUp !== 'off') runAutoFollowUps();
+});
+
+// Release (optionally edited) follow-up draft into the queue, or discard it
+app.post('/crm/fu-draft/:id', requireCRM, async (req, res) => {
+  const data = loadCRM();
+  const idx = data.leads.findIndex(l => l.id === req.params.id);
+  if (idx === -1 || !data.leads[idx].fuDraft) return res.status(404).json({ error: 'Kein Follow-up-Entwurf vorhanden' });
+  const { fuDraft, ...lead } = data.leads[idx];
+  if (req.body.action === 'discard') {
+    data.leads[idx] = { ...lead, followUp: '', updatedAt: new Date().toISOString(), updatedBy: req.crmUser };
+  } else {
+    if (followUpBlocked(lead)) return res.status(400).json({ error: 'Lead hat inzwischen geantwortet – kein Follow-up nötig' });
+    data.leads[idx] = enqueue(lead, fuDraft.kind, req.body.subject || fuDraft.subject, req.body.body || fuDraft.body, req.crmUser);
+  }
+  await saveCRM(data);
+  const q = queueResponse(data.leads);
+  res.json({ lead: data.leads[idx], eta: q.queue.find(x => x.id === req.params.id)?.eta });
 });
 
 // ── CRM: Lead-Pool (vorab gesammelte Firmen, liegt privat auf dem FTP) ──
