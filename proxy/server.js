@@ -527,6 +527,38 @@ const SMTP_USER      = process.env.SMTP_USER || 'achim@ailima.de';
 const SMTP_PASS      = process.env.SMTP_PASS || '';
 const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || 'Achim Wolters';
 
+const escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function buildMail(body) {
+  const text = `${body.trim()}\n\nViele Grüße\n${SMTP_FROM_NAME}\n\n--\nAilima – Ihre Website. Einfach selbst ändern.\nwww.ailima.de · ${SMTP_USER}\nImpressum: https://www.ailima.de/impressum.html\n\nKein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder.`;
+  const paragraphs = body.trim().split(/\n{2,}/)
+    .map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+  const html = `<!doctype html><html><body style="margin:0;padding:0;background:#ffffff">
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a2a2e;max-width:600px">
+${paragraphs}
+<p style="margin:0 0 22px">Viele Grüße<br>${escHtml(SMTP_FROM_NAME)}</p>
+<table cellpadding="0" cellspacing="0" border="0" style="border-top:3px solid #3d8a96;padding-top:14px;margin-top:4px">
+  <tr>
+    <td style="padding:14px 16px 0 0;vertical-align:top"><img src="cid:ailima-logo" width="44" height="60" alt="Ailima" style="display:block;border:0"></td>
+    <td style="padding-top:14px;vertical-align:top;font-size:13px;line-height:1.55;color:#4a6b72">
+      <div style="font-size:15px;font-weight:700;color:#0f2229">${escHtml(SMTP_FROM_NAME)}</div>
+      <div style="font-size:15px;font-weight:800;color:#0f2229;margin-top:2px">Ai<span style="color:#3d8a96">lima</span></div>
+      <div>Ihre Website. Einfach selbst ändern – per KI-Assistent.</div>
+      <div style="margin-top:6px"><a href="https://www.ailima.de" style="color:#3d8a96;text-decoration:none;font-weight:600">www.ailima.de</a>
+        &nbsp;·&nbsp; <a href="mailto:${SMTP_USER}" style="color:#3d8a96;text-decoration:none">${SMTP_USER}</a></div>
+    </td>
+  </tr>
+</table>
+<p style="margin:22px 0 0;font-size:11px;line-height:1.5;color:#94a3b8">Kein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder. ·
+<a href="https://www.ailima.de/impressum.html" style="color:#94a3b8">Impressum</a></p>
+</div></body></html>`;
+  return {
+    text,
+    html,
+    attachments: [{ filename: 'ailima.png', path: path.join(__dirname, 'public', 'eddi.png'), cid: 'ailima-logo' }],
+  };
+}
+
 function smtpTransport() {
   return nodemailer.createTransport({
     host: SMTP_HOST, port: SMTP_PORT, secure: false,
@@ -698,7 +730,7 @@ REGELN:
 - Ailima als Lösung nennen mit www.ailima.de
 - Ab €29/Monat erwähnen
 - CTA: kurzes 15-Minuten Telefonat oder Demo
-- NUR den E-Mail-Text, keine Betreffzeile, keine Signatur, kein Markdown`,
+- NUR den E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur, kein Markdown`,
         messages: [{ role: 'user', content:
           `Firma: ${lead.company}\nBranche: ${lead.industry||'lokales Unternehmen'}\nStadt: ${lead.city||''}\nAnsprechpartner: ${lead.contact||'unbekannt'}\nWebsite: ${lead.website||'keine'}` }],
       }),
@@ -731,13 +763,12 @@ app.post('/crm/send-email/:id', requireCRM, async (req, res) => {
     const { subject, body } = req.body;
     if (!subject || !body) return res.status(400).json({ error: 'Betreff und Text erforderlich' });
 
-    const signature = `\n\n--\n${SMTP_FROM_NAME}\nAilima – KI-gestützter Website-Editor\nwww.ailima.de · ${SMTP_USER}`;
 
     await smtpTransport().sendMail({
       from: `"${SMTP_FROM_NAME}" <${SMTP_USER}>`,
       to: lead.email,
       subject,
-      text: body + signature,
+      ...buildMail(body),
     });
 
     const now = new Date().toISOString();
@@ -777,7 +808,7 @@ app.post('/crm/followup/:id', requireCRM, async (req, res) => {
         model: 'claude-haiku-4-5',
         max_tokens: 350,
         system: `Du schreibst ${isFU2 ? 'letzte Abschluss-' : 'freundliche Follow-up-'}Mails für Ailima (KI-Website-Editor, www.ailima.de, ab €29/Monat).
-Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text, keine Betreffzeile, keine Signatur.`,
+Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur.`,
         messages: [{ role: 'user', content: isFU2
           ? `Letzte höfliche Abschlussnachricht an ${lead.company} (${lead.industry||''}). Haben auf 2 Mails nicht geantwortet. Tür offen lassen für die Zukunft. Kein Verkaufsdruck.`
           : `Follow-up an ${lead.company} (${lead.industry||''}). Erste Mail: ${sentDE}. Keine Antwort. Neuen Gedanken einbringen: Website ist oft das erste was Kunden sehen – veraltete Infos kosten Vertrauen.` }],
@@ -787,13 +818,12 @@ Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. NUR E-Mail-Text, kein
     const body = (cData.content?.[0]?.text || '').trim();
     const origSubject = lead.emailSubject || `Ihre Website – selbst aktualisieren, ganz ohne Programmierer`;
     const subject = isFU2 ? `Letzte Nachricht von Ailima – ${origSubject}` : `Re: ${origSubject}`;
-    const signature = `\n\n--\n${SMTP_FROM_NAME}\nAilima – KI-gestützter Website-Editor\nwww.ailima.de · ${SMTP_USER}`;
 
     await smtpTransport().sendMail({
       from: `"${SMTP_FROM_NAME}" <${SMTP_USER}>`,
       to: lead.email,
       subject,
-      text: body + signature,
+      ...buildMail(body),
     });
 
     const now = new Date().toISOString();

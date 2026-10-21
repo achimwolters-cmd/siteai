@@ -881,7 +881,9 @@ function renderTable() {
     let mailBadge = '';
     if (ms && MAIL_STATUS_LABELS[ms]) {
       const [label, cls] = MAIL_STATUS_LABELS[ms];
-      mailBadge = `<span class="mbadge ${cls}">${label}</span>`;
+      mailBadge = ms === 'draft'
+        ? `<span class="mbadge ${cls}" style="cursor:pointer" title="Entwurf öffnen" onclick="openEmailModal('${l.id}',false)">${label}</span>`
+        : `<span class="mbadge ${cls}">${label}</span>`;
     } else {
       mailBadge = `<span class="mbadge mbadge-none">–</span>`;
     }
@@ -891,7 +893,7 @@ function renderTable() {
     if (!ms || ms === 'none') {
       mailAction = `<button class="btn-mail-action" onclick="openEmailModal('${l.id}',true)">✉ Generieren</button>`;
     } else if (ms === 'draft') {
-      mailAction = `<button class="btn-mail-action" onclick="openEmailModal('${l.id}',false)">📤 Senden</button>`;
+      mailAction = `<button class="btn-mail-action" onclick="openEmailModal('${l.id}',false)">📝 Entwurf öffnen</button>`;
     } else if (ms === 'sent' || ms === 'fu1_sent') {
       const fuDate = l.followUp ? new Date(l.followUp) : null;
       const fuDue = fuDate && fuDate <= new Date();
@@ -1470,7 +1472,7 @@ function outboxCard(l, type) {
   if (type === 'draft') {
     badge = `<span class="mbadge mbadge-draft">📝 Entwurf</span>`;
     actions = `
-      <button class="btn-outbox-send" onclick="openEmailModal('${l.id}',false)">📤 Senden</button>
+      <button class="btn-outbox-send" onclick="openEmailModal('${l.id}',false)">📝 Öffnen &amp; senden</button>
       <button class="btn-outbox-preview" onclick="openEmailModal('${l.id}',false)">Vorschau</button>
     `;
   } else if (type === 'fu') {
@@ -1505,7 +1507,7 @@ async function openEmailModal(leadId, generate) {
   if (!lead) return;
 
   document.getElementById('epm-to').textContent = `An: ${lead.email||'(keine E-Mail)'} · ${lead.company}`;
-  document.getElementById('epm-sig').textContent = `– Achim Wolters · Ailima · www.ailima.de · sales@soceting.de`;
+  document.getElementById('epm-sig').textContent = '+ „Viele Grüße, Achim Wolters" und Ailima-Signatur mit Logo werden automatisch angehängt';
   document.getElementById('epm-status').textContent = '';
   document.getElementById('btn-epm-send').disabled = !lead.email;
 
