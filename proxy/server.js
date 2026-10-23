@@ -521,6 +521,7 @@ app.get('/crm/backup', requireCRM, (req, res) => {
 
 // ── CRM: Mail-System ─────────────────────────────────────────
 const nodemailer = require('nodemailer');
+const { findEmail, siteSnapshot, domainAcceptsMail } = require('./lib/site-tools');
 const SMTP_HOST      = process.env.SMTP_HOST || 'tojopo.han-solo.net';
 const SMTP_PORT      = parseInt(process.env.SMTP_PORT) || 587;
 const SMTP_USER      = process.env.SMTP_USER || 'achim@ailima.de';
@@ -529,50 +530,27 @@ const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || 'Achim Wolters';
 
 const escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-const DEMO_URL = 'https://siteai-khmo.onrender.com/demo/?edit=sat_4ug6sat368k4ew976lr8z';
-
+// Plain, personal-looking mail: no buttons, images or bold – that reads as marketing and hurts inbox placement.
 function buildMail(body) {
   // The AI sometimes adds its own closing despite instructions; the template adds one.
   body = body.trim().replace(/\n+\s*(viele|beste|freundliche|herzliche|liebe|schöne)\s+grüße[\s\S]{0,80}$/i, '');
   const plain = body.trim().replace(/\*\*(.+?)\*\*/g, '$1');
-  const text = `${plain}\n\nLive-Demo ausprobieren: ${DEMO_URL}\n\nViele Grüße\n${SMTP_FROM_NAME}\n\n--\nAilima – Ihre Website. Einfach selbst ändern.\nwww.ailima.de · ${SMTP_USER}\nImpressum: https://www.ailima.de/impressum.html\n\nKein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder.`;
-  const paragraphs = body.trim().split(/\n{2,}/)
-    .map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#0f2229">$1</strong>')}</p>`).join('');
-  const html = `<!doctype html><html><body style="margin:0;padding:0;background:#ffffff">
-<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a2a2e;max-width:600px">
+  const text = `${plain}\n\nViele Grüße\n${SMTP_FROM_NAME}\nAilima · www.ailima.de\n\n--\nKein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder.\nImpressum: https://www.ailima.de/impressum.html`;
+  const paragraphs = plain.split(/\n{2,}/)
+    .map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+  const html = `<!doctype html><html><body style="margin:0;padding:0">
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#222;max-width:600px">
 ${paragraphs}
-<table cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 22px"><tr>
-  <td style="background:#3d8a96;border-radius:8px">
-    <a href="${DEMO_URL}" style="display:inline-block;padding:11px 22px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none">&#9654; Live-Demo ausprobieren</a>
-  </td>
-</tr></table>
-<p style="margin:0 0 22px">Viele Grüße<br>${escHtml(SMTP_FROM_NAME)}</p>
-<table cellpadding="0" cellspacing="0" border="0" style="border-top:3px solid #3d8a96;padding-top:14px;margin-top:4px">
-  <tr>
-    <td style="padding:14px 16px 0 0;vertical-align:top"><img src="cid:ailima-logo" width="44" height="60" alt="Ailima" style="display:block;border:0"></td>
-    <td style="padding-top:14px;vertical-align:top;font-size:13px;line-height:1.55;color:#4a6b72">
-      <div style="font-size:15px;font-weight:700;color:#0f2229">${escHtml(SMTP_FROM_NAME)}</div>
-      <div style="font-size:15px;font-weight:800;color:#0f2229;margin-top:2px">Ai<span style="color:#3d8a96">lima</span></div>
-      <div>Ihre Website. Einfach selbst ändern – per KI-Assistent.</div>
-      <div style="margin-top:6px"><a href="https://www.ailima.de" style="color:#3d8a96;text-decoration:none;font-weight:600">www.ailima.de</a>
-        &nbsp;·&nbsp; <a href="mailto:${SMTP_USER}" style="color:#3d8a96;text-decoration:none">${SMTP_USER}</a></div>
-    </td>
-  </tr>
-</table>
-<p style="margin:22px 0 0;font-size:11px;line-height:1.5;color:#94a3b8">Kein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder. ·
-<a href="https://www.ailima.de/impressum.html" style="color:#94a3b8">Impressum</a></p>
+<p style="margin:0 0 18px">Viele Grüße<br>${escHtml(SMTP_FROM_NAME)}<br>
+<span style="color:#666">Ailima · <a href="https://www.ailima.de" style="color:#3d8a96">www.ailima.de</a></span></p>
+<p style="margin:0;font-size:11px;color:#999">Kein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder. · <a href="https://www.ailima.de/impressum.html" style="color:#999">Impressum</a></p>
 </div></body></html>`;
-  return {
-    text,
-    html,
-    attachments: [{ filename: 'ailima.png', path: path.join(__dirname, 'public', 'eddi.png'), cid: 'ailima-logo' }],
-  };
+  return { text, html };
 }
 
 app.post('/crm/preview-email', requireCRM, (req, res) => {
   const { html } = buildMail(String(req.body.body || ''));
-  res.json({ html: html.replace('cid:ailima-logo', '/eddi.png') });
+  res.json({ html });
 });
 
 function smtpTransport(port = SMTP_PORT) {
@@ -727,64 +705,85 @@ out center tags ${Math.min(max * 4, 300)};`;
 });
 
 // Generate AI email for a lead
+const SUBJECT_FALLBACK = lead => `Kurze Frage zu ${hostOf(lead.website) || lead.company}`;
+
+// Writes a short, personal first mail. Reads the lead's website first so the AI can refer to something real.
+async function generateInitialMail(lead, settings, extraHint = '') {
+  const snapshot = lead.website ? await siteSnapshot(lead.website) : null;
+  const industryHint = (settings?.industryHints?.[lead.industry] || '').trim();
+  const hints = [industryHint, String(extraHint || '').trim().slice(0, 1000)].filter(Boolean);
+  const year = new Date().getFullYear();
+  const siteInfo = snapshot
+    ? `Website (${snapshot.url}) – Titel: ${snapshot.title || '–'}${snapshot.copyrightYear ? `, Copyright-Jahr im Footer: ${snapshot.copyrightYear}` : ''}\nText-Auszug:\n${snapshot.text}`
+    : 'Website: nicht abrufbar oder unbekannt';
+
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5',
+      max_tokens: 600,
+      system: `Du schreibst als ${SMTP_FROM_NAME}, Gründer von Ailima, eine kurze, persönliche Erst-Mail an einen lokalen Betrieb. Es soll sich lesen wie von einem Menschen getippt, nicht wie Werbung.
+
+Ailima: ein Assistent direkt auf der eigenen Website. Man schreibt auf Deutsch, was sich ändern soll (Öffnungszeiten, Preise, Texte, Fotos), und es ist sofort online – ohne Agentur oder Programmierer.
+
+REGELN:
+- 60–90 Wörter, Sie-Form, schlicht und freundlich. Kein Marketing-Sprech, keine Superlative, keine Ausrufezeichen, keine Komplimente oder Wertungen (nicht „beeindruckend", „toll").
+- Behaupte nur, was wörtlich im Website-Auszug steht – keine Annahmen über Alter, Pflege oder Zustand der Website.
+- Anrede: Ansprechpartner falls bekannt („Guten Tag Frau/Herr …"), sonst „Guten Tag,".
+- Erster Satz: stell dich in einem Halbsatz vor (Name, Ailima) UND nenne EINE konkrete, wahre Beobachtung von der Website (z. B. was sie anbieten, eine Aktion, Öffnungszeiten, ein veraltetes Jahr). Erfinde nichts – steht nichts Brauchbares im Auszug, beziehe dich nur allgemein auf ihr Angebot. Ist das Copyright-Jahr älter als ${year - 1}, darfst du es freundlich erwähnen.
+- Dann in 1–2 Sätzen, was Ailima konkret für diesen Betrieb erleichtert.
+- Kein Preis, keine Links/URLs, kein Fettdruck, keine Aufzählungen.
+- Ende mit EINER lockeren Frage mit niedriger Hürde, z. B. „Soll ich Ihnen kurz zeigen, wie das auf Ihrer Seite aussehen würde?"
+- Keine Grußformel, keine Signatur.${hints.length ? `
+- Zusätzlich kurz berücksichtigen (Bedingungen darin beachten):
+${hints.map(h => '  • ' + h).join('\n')}` : ''}
+
+Antworte NUR mit JSON: {"subject":"…","body":"…"}
+Betreff: kurz, klein, persönlich, ohne Werbewörter – z. B. „Kurze Frage zu ${hostOf(lead.website) || 'Ihrer Website'}" oder „${lead.company} – Ihre Website".`,
+      messages: [{ role: 'user', content:
+        `Firma: ${lead.company}\nBranche: ${lead.industry || 'lokales Unternehmen'}\nOrt: ${lead.city || ''}\nAnsprechpartner: ${lead.contact || 'unbekannt'}\n${siteInfo}` }],
+    }),
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error?.message || 'KI-Fehler');
+  const raw = d.content?.[0]?.text || '';
+  let parsed = {};
+  try { parsed = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || '{}'); } catch {}
+  const body = String(parsed.body || '').trim();
+  if (!body) throw new Error('KI hat keinen Text geliefert');
+  const subject = String(parsed.subject || '').trim().slice(0, 90) || SUBJECT_FALLBACK(lead);
+  return { subject, body, personalized: !!snapshot };
+}
+
 app.post('/crm/generate-email/:id', requireCRM, async (req, res) => {
   try {
     const data = loadCRM();
-    const idx = data.leads.findIndex(l => l.id === req.params.id);
-    if (idx === -1) return res.status(404).json({ error: 'Lead nicht gefunden' });
-    const lead = data.leads[idx];
+    const lead = data.leads.find(l => l.id === req.params.id);
+    if (!lead) return res.status(404).json({ error: 'Lead nicht gefunden' });
     if (lead.emailSentAt) return res.status(400).json({ error: 'Die erste Mail wurde bereits gesendet – hier gibt es nur noch Follow-ups' });
-
-    const subjects = [
-      `Ihre Website – selbst aktualisieren, ganz ohne Programmierer`,
-      `Öffnungszeiten, Preise, Aktionen – sofort selbst anpassen`,
-      `Website aktuell halten ohne Agentur – für ${lead.company}`,
-      `Kleine Website-Änderungen – jetzt in Sekunden, nicht Tagen`,
-    ];
-    const subject = subjects[Math.floor(Math.random() * subjects.length)];
-    const industryHint = (data.settings?.industryHints?.[lead.industry] || '').trim();
-    const extraHint = String(req.body?.extraHint || '').trim().slice(0, 1000);
-    const hints = [industryHint, extraHint].filter(Boolean);
-    const hintRules = hints.length ? `
-
-ZUSÄTZLICH ZU BERÜCKSICHTIGEN (kurz in 1–2 Sätzen einbauen, nach dem Ailima-Teil; Bedingungen darin beachten):
-${hints.map(h => '- ' + h).join('\n')}` : '';
-
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: 700,
-        system: `Du schreibst professionelle deutsche Kaltakquise-Mails für Ailima.
-
-Was ist Ailima: Ein KI-Assistent, der direkt auf der Website des Kunden läuft. Der Unternehmer tippt einfach auf Deutsch, was geändert werden soll – Ailima setzt es um. Kein Programmierer, keine Agentur, kein Warten. Ab €29/Monat. Website: www.ailima.de
-
-REGELN:
-- Immer Sie-Form, natürliche Geschäftssprache
-- Ansprechpartner falls bekannt namentlich ansprechen, sonst: "Guten Tag,"
-- Maximal ${hints.length ? 190 : 160} Wörter
-- Konkretes Problem der Branche ansprechen (z.B. Friseur: Öffnungszeiten, Preise, Mitarbeiter ändern sich)
-- Ailima als Lösung nennen mit www.ailima.de
-- Ab €29/Monat erwähnen
-- CTA: kurzes 15-Minuten Telefonat oder Demo
-- Markiere genau EINEN Kernsatz (den Nutzen von Ailima) mit **doppelten Sternchen**, sonst keine Formatierung
-- Keine URL im Text – ein Demo-Button wird automatisch eingefügt; ende mit einer kurzen Frage
-- NUR den E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur${hintRules}`,
-        messages: [{ role: 'user', content:
-          `Firma: ${lead.company}\nBranche: ${lead.industry||'lokales Unternehmen'}\nStadt: ${lead.city||''}\nAnsprechpartner: ${lead.contact||'unbekannt'}\nWebsite: ${lead.website||'keine'}` }],
-      }),
-    });
-    const cData = await claudeRes.json();
-    if (!claudeRes.ok) throw new Error(cData.error?.message);
-
-    const body = (cData.content?.[0]?.text || '').trim();
+    const { subject, body } = await generateInitialMail(lead, data.settings, req.body?.extraHint);
     const draft = { subject, body, generatedAt: new Date().toISOString() };
-
     const fresh = await patchLeads([[lead.id, l => l.emailSentAt || l.queuedMail ? l : ({ ...l, emailDraft: draft, mailStatus: 'draft',
       updatedAt: new Date().toISOString(), updatedBy: req.crmUser, updatedByName: req.crmName })]]);
     res.json({ draft, lead: fresh.leads.find(l => l.id === lead.id) });
   } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Rewrite a queued first mail with the current prompt, keeping its place in the queue
+app.post('/crm/queue/regenerate/:id', requireCRM, async (req, res) => {
+  try {
+    const data = loadCRM();
+    const lead = data.leads.find(l => l.id === req.params.id);
+    if (!lead?.queuedMail || lead.queuedMail.kind !== 'initial') return res.status(400).json({ error: 'Keine wartende Erstmail' });
+    const { subject, body } = await generateInitialMail(lead, data.settings);
+    const fresh = await patchLeads([[lead.id, l => l.queuedMail?.kind !== 'initial' ? l : ({ ...l,
+      queuedMail: { ...l.queuedMail, subject, body, rewrittenAt: new Date().toISOString() },
+      emailDraft: { subject, body, generatedAt: new Date().toISOString() } })]]);
+    res.json({ lead: fresh.leads.find(l => l.id === lead.id) });
+  } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
@@ -917,6 +916,18 @@ async function processQueue() {
       console.log(`[Queue] Follow-up an ${next.company} verworfen – Lead hat geantwortet bzw. Status ${next.status}`);
       return;
     }
+    if (!(await domainAcceptsMail(next.email))) {
+      // Never send to a domain that can't receive mail: a sure bounce hurts sender reputation.
+      lastAttemptAt = 0;
+      await patchLeads([[next.id, l => { const { queuedMail, ...rest } = l; return { ...rest,
+        emailBounced: true, invalidDomain: true, mailStatus: 'bounced', followUp: '', updatedAt: stamp,
+        bouncedEmails: [...new Set([...(l.bouncedEmails || []), l.email].filter(Boolean))],
+        ...(kind === 'initial' ? { emailDraft: { subject, body, generatedAt: stamp } } : {}),
+        notes: `${l.notes ? l.notes + '\n' : ''}⚠️ Domain von ${l.email} nimmt keine Mails an – nicht gesendet` }; }]]);
+      console.log(`[Queue] ${next.company}: Domain nimmt keine Mails an – übersprungen`);
+      findAlternative(next.id).catch(() => {});
+      return;
+    }
     let patch;
     try {
       const messageId = await deliver(next, subject, body, kind);
@@ -965,7 +976,7 @@ function queueResponse(leads) {
   return { sentToday, limit: dailyLimit(berlinParts(new Date()).ymd, leads), windowOpen: inSendWindow(new Date()),
     window: `Mo–Fr ${SEND_HOUR_FROM}–${SEND_HOUR_TO} Uhr`,
     queue: queuedLeads(leads).map(l => ({ id: l.id, company: l.company, email: l.email, kind: l.queuedMail.kind,
-      subject: l.queuedMail.subject, eta: etas[l.id], lastError: l.queuedMail.lastError || '' })) };
+      subject: l.queuedMail.subject, eta: etas[l.id], lastError: l.queuedMail.lastError || '', rewritten: !!l.queuedMail.rewrittenAt })) };
 }
 
 app.get('/crm/queue', requireCRM, (req, res) => res.json(queueResponse(loadCRM().leads)));
@@ -1041,8 +1052,8 @@ async function generateFollowUp(lead, { ignorePrepared = false } = {}) {
     body: JSON.stringify({
       model: 'claude-haiku-4-5',
       max_tokens: 350,
-      system: `Du schreibst ${isFU2 ? 'letzte Abschluss-' : 'freundliche Follow-up-'}Mails für Ailima (KI-Website-Editor, www.ailima.de, ab €29/Monat).
-Kurz und respektvoll. Maximal ${isFU2 ? 80 : 110} Wörter. ${salutation}
+      system: `Du schreibst als ${SMTP_FROM_NAME} (Ailima: Website per Nachricht selbst ändern, ohne Agentur) eine ${isFU2 ? 'letzte, abschließende' : 'kurze Nachfass-'}Mail im selben Mail-Verlauf.
+Persönlich, schlicht, wie von Hand getippt. ${isFU2 ? '30–50' : '40–70'} Wörter. Kein Preis, kein Marketing-Sprech, kein Fettdruck, keine Ausrufezeichen. Ende mit einer lockeren Frage. ${salutation}
 Die vorige Mail ging vor ${daysAgo} Tagen raus – nenne keinen anderen Zeitraum.
 NUR E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur, keine URL.`,
       messages: [{ role: 'user', content: isFU2
@@ -1233,6 +1244,7 @@ async function checkInbox() {
       let changed = false;
       const patches = [];
       const moves = { reply: [], auto: [], bounce: [] };
+      const bouncedIds = [];
       const messages = [];
       for await (const msg of client.fetch(`${st.lastUid + 1}:*`, { uid: true, source: true }, { uid: true })) {
         if (msg.uid > st.lastUid) messages.push(msg);
@@ -1245,8 +1257,10 @@ async function checkInbox() {
         if (isBounce(mail)) {
           const lead = findLeadForBounce(data.leads, mail);
           if (!lead) continue;
+          bouncedIds.push(lead.id);
           patches.push([lead.id, l => { const { queuedMail, ...rest } = l; return { ...rest,
             emailBounced: true, mailStatus: 'bounced', followUp: '', updatedAt: now,
+            bouncedEmails: [...new Set([...(l.bouncedEmails || []), l.email].filter(Boolean))],
             notes: `${l.notes ? l.notes + '\n' : ''}⚠️ Mail unzustellbar (${new Date().toLocaleDateString('de-DE')})` }; }]);
           inbox.processed++;
           moves.bounce.push(msg.uid);
@@ -1280,6 +1294,7 @@ async function checkInbox() {
         console.log(`[Inbox] Antwort von ${lead.company} → ${category}`);
       }
       if (changed) await patchLeads(patches, d => { d.inboxState = st; });
+      bouncedIds.forEach(id => findAlternative(id).catch(e => console.error('[Bounce]', e.message)));
       if (INBOX_MOVE && Object.values(moves).some(u => u.length)) {
         try {
           const paths = await ensureInboxFolders(client);
@@ -1318,6 +1333,42 @@ app.post('/crm/leads/:id/not-a-reply', requireCRM, async (req, res) => {
     return { ...rest, status: 'angeschrieben', followUp,
       mailStatus: l.followUp2SentAt ? 'fu2_sent' : l.followUp1SentAt ? 'fu1_sent' : 'sent',
       lastAutoReply: { at: last.at, subject: last.subject, text: (last.text || '').slice(0, 500), summary: last.summary },
+      updatedAt: new Date().toISOString(), updatedBy: req.crmUser };
+  }]]);
+  res.json({ lead: data.leads.find(l => l.id === req.params.id) });
+});
+
+// After a bounce: look for another address on the lead's website, or flag the site as dead.
+async function findAlternative(leadId) {
+  const lead = loadCRM().leads.find(l => l.id === leadId);
+  if (!lead) return null;
+  const tried = [...new Set([...(lead.bouncedEmails || []), lead.email].filter(Boolean))];
+  let result = { altEmail: '', websiteDead: false };
+  if (lead.website) {
+    try {
+      const found = await findEmail(lead.website, tried);
+      if (found && await domainAcceptsMail(found)) result.altEmail = found;
+    } catch {
+      result.websiteDead = true;
+    }
+  }
+  const data = await patchLeads([[leadId, l => ({ ...l, ...result, altSearchedAt: new Date().toISOString() })]]);
+  console.log(`[Bounce] ${lead.company}: ${result.altEmail ? 'neue Adresse ' + result.altEmail : result.websiteDead ? 'Website tot' : 'keine andere Adresse'}`);
+  return data.leads.find(l => l.id === leadId);
+}
+
+app.post('/crm/leads/:id/find-email', requireCRM, async (req, res) => {
+  try { res.json({ lead: await findAlternative(req.params.id) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Switch a bounced lead to the newly found address and start over with a fresh first mail
+app.post('/crm/leads/:id/use-alt-email', requireCRM, async (req, res) => {
+  const data = await patchLeads([[req.params.id, l => {
+    if (!l.altEmail) return l;
+    const { altEmail, emailBounced, invalidDomain, websiteDead, emailSentAt, emailMessageId, emailSubject, followUpMessageIds, emailDraft, queuedMail, ...rest } = l;
+    return { ...rest, email: altEmail, status: 'neu', mailStatus: undefined, followUp: '',
+      notes: `${l.notes ? l.notes + '\n' : ''}📧 Neue Adresse ${altEmail} (vorher ${l.email})`,
       updatedAt: new Date().toISOString(), updatedBy: req.crmUser };
   }]]);
   res.json({ lead: data.leads.find(l => l.id === req.params.id) });
@@ -1443,7 +1494,7 @@ app.get('/crm/pool', requireCRM, async (req, res) => {
       const i = industries[p.industry] ||= { total: 0, withEmail: 0, available: 0 };
       i.total++;
       if (p.email) i.withEmail++;
-      if (p.email && !inCRM(p, idx)) i.available++;
+      if (p.email && !p.websiteDead && !inCRM(p, idx)) i.available++;
       if (p.city) cities[p.city] = (cities[p.city] || 0) + 1;
     }
     const topCities = Object.entries(cities).sort((a, b) => b[1] - a[1]).slice(0, 40).map(([c]) => c);
@@ -1462,7 +1513,7 @@ app.post('/crm/pool/search', requireCRM, async (req, res) => {
     const cityNeedle = city.trim().toLowerCase();
     const matches = pool.leads.filter(p =>
       (!industry || p.industry === industry) &&
-      (!onlyEmail || p.email) &&
+      (!onlyEmail || p.email) && !p.websiteDead &&
       (!cityNeedle || (p.city || '').toLowerCase().includes(cityNeedle) || (p.postcode || '').startsWith(cityNeedle)) &&
       (!needle || `${p.company} ${p.street} ${p.website}`.toLowerCase().includes(needle)) &&
       !inCRM(p, idx)

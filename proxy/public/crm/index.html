@@ -998,7 +998,15 @@ function renderTable() {
 
     // Mail action button
     let mailAction = '';
-    if (l.replies?.length) {
+    if (ms === 'bounced') {
+      mailAction = l.altEmail
+        ? `<button class="btn-mail-action" title="Neue Adresse übernehmen und neu anschreiben" onclick="useAltEmail('${l.id}')">📧 ${esc(l.altEmail)} übernehmen</button>`
+        : l.websiteDead
+          ? `<button class="btn-del" style="padding:5px 11px" title="Website nicht erreichbar – Betrieb vermutlich geschlossen" onclick="archiveOne('${l.id}')">🚫 Website tot · archivieren</button>`
+          : l.altSearchedAt
+            ? `<span style="font-size:11px;color:var(--mid)">keine andere Adresse gefunden</span>`
+            : `<button class="btn-mail-action" onclick="findAltEmail('${l.id}', this)">🔍 Neue Adresse suchen</button>`;
+    } else if (l.replies?.length) {
       mailAction = `<button class="btn-mail-action" style="background:#dcfce7;color:#14532d" onclick="openReplies('${l.id}')">💬 Antwort lesen</button>`;
     } else if (l.queuedMail) {
       mailAction = `<button class="btn-del" style="padding:5px 11px" onclick="cancelQueued('${l.id}')">✕ Versand stoppen</button>`;
@@ -1115,6 +1123,34 @@ async function bulkQueue() {
   selectedIds.clear();
   updateBulkBar(); renderStats(); renderTable(); updateOutboxBadge();
   showToast(`⏳ ${d.added} Mails in der Warteschlange – Zeitplan im Tab „Ausgang"`, 'ok');
+}
+
+async function findAltEmail(id, btn) {
+  btn.disabled = true; btn.textContent = '⏳ Suche…';
+  const r = await fetch(`/crm/leads/${id}/find-email`, { method: 'POST', headers: { 'x-crm-token': crmToken } });
+  const d = await r.json();
+  if (!r.ok) { showToast('❌ ' + d.error, 'err'); btn.disabled = false; return; }
+  const i = allLeads.findIndex(l => l.id === id);
+  if (i !== -1) allLeads[i] = d.lead;
+  renderTable();
+  showToast(d.lead.altEmail ? `📧 Gefunden: ${d.lead.altEmail}` : d.lead.websiteDead ? '🚫 Website nicht erreichbar' : 'Keine andere Adresse gefunden', d.lead.altEmail ? 'ok' : 'err');
+}
+
+async function useAltEmail(id) {
+  const lead = allLeads.find(l => l.id === id);
+  if (!confirm(`Adresse auf ${lead.altEmail} umstellen?\n\nDer Lead startet dann neu: Mail erstellen und einreihen wie gewohnt.`)) return;
+  const r = await fetch(`/crm/leads/${id}/use-alt-email`, { method: 'POST', headers: { 'x-crm-token': crmToken } });
+  const d = await r.json();
+  if (!r.ok) { showToast('❌ ' + d.error, 'err'); return; }
+  const i = allLeads.findIndex(l => l.id === id);
+  if (i !== -1) allLeads[i] = d.lead;
+  renderStats(); renderTable();
+  showToast(`📧 ${d.lead.company}: neue Adresse übernommen – jetzt „✉ Generieren"`, 'ok');
+}
+
+async function archiveOne(id) {
+  selectedIds.clear(); selectedIds.add(id);
+  await bulkArchive();
 }
 
 async function bulkArchive() {
@@ -1724,11 +1760,12 @@ async function loadQueue() {
         <span class="queue-pill ${q.windowOpen ? 'on' : 'off'}">${q.windowOpen ? '● Versand aktiv' : '○ Außerhalb Versandzeit'}</span>
         <span>Heute gesendet: <b>${q.sentToday} / ${q.limit}</b></span>
         <span>Versandzeit: ${q.window}, 4–9 Min. Abstand</span>
+        ${q.queue.some(x => x.kind === 'initial' && !x.rewritten) ? `<button class="btn-mini" style="margin-left:auto" onclick="rewriteQueued(this)">↻ Wartende Erstmails im neuen Stil neu schreiben (${q.queue.filter(x => x.kind === 'initial' && !x.rewritten).length})</button>` : ''}
       </div>
       <div class="auto-row" id="auto-row"></div>
       ${q.queue.length ? q.queue.map(x => `<div class="queue-row">
         <div class="queue-eta">~ ${fmtEta(x.eta)}</div>
-        <div class="queue-main"><div><b>${esc(x.company)}</b> · ${KIND_LABEL[x.kind] || x.kind} · <span style="color:var(--mid)">${esc(x.email)}</span></div>
+        <div class="queue-main"><div><b>${esc(x.company)}</b> · ${KIND_LABEL[x.kind] || x.kind}${x.rewritten ? ' · <span style="color:#166534">✓ neu geschrieben</span>' : ''} · <span style="color:var(--mid)">${esc(x.email)}</span></div>
           <div style="color:var(--mid)">${esc(x.subject)}${x.lastError ? ` <span style="color:#991b1b">⚠️ ${esc(x.lastError)}</span>` : ''}</div></div>
         <button class="btn-queue-cancel" onclick="cancelQueued('${x.id}')">✕ Stoppen</button>
       </div>`).join('') : '<div style="font-size:13px;color:var(--mid)">Keine Mails in der Warteschlange.</div>'}
@@ -1825,7 +1862,7 @@ function openFuDraft(id) {
   document.getElementById('epm-subject').value = lead.fuDraft.subject;
   document.getElementById('epm-body').value = lead.fuDraft.body;
   document.getElementById('epm-status').textContent = '';
-  document.getElementById('epm-sig').textContent = 'Geht als Antwort im selben Mail-Verlauf raus. Demo-Button, Grußformel und Signatur kommen automatisch dazu.';
+  document.getElementById('epm-sig').textContent = 'Geht als Antwort im selben Mail-Verlauf raus. Grußformel und Signatur kommen automatisch dazu.';
   document.getElementById('btn-epm-regen').style.display = 'none';
   document.getElementById('email-modal-overlay').classList.add('open');
 }
@@ -1841,7 +1878,7 @@ async function openFuPreview(id, regenerate = false) {
   document.getElementById('btn-epm-send').disabled = false;
   document.getElementById('btn-epm-send').innerHTML = '<span>📌 Diesen Text verwenden</span>';
   document.getElementById('epm-to').textContent = `An: ${lead.email} · ${lead.company}`;
-  document.getElementById('epm-sig').textContent = 'Geht als Antwort im selben Mail-Verlauf raus. Demo-Button, Grußformel und Signatur kommen automatisch dazu.';
+  document.getElementById('epm-sig').textContent = 'Geht als Antwort im selben Mail-Verlauf raus. Grußformel und Signatur kommen automatisch dazu.';
   document.getElementById('epm-subject').value = '';
   document.getElementById('epm-body').value = '';
   document.getElementById('epm-status').textContent = '⏳ KI schreibt einen Vorschlag…';
@@ -1908,6 +1945,30 @@ async function openReplies(id) {
   }
 }
 function closeReplies() { document.getElementById('reply-overlay').classList.remove('open'); }
+
+async function rewriteQueued(btn) {
+  const r0 = await fetch('/crm/queue', { headers: { 'x-crm-token': crmToken } });
+  const ids = (await r0.json()).queue.filter(x => x.kind === 'initial' && !x.rewritten).map(x => x.id);
+  if (!ids.length || !confirm(`${ids.length} wartende Erstmails im neuen, persönlichen Stil neu schreiben?\n\nDie KI liest dafür jeweils die Website. Die Reihenfolge in der Warteschlange bleibt gleich.`)) return;
+  btn.disabled = true;
+  let done = 0, failed = 0, i = 0;
+  async function worker() {
+    while (i < ids.length) {
+      const id = ids[i++];
+      try {
+        const r = await fetch(`/crm/queue/regenerate/${id}`, { method: 'POST', headers: { 'x-crm-token': crmToken } });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error);
+        const idx = allLeads.findIndex(l => l.id === id);
+        if (idx !== -1) allLeads[idx] = d.lead;
+      } catch { failed++; }
+      btn.textContent = `↻ ${++done} / ${ids.length} neu geschrieben…`;
+    }
+  }
+  await Promise.all(Array.from({ length: 3 }, worker));
+  showToast(`✅ ${done - failed} Mails neu geschrieben${failed ? `, ${failed} fehlgeschlagen` : ''}`, failed ? 'err' : 'ok');
+  loadQueue();
+}
 
 async function cancelQueued(id) {
   const r = await fetch(`/crm/queue/cancel/${id}`, { method: 'POST', headers: { 'x-crm-token': crmToken } });
@@ -1990,7 +2051,7 @@ async function openEmailModal(leadId, generate) {
 
   document.getElementById('epm-to').textContent = `An: ${lead.email||'(keine E-Mail)'} · ${lead.company}`;
   setEmailView('edit');
-  document.getElementById('epm-sig').textContent = 'Tipp: **Text** wird fett. Demo-Button, Grußformel und Signatur mit Logo kommen automatisch dazu – siehe 👁 Vorschau.';
+  document.getElementById('epm-sig').textContent = '„Viele Grüße, ' + 'Achim Wolters" und eine kleine Text-Signatur kommen automatisch dazu – siehe 👁 Vorschau.';
   document.getElementById('epm-status').textContent = '';
   document.getElementById('btn-epm-send').disabled = !lead.email;
 

@@ -168,80 +168,31 @@ async function runBatches(byId, onBatchDone) {
   }
 }
 
-// ── Impressum email extraction ──
-const BAD_EMAIL = /(example\.|sentry|wixpress|@domain\.|@email\.|\.png|\.jpg|\.webp|\.gif|@sentry|noreply|no-reply|datenschutz@|privacy@|webmaster@)/i;
+const { findEmail } = require('../lib/site-tools');
 
-function deobfuscate(html) {
-  return html
-    .replace(/&#64;|&#x40;|%40/gi, '@')
-    .replace(/&#46;|&#x2e;/gi, '.')
-    .replace(/\s*[\[\(\{]\s*(at|ät)\s*[\]\)\}]\s*/gi, '@')
-    .replace(/\s*[\[\(\{]\s*(dot|punkt)\s*[\]\)\}]\s*/gi, '.');
-}
-
-function extractEmails(html) {
-  const text = deobfuscate(html);
-  const found = new Set();
-  for (const m of text.matchAll(/mailto:([^"'?>\s]+)/gi)) found.add(decodeURIComponent(m[1]).toLowerCase());
-  for (const m of text.matchAll(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi)) found.add(m[0].toLowerCase());
-  return [...found].filter(e => !BAD_EMAIL.test(e) && e.length < 80);
-}
-
-async function getHtml(url) {
-  const r = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AilimaCRM/1.0; +https://ailima.de)' },
-    redirect: 'follow',
-    signal: AbortSignal.timeout(12000),
-  });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  const type = r.headers.get('content-type') || '';
-  if (!type.includes('html')) throw new Error('kein HTML');
-  return { html: (await r.text()).slice(0, 600000), url: r.url };
-}
-
-function pickEmail(emails, website) {
-  if (!emails.length) return '';
-  let host = '';
-  try { host = new URL(website).hostname.replace(/^www\./, ''); } catch {}
-  const sameDomain = emails.filter(e => host && e.endsWith('@' + host));
-  const pool = sameDomain.length ? sameDomain : emails;
-  const pref = pool.find(e => /^(info|kontakt|hallo|hello|mail|office|praxis|termin)@/.test(e));
-  return pref || pool[0];
-}
-
-async function findEmail(website) {
-  const home = await getHtml(website);
-  let emails = extractEmails(home.html);
-  if (emails.length) return pickEmail(emails, website);
-  const links = [...home.html.matchAll(/href=["']([^"'#]+)["'][^>]*>([^<]{0,60})/gi)]
-    .filter(m => /impressum|kontakt|imprint|contact/i.test(m[1] + ' ' + m[2]))
-    .map(m => { try { return new URL(m[1], home.url).href; } catch { return null; } })
-    .filter(Boolean);
-  const candidates = [...new Set([...links, new URL('/impressum', home.url).href, new URL('/kontakt', home.url).href])].slice(0, 4);
-  for (const url of candidates) {
-    try {
-      emails = extractEmails((await getHtml(url)).html);
-      if (emails.length) return pickEmail(emails, website);
-    } catch {}
-  }
-  return '';
-}
-
+// Website addresses beat OpenStreetMap ones (OSM is often outdated → bounces). Dead sites are flagged.
 async function enrich(leads) {
-  const todo = leads.filter(l => l.website && !l.email && !l.emailChecked);
+  const todo = leads.filter(l => l.website && !l.emailChecked && l.emailSource !== 'website');
   console.log(`▶ E-Mail-Suche für ${todo.length} Websites`);
-  let done = 0, hits = 0, i = 0;
+  let done = 0, hits = 0, dead = 0, i = 0;
   async function worker() {
     while (i < todo.length) {
       const lead = todo[i++];
-      try { lead.email = await findEmail(lead.website); } catch {}
+      try {
+        const found = await findEmail(lead.website);
+        if (found) {
+          if (lead.email && lead.email !== found) lead.osmEmail = lead.email;
+          lead.email = found; lead.emailSource = 'website'; hits++;
+        }
+      } catch {
+        lead.websiteDead = true; dead++;
+      }
       lead.emailChecked = true;
-      if (lead.email) { lead.emailSource = 'website'; hits++; }
-      if (++done % 25 === 0) { console.log(`   ${done}/${todo.length} geprüft, ${hits} E-Mails`); save(leads); }
+      if (++done % 25 === 0) { console.log(`   ${done}/${todo.length} geprüft, ${hits} E-Mails, ${dead} tote Websites`); save(leads); }
     }
   }
   await Promise.all(Array.from({ length: 16 }, worker));
-  console.log(`   fertig: ${hits} E-Mails gefunden`);
+  console.log(`   fertig: ${hits} E-Mails gefunden, ${dead} tote Websites`);
 }
 
 function save(leads) {
