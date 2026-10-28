@@ -561,19 +561,14 @@ ${paragraphs}
 <p style="margin:0 0 22px;padding:12px 14px;background:#f2f8f9;border-radius:8px;font-size:14px;color:#3d5a60">&#128073; Wer vorher schon schauen möchte: <a href="${DEMO_URL}" style="color:#2a6670;font-weight:600">Live-Demo in 2 Minuten ausprobieren</a></p>
 <p style="margin:0 0 18px">Viele Grüße</p>
 <table cellpadding="0" cellspacing="0" border="0"><tr>
-  <td style="padding-right:14px;vertical-align:middle"><img src="cid:ailima-logo" width="38" height="52" alt="Ailima" style="display:block;border:0"></td>
-  <td style="border-left:2px solid #3d8a96;padding-left:14px;vertical-align:middle;font-size:13px;line-height:1.5;color:#5b6b70">
+  <td style="border-left:3px solid #3d8a96;padding:2px 0 2px 14px;font-size:13px;line-height:1.55;color:#5b6b70">
     <div style="font-size:15px;font-weight:600;color:#1f2d33">${escHtml(SMTP_FROM_NAME)}</div>
-    <div>Gründer · Ailima</div>
+    <div>Gründer · <span style="font-weight:700;color:#1f2d33">Ai</span><span style="font-weight:700;color:#3d8a96">lima</span></div>
     <div><a href="https://www.ailima.de" style="${link}">www.ailima.de</a> · <a href="mailto:${SMTP_USER}" style="${link}">${SMTP_USER}</a></div>
   </td></tr></table>
 <p style="margin:22px 0 0;font-size:11px;color:#a3adb1">Kein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder. · <a href="https://www.ailima.de/impressum.html" style="color:#a3adb1">Impressum</a></p>
 </div></body></html>`;
-  return {
-    text,
-    html,
-    attachments: [{ filename: 'ailima.png', path: path.join(__dirname, 'public', 'eddi.png'), cid: 'ailima-logo' }],
-  };
+  return { text, html };
 }
 
 // Send the current draft right away to any address (e.g. a spam tester). Touches no lead, not counted in the daily limit.
@@ -598,7 +593,7 @@ app.post('/crm/test-send', requireCRM, async (req, res) => {
 
 app.post('/crm/preview-email', requireCRM, (req, res) => {
   const { html } = buildMail(String(req.body.body || ''));
-  res.json({ html: html.replace('cid:ailima-logo', '/eddi.png') });
+  res.json({ html });
 });
 
 function smtpTransport(port = SMTP_PORT) {
