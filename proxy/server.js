@@ -548,6 +548,26 @@ ${paragraphs}
   return { text, html };
 }
 
+// Send the current draft right away to any address (e.g. a spam tester). Touches no lead, not counted in the daily limit.
+const testSends = [];
+app.post('/crm/test-send', requireCRM, async (req, res) => {
+  const to = String(req.body.to || '').trim();
+  const { subject, body } = req.body;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return res.status(400).json({ error: 'Ungültige Empfänger-Adresse' });
+  if (!subject || !body) return res.status(400).json({ error: 'Betreff und Text erforderlich' });
+  const dayAgo = Date.now() - 86400000;
+  while (testSends.length && testSends[0] < dayAgo) testSends.shift();
+  if (testSends.length >= 10) return res.status(429).json({ error: 'Maximal 10 Testmails pro Tag' });
+  try {
+    await sendWithFallback({ from: `"${SMTP_FROM_NAME}" <${SMTP_USER}>`, to, subject, ...buildMail(body) });
+    testSends.push(Date.now());
+    console.log(`[Test] Testmail an ${to}`);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/crm/preview-email', requireCRM, (req, res) => {
   const { html } = buildMail(String(req.body.body || ''));
   res.json({ html });

@@ -744,6 +744,7 @@
     <div class="epm-status-bar" id="epm-status"></div>
     <div class="epm-footer">
       <button class="btn-epm-regen" id="btn-epm-regen" onclick="regenEmail()">↻ Neu generieren</button>
+      <button class="btn-epm-regen" onclick="sendTestMail()" title="Diesen Entwurf sofort an eine beliebige Adresse senden – ändert keinen Lead">🧪 Testmail senden</button>
       <button class="btn-epm-cancel" onclick="closeEmailModal()">Abbrechen</button>
       <button class="btn-epm-send" id="btn-epm-send" onclick="sendEmail()">
         <span>⏳ In Warteschlange</span>
@@ -2171,6 +2172,22 @@ async function setEmailView(view) {
   } catch (e) {
     frame.srcdoc = `<p style="font-family:sans-serif;color:#991b1b;padding:16px">Vorschau fehlgeschlagen: ${esc(e.message)}</p>`;
   }
+}
+
+async function sendTestMail() {
+  const subject = document.getElementById('epm-subject').value.trim();
+  const body = document.getElementById('epm-body').value.trim();
+  if (!subject || !body) { showToast('Bitte Betreff und Text ausfüllen', 'err'); return; }
+  const to = prompt('Testmail sofort senden an (z. B. Adresse von mail-tester.com):', localStorage.getItem('crm_test_to') || '');
+  if (!to) return;
+  try { localStorage.setItem('crm_test_to', to); } catch {}
+  document.getElementById('epm-status').textContent = '⏳ Testmail wird gesendet…';
+  const r = await fetch('/crm/test-send', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-crm-token': crmToken },
+    body: JSON.stringify({ to, subject, body })
+  });
+  const d = await r.json();
+  document.getElementById('epm-status').textContent = r.ok ? `✅ Testmail an ${to} gesendet` : `❌ ${d.error}`;
 }
 
 function closeEmailModal() {
