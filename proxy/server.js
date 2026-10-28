@@ -533,9 +533,23 @@ const escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').repl
 const DEMO_URL = 'https://siteai-khmo.onrender.com/demo/?edit=sat_4ug6sat368k4ew976lr8z';
 
 // Personal mail with a small business-card signature and a soft demo link – no buttons or banners.
+// Guarantees a readable structure even if the AI returns one block: greeting on its own line, short paragraphs.
+function toParagraphs(body) {
+  let t = body.trim().replace(/\r/g, '');
+  t = t.replace(/^((?:guten tag|hallo|liebe[rs]?|sehr geehrte[rs]?)[^,\n]{0,60},)[ \t]*\n?(?!\n)/i, '$1\n\n');
+  const parts = t.split(/\n{2,}/);
+  if (parts.length >= 3) return t;
+  const [greeting, ...rest] = parts.length === 2 ? parts : ['', t];
+  const sentences = rest.join(' ').replace(/\s*\n\s*/g, ' ').match(/[^.!?]+[.!?]+["“”»«)]*\s*|[^.!?]+$/g) || [];
+  if (sentences.length < 3) return t;
+  const last = sentences.pop().trim();
+  const mid = Math.ceil(sentences.length / 2);
+  return [greeting, sentences.slice(0, mid).join('').trim(), sentences.slice(mid).join('').trim(), last].filter(Boolean).join('\n\n');
+}
+
 function buildMail(body) {
   // The AI sometimes adds its own closing despite instructions; the template adds one.
-  body = body.trim().replace(/\n+\s*(viele|beste|freundliche|herzliche|liebe|schöne)\s+grüße[\s\S]{0,80}$/i, '');
+  body = toParagraphs(body.trim().replace(/\n+\s*(viele|beste|freundliche|herzliche|liebe|schöne)\s+grüße[\s\S]{0,80}$/i, ''));
   const plain = body.trim().replace(/\*\*(.+?)\*\*/g, '$1');
   const text = `${plain}\n\nWer vorher schon schauen möchte: Live-Demo in 2 Minuten ausprobieren – ${DEMO_URL}\n\nViele Grüße\n${SMTP_FROM_NAME}\nGründer · Ailima\nwww.ailima.de · ${SMTP_USER}\n\n--\nKein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder.\nImpressum: https://www.ailima.de/impressum.html`;
   const paragraphs = plain.split(/\n{2,}/)
@@ -764,7 +778,8 @@ Ailima: ein Assistent direkt auf der eigenen Website. Man schreibt auf Deutsch, 
 REGELN:
 - 60–90 Wörter, Sie-Form, schlicht und freundlich. Kein Marketing-Sprech, keine Superlative, keine Ausrufezeichen, keine Komplimente oder Wertungen (nicht „beeindruckend", „toll").
 - Behaupte nur, was wörtlich im Website-Auszug steht – keine Annahmen über Alter, Pflege oder Zustand der Website.
-- Anrede: Ansprechpartner falls bekannt („Guten Tag Frau/Herr …"), sonst „Guten Tag,".
+- Anrede: Ansprechpartner falls bekannt („Guten Tag Frau/Herr …"), sonst „Guten Tag,". Die Anrede steht allein in der ersten Zeile.
+- Aufbau: nach der Anrede 3 kurze Absätze (Vorstellung + Beobachtung / Nutzen / Frage), jeweils durch eine LEERZEILE getrennt.
 - Erster Satz: stell dich in einem Halbsatz vor (Name, Ailima) UND nenne EINE konkrete, wahre Beobachtung von der Website (z. B. was sie anbieten, eine Aktion, Öffnungszeiten, ein veraltetes Jahr). Erfinde nichts – steht nichts Brauchbares im Auszug, beziehe dich nur allgemein auf ihr Angebot. Ist das Copyright-Jahr älter als ${year - 1}, darfst du es freundlich erwähnen.
 - Dann in 1–2 Sätzen, was Ailima konkret für diesen Betrieb erleichtert.
 - Kein Preis, keine Links/URLs, kein Fettdruck, keine Aufzählungen.
