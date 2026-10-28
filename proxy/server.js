@@ -549,7 +549,9 @@ function toParagraphs(body) {
 
 function buildMail(body) {
   // The AI sometimes adds its own closing despite instructions; the template adds one.
-  body = toParagraphs(body.trim().replace(/\n+\s*(viele|beste|freundliche|herzliche|liebe|schöne)\s+grüße[\s\S]{0,80}$/i, ''));
+  body = toParagraphs(body.trim()
+    .replace(/\n+\s*(viele|beste|freundliche|herzliche|liebe|schöne)\s+grüße[\s\S]{0,80}$/i, '')
+    .replace(/\n+\s*(gruß|grüße|achim|achim wolters)[\s,.]*$/i, ''));
   const plain = body.trim().replace(/\*\*(.+?)\*\*/g, '$1');
   const text = `${plain}\n\nWer vorher schon schauen möchte: Live-Demo in 2 Minuten ausprobieren – ${DEMO_URL}\n\nViele Grüße\n${SMTP_FROM_NAME}\nGründer · Ailima\nwww.ailima.de · ${SMTP_USER}\n\n--\nKein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder.\nImpressum: https://www.ailima.de/impressum.html`;
   const paragraphs = plain.split(/\n{2,}/)
@@ -960,8 +962,27 @@ async function processQueue() {
     if (now - lastAttemptAt < nextGapMs) return;
     lastAttemptAt = now.getTime();
 
-    const { kind, subject, body } = next.queuedMail;
+    let { kind, subject, body } = next.queuedMail;
     const stamp = now.toISOString();
+    // Last safety net: rewrite a faulty text before it goes out; if that fails, hold it back for review.
+    const issues = mailIssues(body);
+    if (issues.length) {
+      try {
+        ({ subject, body } = kind === 'initial'
+          ? await generateInitialMail(next, data.settings)
+          : await generateFollowUp(next, { ignorePrepared: true }));
+        if (mailIssues(body).length) throw new Error(mailIssues(body).join(', '));
+        await patchLeads([[next.id, l => l.queuedMail ? { ...l, queuedMail: { ...l.queuedMail, subject, body, rewrittenAt: stamp } } : l]]);
+        console.log(`[Queue] ${next.company}: Text neu geschrieben (${issues.join(', ')})`);
+      } catch (e) {
+        lastAttemptAt = 0;
+        await patchLeads([[next.id, l => { if (!l.queuedMail) return l; const { queuedMail, ...rest } = l; return { ...rest, updatedAt: stamp,
+          ...(kind === 'initial' ? { mailStatus: 'draft', emailDraft: { subject, body, generatedAt: stamp } } : { fuDraft: { kind, subject, body, createdAt: stamp } }),
+          notes: `${l.notes ? l.notes + '\n' : ''}⚠️ Mail zurückgehalten (${issues.join(', ')}) – bitte prüfen` }; }]]);
+        console.log(`[Queue] ${next.company}: zurückgehalten (${issues.join(', ')})`);
+        return;
+      }
+    }
     if (kind !== 'initial' && followUpBlocked(next)) {
       await patchLeads([[next.id, l => { const { queuedMail, ...rest } = l; return { ...rest, updatedAt: stamp }; }]]);
       console.log(`[Queue] Follow-up an ${next.company} verworfen – Lead hat geantwortet bzw. Status ${next.status}`);
@@ -1087,14 +1108,30 @@ app.post('/crm/queue/cancel/:id', requireCRM, async (req, res) => {
   }
 });
 
-async function generateFollowUp(lead, { ignorePrepared = false } = {}) {
+// Text problems that must never reach a prospect: informal address ("du/ihr") or made-up timing ("gestern").
+const DU_FORM = /\b(du|dich|dir|dein\w*|euch|euer|eure\w*|ihr|habt|seid|Du|Dich|Dir|Dein\w*|Euch|Euer|Eure\w*|Habt|Seid)\b/;
+const TIME_REF = /\b(gestern|gestrig\w*|vorgestern|heute früh|letzte[nrs]? Woche|vor (einer|einigen|ein paar|zwei|drei|\d+) (Tag|Tagen|Woche|Wochen))\b/i;
+function mailIssues(body) {
+  const issues = [];
+  if (DU_FORM.test(body)) issues.push('duzt statt siezt');
+  if (TIME_REF.test(body)) issues.push('nennt einen Zeitpunkt');
+  return issues;
+}
+
+async function generateFollowUp(lead, opts = {}) {
+  let last;
+  for (let i = 0; i < 3; i++) {
+    last = await generateFollowUpOnce(lead, i ? { ...opts, ignorePrepared: true } : opts);
+    if (!mailIssues(last.body).length) return last;
+  }
+  throw new Error(`Follow-up für ${lead.company} fehlerhaft (${mailIssues(last.body).join(', ')})`);
+}
+
+async function generateFollowUpOnce(lead, { ignorePrepared = false } = {}) {
   const isFU2 = !!lead.followUp1SentAt;
   if (!ignorePrepared && lead.fuPrepared?.kind === (isFU2 ? 'fu2' : 'fu1')) {
     return { isFU2, subject: lead.fuPrepared.subject, body: lead.fuPrepared.body };
   }
-  const lastSentDay = (lead.followUp1SentAt || lead.emailSentAt).slice(0, 10);
-  const sendDay = lead.followUp || new Date().toISOString().slice(0, 10);
-  const daysAgo = Math.max(1, Math.round((new Date(sendDay) - new Date(lastSentDay)) / 86400000));
   const salutation = lead.contact ? `Sprich ${lead.contact} persönlich an („Guten Tag Frau/Herr …").` : 'Anrede genau: „Guten Tag," (kein Name, kein „Liebe …Team").';
 
   const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1105,7 +1142,10 @@ async function generateFollowUp(lead, { ignorePrepared = false } = {}) {
       max_tokens: 350,
       system: `Du schreibst als ${SMTP_FROM_NAME} (Ailima: Website per Nachricht selbst ändern, ohne Agentur) eine ${isFU2 ? 'letzte, abschließende' : 'kurze Nachfass-'}Mail im selben Mail-Verlauf.
 Persönlich, schlicht, wie von Hand getippt. ${isFU2 ? '30–50' : '40–70'} Wörter. Kein Preis, kein Marketing-Sprech, kein Fettdruck, keine Ausrufezeichen. Ende mit einer lockeren Frage. ${salutation}
-Die vorige Mail ging vor ${daysAgo} Tagen raus – nenne keinen anderen Zeitraum.
+Immer siezen (Sie, Ihnen, Ihre) – niemals du, ihr, euch, eure, habt.
+Nenne keinen Zeitpunkt der vorigen Mail (kein „gestern", „letzte Woche", „vor X Tagen") – schreib höchstens „meine letzte Mail".
+Erfinde nichts: beschreibe nicht, was in der vorigen Mail stand, und nichts über deine Gedanken oder Gefühle.
+Schlussfrage schlicht und natürlich, z. B. „Wäre das grundsätzlich interessant für Sie?" oder „Soll ich Ihnen kurz zeigen, wie das aussieht?".
 NUR E-Mail-Text ab der Anrede, keine Betreffzeile, keine Grußformel am Ende, keine Signatur, keine URL.`,
       messages: [{ role: 'user', content: isFU2
         ? `Letzte höfliche Abschlussnachricht an ${lead.company} (${lead.industry||''}). Haben auf 2 Mails nicht geantwortet. Tür offen lassen für die Zukunft. Kein Verkaufsdruck.`
