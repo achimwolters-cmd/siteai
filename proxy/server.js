@@ -556,19 +556,26 @@ function buildMail(body) {
     .map(p => `<p style="margin:0 0 16px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
   const link = 'color:#3d8a96;text-decoration:none';
   const html = `<!doctype html><html><body style="margin:0;padding:0">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:28px 28px 32px">
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;color:#1f2d33;max-width:560px">
 ${paragraphs}
 <p style="margin:0 0 22px;padding:12px 14px;background:#f2f8f9;border-radius:8px;font-size:14px;color:#3d5a60">&#128073; Wer vorher schon schauen möchte: <a href="${DEMO_URL}" style="color:#2a6670;font-weight:600">Live-Demo in 2 Minuten ausprobieren</a></p>
 <p style="margin:0 0 18px">Viele Grüße</p>
 <table cellpadding="0" cellspacing="0" border="0"><tr>
-  <td style="border-left:3px solid #3d8a96;padding:2px 0 2px 14px;font-size:13px;line-height:1.55;color:#5b6b70">
+  <td width="36" style="width:36px;padding-right:14px;vertical-align:middle"><img src="cid:ailima-logo" width="36" height="49" alt="Ailima" style="display:block;width:36px;height:49px;max-width:36px;border:0"></td>
+  <td style="border-left:3px solid #3d8a96;padding:2px 0 2px 14px;font-size:13px;line-height:1.55;color:#5b6b70;vertical-align:middle">
     <div style="font-size:15px;font-weight:600;color:#1f2d33">${escHtml(SMTP_FROM_NAME)}</div>
     <div>Gründer · <span style="font-weight:700;color:#1f2d33">Ai</span><span style="font-weight:700;color:#3d8a96">lima</span></div>
     <div><a href="https://www.ailima.de" style="${link}">www.ailima.de</a> · <a href="mailto:${SMTP_USER}" style="${link}">${SMTP_USER}</a></div>
   </td></tr></table>
 <p style="margin:22px 0 0;font-size:11px;color:#a3adb1">Kein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder. · <a href="https://www.ailima.de/impressum.html" style="color:#a3adb1">Impressum</a></p>
-</div></body></html>`;
-  return { text, html };
+</div></td></tr></table></body></html>`;
+  return {
+    text,
+    html,
+    // Tiny dedicated file: clients that ignore width/height can't blow it up.
+    attachments: [{ filename: 'ailima.png', path: path.join(__dirname, 'public', 'mail-logo.png'), cid: 'ailima-logo' }],
+  };
 }
 
 // Send the current draft right away to any address (e.g. a spam tester). Touches no lead, not counted in the daily limit.
@@ -593,7 +600,7 @@ app.post('/crm/test-send', requireCRM, async (req, res) => {
 
 app.post('/crm/preview-email', requireCRM, (req, res) => {
   const { html } = buildMail(String(req.body.body || ''));
-  res.json({ html });
+  res.json({ html: html.replace('cid:ailima-logo', '/mail-logo.png') });
 });
 
 function smtpTransport(port = SMTP_PORT) {
