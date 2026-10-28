@@ -530,22 +530,36 @@ const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || 'Achim Wolters';
 
 const escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-// Plain, personal-looking mail: no buttons, images or bold – that reads as marketing and hurts inbox placement.
+const DEMO_URL = 'https://siteai-khmo.onrender.com/demo/?edit=sat_4ug6sat368k4ew976lr8z';
+
+// Personal mail with a small business-card signature and a soft demo link – no buttons or banners.
 function buildMail(body) {
   // The AI sometimes adds its own closing despite instructions; the template adds one.
   body = body.trim().replace(/\n+\s*(viele|beste|freundliche|herzliche|liebe|schöne)\s+grüße[\s\S]{0,80}$/i, '');
   const plain = body.trim().replace(/\*\*(.+?)\*\*/g, '$1');
-  const text = `${plain}\n\nViele Grüße\n${SMTP_FROM_NAME}\nAilima · www.ailima.de\n\n--\nKein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder.\nImpressum: https://www.ailima.de/impressum.html`;
+  const text = `${plain}\n\nWer vorher schon schauen möchte: Live-Demo in 2 Minuten ausprobieren – ${DEMO_URL}\n\nViele Grüße\n${SMTP_FROM_NAME}\nGründer · Ailima\nwww.ailima.de · ${SMTP_USER}\n\n--\nKein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder.\nImpressum: https://www.ailima.de/impressum.html`;
   const paragraphs = plain.split(/\n{2,}/)
-    .map(p => `<p style="margin:0 0 14px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+    .map(p => `<p style="margin:0 0 16px">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+  const link = 'color:#3d8a96;text-decoration:none';
   const html = `<!doctype html><html><body style="margin:0;padding:0">
-<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#222;max-width:600px">
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;color:#1f2d33;max-width:560px">
 ${paragraphs}
-<p style="margin:0 0 18px">Viele Grüße<br>${escHtml(SMTP_FROM_NAME)}<br>
-<span style="color:#666">Ailima · <a href="https://www.ailima.de" style="color:#3d8a96">www.ailima.de</a></span></p>
-<p style="margin:0;font-size:11px;color:#999">Kein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder. · <a href="https://www.ailima.de/impressum.html" style="color:#999">Impressum</a></p>
+<p style="margin:0 0 22px;padding:12px 14px;background:#f2f8f9;border-radius:8px;font-size:14px;color:#3d5a60">&#128073; Wer vorher schon schauen möchte: <a href="${DEMO_URL}" style="color:#2a6670;font-weight:600">Live-Demo in 2 Minuten ausprobieren</a></p>
+<p style="margin:0 0 18px">Viele Grüße</p>
+<table cellpadding="0" cellspacing="0" border="0"><tr>
+  <td style="padding-right:14px;vertical-align:middle"><img src="cid:ailima-logo" width="38" height="52" alt="Ailima" style="display:block;border:0"></td>
+  <td style="border-left:2px solid #3d8a96;padding-left:14px;vertical-align:middle;font-size:13px;line-height:1.5;color:#5b6b70">
+    <div style="font-size:15px;font-weight:600;color:#1f2d33">${escHtml(SMTP_FROM_NAME)}</div>
+    <div>Gründer · Ailima</div>
+    <div><a href="https://www.ailima.de" style="${link}">www.ailima.de</a> · <a href="mailto:${SMTP_USER}" style="${link}">${SMTP_USER}</a></div>
+  </td></tr></table>
+<p style="margin:22px 0 0;font-size:11px;color:#a3adb1">Kein Interesse? Eine kurze Antwort genügt, dann melde ich mich nicht wieder. · <a href="https://www.ailima.de/impressum.html" style="color:#a3adb1">Impressum</a></p>
 </div></body></html>`;
-  return { text, html };
+  return {
+    text,
+    html,
+    attachments: [{ filename: 'ailima.png', path: path.join(__dirname, 'public', 'eddi.png'), cid: 'ailima-logo' }],
+  };
 }
 
 // Send the current draft right away to any address (e.g. a spam tester). Touches no lead, not counted in the daily limit.
@@ -570,7 +584,7 @@ app.post('/crm/test-send', requireCRM, async (req, res) => {
 
 app.post('/crm/preview-email', requireCRM, (req, res) => {
   const { html } = buildMail(String(req.body.body || ''));
-  res.json({ html });
+  res.json({ html: html.replace('cid:ailima-logo', '/eddi.png') });
 });
 
 function smtpTransport(port = SMTP_PORT) {
