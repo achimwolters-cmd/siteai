@@ -51,7 +51,7 @@ function requireAdminKey(req, res, next) {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', commit: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7), timestamp: new Date().toISOString() });
 });
 
 // Credit status for client
