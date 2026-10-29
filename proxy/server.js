@@ -1003,7 +1003,9 @@ async function processQueue() {
     let patch;
     try {
       const messageId = await deliver(next, subject, body, kind);
-      patch = l => { const { queuedMail, sendError, ...rest } = applySent(l, kind, subject, stamp, messageId); return { ...rest, updatedAt: stamp }; };
+      // Keep the exact text that went out, so it can be checked and shown later.
+      patch = l => { const { queuedMail, sendError, ...rest } = applySent(l, kind, subject, stamp, messageId);
+        return { ...rest, updatedAt: stamp, sentMails: [...(l.sentMails || []), { kind, subject, body, sentAt: stamp }] }; };
       console.log(`[Queue] gesendet (${kind}) an ${next.company}`);
     } catch (e) {
       const attempts = (next.queuedMail.attempts || 0) + 1;
