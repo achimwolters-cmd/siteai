@@ -1113,8 +1113,11 @@ app.post('/crm/queue/cancel/:id', requireCRM, async (req, res) => {
 // Text problems that must never reach a prospect: informal address ("du/ihr") or made-up timing ("gestern").
 const DU_FORM = /\b(du|dich|dir|dein\w*|euch|euer|eure\w*|ihr|habt|seid|Du|Dich|Dir|Dein\w*|Euch|Euer|Eure\w*|Habt|Seid)\b/;
 const TIME_REF = /\b(gestern|gestrig\w*|vorgestern|heute früh|letzte[nrs]? Woche|vor (einer|einigen|ein paar|zwei|drei|\d+) (Tag|Tagen|Woche|Wochen))\b/i;
+// Misspelt product name (e.g. "Aiuma", "Alima"): any Ai…/Al…ma word that isn't exactly "Ailima".
+const BAD_NAME = /\b(?!Ailima\b)(Ai[a-zäöü]{0,4}ma|Alia?ma|Aliima)\b/i;
 function mailIssues(body) {
   const issues = [];
+  if (BAD_NAME.test(body)) issues.push('Produktname falsch geschrieben');
   if (DU_FORM.test(body)) issues.push('duzt statt siezt');
   if (TIME_REF.test(body)) issues.push('nennt einen Zeitpunkt');
   return issues;
@@ -1144,6 +1147,7 @@ async function generateFollowUpOnce(lead, { ignorePrepared = false } = {}) {
       max_tokens: 350,
       system: `Du schreibst als ${SMTP_FROM_NAME} (Ailima: Website per Nachricht selbst ändern, ohne Agentur) eine ${isFU2 ? 'letzte, abschließende' : 'kurze Nachfass-'}Mail im selben Mail-Verlauf.
 Persönlich, schlicht, wie von Hand getippt. ${isFU2 ? '30–50' : '40–70'} Wörter. Kein Preis, kein Marketing-Sprech, kein Fettdruck, keine Ausrufezeichen. Ende mit einer lockeren Frage. ${salutation}
+Der Produktname lautet exakt „Ailima" – nie anders schreiben.
 Immer siezen (Sie, Ihnen, Ihre) – niemals du, ihr, euch, eure, habt.
 Nenne keinen Zeitpunkt der vorigen Mail (kein „gestern", „letzte Woche", „vor X Tagen") – schreib höchstens „meine letzte Mail".
 Erfinde nichts: beschreibe nicht, was in der vorigen Mail stand, und nichts über deine Gedanken oder Gefühle.
