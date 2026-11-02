@@ -3,19 +3,116 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4WH0W50J90"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-4WH0W50J90');
+  <title>Ailima – Website per KI selbst bearbeiten | Für lokale Unternehmen</title>
+  <meta name="description" content="Mit Ailima bearbeitest du deine Website per Chat – Texte, Farben und Preise ändern in Sekunden, ohne IT-Kenntnisse. KI-gestützt, DSGVO-konform. Kostenlos testen." />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <meta name="author" content="Ailima" />
+  <meta name="google-site-verification" content="YjYC2eYOx3bCNmVcJxcoEF5RRccWMMjHURdwNZI9JFI" />
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://www.ailima.de/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://www.ailima.de/" />
+  <meta property="og:title" content="Ailima – Website per KI selbst bearbeiten" />
+  <meta property="og:description" content="Texte, Farben und Preise per Chat ändern – in Sekunden, ohne IT-Kenntnisse. KI-gestützt, DSGVO-konform. Kostenlos testen." />
+  <meta property="og:image" content="https://www.ailima.de/demo-screenshot.jpg" />
+  <meta property="og:locale" content="de_DE" />
+  <meta property="og:site_name" content="Ailima" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Ailima – Website per KI selbst bearbeiten" />
+  <meta name="twitter:description" content="Texte, Farben und Preise per Chat ändern – in Sekunden, ohne IT-Kenntnisse." />
+  <meta name="twitter:image" content="https://www.ailima.de/demo-screenshot.jpg" />
+
+  <!-- Schema.org JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://www.ailima.de/#organization",
+        "name": "Ailima",
+        "url": "https://www.ailima.de/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.ailima.de/eddi.png"
+        },
+        "description": "KI-gestützter Website-Editor für kleine lokale Unternehmen.",
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "availableLanguage": "German"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://www.ailima.de/#software",
+        "name": "Ailima",
+        "url": "https://www.ailima.de/",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "EUR",
+          "price": "0",
+          "description": "Kostenlose Demo verfügbar"
+        },
+        "description": "Mit Ailima bearbeitest du deine Website per Chat – Texte, Farben und Preise ändern in Sekunden, ohne IT-Kenntnisse.",
+        "featureList": [
+          "KI-gestützte Website-Bearbeitung",
+          "Keine Programmierkenntnisse nötig",
+          "DSGVO-konform",
+          "Änderungen in Sekunden"
+        ],
+        "publisher": {
+          "@id": "https://www.ailima.de/#organization"
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://www.ailima.de/#website",
+        "url": "https://www.ailima.de/",
+        "name": "Ailima",
+        "inLanguage": "de-DE",
+        "publisher": {
+          "@id": "https://www.ailima.de/#organization"
+        }
+      }
+    ]
+  }
   </script>
-  <title>Ailima – Deine Website. Einfach.</title>
+
+  <!-- Font Preload -->
+  <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin />
+
   <link rel="icon" type="image/png" href="eddi.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 300 900;
+      font-display: swap;
+      src: url('fonts/inter.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Playfair Display';
+      font-style: normal;
+      font-weight: 700;
+      font-display: swap;
+      src: url('fonts/playfair-700.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Playfair Display';
+      font-style: italic;
+      font-weight: 700;
+      font-display: swap;
+      src: url('fonts/playfair-700-italic.woff2') format('woff2');
+    }
+  </style>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; font-size: 16px; }
@@ -60,6 +157,28 @@
       transition: background 0.2s, transform 0.2s !important;
     }
     .nav-cta:hover { background: var(--teal-d) !important; transform: translateY(-1px); }
+    .nav-hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      cursor: pointer;
+      padding: 8px;
+      background: none;
+      border: none;
+      z-index: 1001;
+    }
+    .nav-hamburger span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--dark);
+      border-radius: 2px;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
     /* ── HERO ── */
     .hero {
@@ -400,8 +519,8 @@
       padding: 3px 10px; border-radius: 50px; font-size: 11px; font-weight: 700;
     }
     .pricing-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 28px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
     }
     .pricing-card {
       border-radius: 20px; padding: 40px 32px;
@@ -452,6 +571,9 @@
     .pricing-card.featured .pricing-btn { background: var(--teal); color: #fff; }
     .pricing-card.featured .pricing-btn:hover { background: var(--teal-l); }
     .pricing-note { text-align: center; margin-top: 32px; font-size: 14px; color: #aaa; }
+    .pricing-own { text-align: center; margin: 12px auto 0; max-width: 560px; font-size: 15px; color: var(--mid); line-height: 1.5; }
+    .pricing-yearly { font-size: 13px; font-weight: 600; color: var(--teal, #3d8a96); margin-bottom: 4px; }
+    .pricing-card.featured .pricing-yearly { color: #fff; }
 
     /* ── TESTIMONIALS ── */
     .testimonials { padding: 100px 5%; background: var(--light); }
@@ -550,9 +672,41 @@
       .testimonials-grid { grid-template-columns: 1fr; }
       .footer-top { grid-template-columns: 1fr 1fr; }
     }
+    /* Mobile overlay – außerhalb nav um backdrop-filter-Konflikt zu vermeiden */
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: 72px; left: 0; right: 0; bottom: 0;
+      background: #ffffff;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 48px;
+      gap: 32px;
+      z-index: 1100;
+      overflow-y: auto;
+      box-shadow: inset 0 1px 0 rgba(61,138,150,0.12);
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--dark);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .mobile-menu a:hover { color: var(--teal); }
+    .mobile-menu .nav-cta {
+      background: var(--teal);
+      color: #fff !important;
+      padding: 14px 40px;
+      border-radius: 50px;
+      margin-top: 8px;
+    }
     @media (max-width: 640px) {
       nav { padding: 0 4%; }
       .nav-links { display: none; }
+      .nav-hamburger { display: flex; }
       .hero { padding: 100px 4% 64px; }
       .hero h1 { letter-spacing: -1px; }
       .branchen-grid { grid-template-columns: 1fr 1fr; }
@@ -572,18 +726,33 @@
       <img src="eddi.png" alt="Ailima" />
       <span class="nav-logo-name">Ai<span>lima</span></span>
     </div>
-    <div class="nav-links">
+    <div class="nav-links" id="nav-links">
       <a href="#so-funktionierts">So funktioniert's</a>
       <a href="#funktionen">Funktionen</a>
       <a href="#preise">Preise</a>
-      <a href="https://siteai-production.up.railway.app/demo/?edit=sat_vl3f1zk715r3rkhfbl0brn" class="nav-cta">Demo ansehen →</a>
+      <a href="blog/">Blog</a>
+      <a href="https://siteai-khmo.onrender.com/demo/?edit=sat_4ug6sat368k4ew976lr8z" class="nav-cta">Demo ansehen →</a>
     </div>
+    <button class="nav-hamburger" id="nav-hamburger" aria-label="Menü öffnen" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
   </nav>
+
+  <!-- Mobile Menu Overlay (außerhalb nav – backdrop-filter fix) -->
+  <div class="mobile-menu" id="mobile-menu">
+    <a href="#so-funktionierts">So funktioniert's</a>
+    <a href="#funktionen">Funktionen</a>
+    <a href="#preise">Preise</a>
+    <a href="blog/">Blog</a>
+    <a href="https://siteai-khmo.onrender.com/demo/?edit=sat_4ug6sat368k4ew976lr8z" class="nav-cta">Demo ansehen →</a>
+  </div>
 
   <!-- HERO -->
   <section class="hero">
     <div class="hero-inner">
-      <img class="hero-eddi" src="eddi.png" alt="Eddi" />
+      <img class="hero-eddi" src="eddi.png" alt="Ailima KI-Assistent Eddi" />
       <div class="hero-badge">
         <div class="hero-badge-dot"></div>
         KI-gestützte Website-Bearbeitung
@@ -591,7 +760,7 @@
       <h1>Deine Website.<br /><em>Einfach</em> selbst verändern.</h1>
       <p class="hero-sub">Ailima gibt kleinen lokalen Unternehmen die Macht über ihre eigene Website – ohne IT-Kenntnisse, ohne Webentwickler, ohne Aufwand.</p>
       <div class="hero-actions">
-        <a href="https://siteai-production.up.railway.app/demo/?edit=sat_vl3f1zk715r3rkhfbl0brn" class="btn-primary">Demo ausprobieren →</a>
+        <a href="https://siteai-khmo.onrender.com/demo/?edit=sat_4ug6sat368k4ew976lr8z" class="btn-primary">Demo ausprobieren →</a>
         <a href="#so-funktionierts" class="btn-ghost-white">Mehr erfahren</a>
       </div>
       <div class="hero-stats">
@@ -629,7 +798,7 @@
           <div class="hero-browser-dot"></div>
           <div class="hero-browser-url">meinfriseursalon.de</div>
         </div>
-        <img class="hero-browser-img" src="demo-screenshot.jpg" alt="Demo Website" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
+        <img class="hero-browser-img" src="demo-screenshot.jpg" alt="Ailima Demo – Website per KI bearbeiten" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" />
         <div class="mock-site" style="display:none">
           <div class="mock-hero-bar">
             <div class="mock-nav">
@@ -659,7 +828,7 @@
         </div>
       </div>
       <div class="hero-widget-badge">
-        <img src="eddi.png" alt="Ailima Widget" />
+        <img src="eddi.png" alt="Ailima Widget" loading="lazy" />
       </div>
     </div>
   </section>
@@ -712,7 +881,7 @@
 
       <div class="features-grid reveal">
         <div class="feature-visual">
-          <img src="ki-assistent.jpg" alt="KI Editor" />
+          <img src="ki-assistent.jpg" alt="Ailima KI-Editor im Einsatz" loading="lazy" />
         </div>
         <div class="feature-content">
           <div class="feature-badge">✨ KI-Assistent</div>
@@ -729,7 +898,7 @@
 
       <div class="features-grid reverse reveal">
         <div class="feature-visual">
-          <img src="inline-editor.jpg" alt="Inline Editor" />
+          <img src="inline-editor.jpg" alt="Inline-Bearbeitung direkt auf der Website" loading="lazy" />
         </div>
         <div class="feature-content">
           <div class="feature-badge">🖊 Inline-Editing</div>
@@ -746,7 +915,7 @@
 
       <div class="features-grid reveal">
         <div class="feature-visual">
-          <img src="versionen.jpg" alt="Versionen" />
+          <img src="versionen.jpg" alt="Versionshistorie – Änderungen rückgängig machen" loading="lazy" />
         </div>
         <div class="feature-content">
           <div class="feature-badge">💾 Versionshistorie</div>
@@ -819,21 +988,23 @@
     <div class="pricing-inner">
       <p class="section-label reveal">Transparent & fair</p>
       <h2 class="section-title reveal">Einfache Preise.<br />Keine versteckten Kosten.</h2>
-      <p class="section-sub reveal">Einmalige Einrichtungsgebühr + kleines monatliches Abo. Das war's.</p>
+      <p class="section-sub reveal">Keine Einrichtungsgebühr. Ein kleines Abo, monatlich kündbar. Das war's.</p>
 
       <div class="pricing-grid">
         <div class="pricing-card reveal">
           <div class="pricing-plan">Starter</div>
           <div class="pricing-price">
             <span class="pricing-eur">€</span>
-            <span class="pricing-amount">19</span>
+            <span class="pricing-amount">19,90</span>
             <span class="pricing-period">/Monat</span>
           </div>
+          <div class="pricing-yearly">oder 199 € im Jahr – 2 Monate geschenkt</div>
           <div class="pricing-desc">Für den Einstieg – perfekt für einfache Seiten</div>
           <div class="pricing-divider"></div>
           <ul class="pricing-features">
             <li><span class="pricing-check">✓</span> 20 KI-Änderungen/Monat</li>
             <li><span class="pricing-check">✓</span> Inline-Editor</li>
+            <li><span class="pricing-check">✓</span> Vorschau, bevor etwas live geht</li>
             <li><span class="pricing-check">✓</span> Versionshistorie (5 Versionen)</li>
             <li><span class="pricing-check">✓</span> SSL & Hosting inklusive</li>
           </ul>
@@ -845,7 +1016,7 @@
           <div class="pricing-plan">Professional</div>
           <div class="pricing-price">
             <span class="pricing-eur">€</span>
-            <span class="pricing-amount">39</span>
+            <span class="pricing-amount">59</span>
             <span class="pricing-period">/Monat</span>
           </div>
           <div class="pricing-desc">Für aktive Unternehmen mit regelmäßigen Updates</div>
@@ -864,7 +1035,7 @@
           <div class="pricing-plan">Business</div>
           <div class="pricing-price">
             <span class="pricing-eur">€</span>
-            <span class="pricing-amount">69</span>
+            <span class="pricing-amount">89</span>
             <span class="pricing-period">/Monat</span>
           </div>
           <div class="pricing-desc">Für Unternehmen mit mehreren Seiten oder hohem Bedarf</div>
@@ -878,8 +1049,28 @@
           </ul>
           <a href="#kontakt" class="pricing-btn">Jetzt starten</a>
         </div>
+
+        <div class="pricing-card reveal">
+          <div class="pricing-plan">Wachstum</div>
+          <div class="pricing-price">
+            <span class="pricing-eur">€</span>
+            <span class="pricing-amount">129</span>
+            <span class="pricing-period">/Monat</span>
+          </div>
+          <div class="pricing-desc">Für Unternehmen, die automatisch mehr Reichweite aufbauen</div>
+          <div class="pricing-divider"></div>
+          <ul class="pricing-features">
+            <li><span class="pricing-check">✓</span> Alles aus Business</li>
+            <li><span class="pricing-check">✓</span> Auto-Blog: alle 3 Tage neuer Artikel</li>
+            <li><span class="pricing-check">✓</span> KI schreibt & veröffentlicht automatisch</li>
+            <li><span class="pricing-check">✓</span> SEO-optimierte Bloginhalte</li>
+            <li><span class="pricing-check">✓</span> Kein redaktioneller Aufwand</li>
+          </ul>
+          <a href="#kontakt" class="pricing-btn">Jetzt starten</a>
+        </div>
       </div>
-      <p class="pricing-note">Alle Preise zzgl. einmaliger Einrichtungsgebühr ab 299 €. Monatlich kündbar.</p>
+      <p class="pricing-note">Keine Einrichtungsgebühr · Monatlich kündbar</p>
+      <p class="pricing-own">🔒 <strong>Ihre Website gehört Ihnen.</strong> Sie können sie jederzeit vollständig als Dateien mitnehmen – auch nach einer Kündigung.</p>
     </div>
   </section>
 
@@ -893,7 +1084,7 @@
           <div class="testi-stars">★★★★★</div>
           <p class="testi-text">Ich habe endlich selbst die Kontrolle über meine Seite. Früher musste ich jede kleine Änderung beim Webdesigner anfragen – heute erledige ich das in Sekunden.</p>
           <div class="testi-author">
-            <img class="testi-avatar" src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&q=80" alt="Sabine K." />
+            <img class="testi-avatar" src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&q=80" alt="Sabine K." loading="lazy" />
             <div>
               <div class="testi-name">Sabine K.</div>
               <div class="testi-biz">Friseursalon Haarwerk, Augsburg</div>
@@ -904,7 +1095,7 @@
           <div class="testi-stars">★★★★★</div>
           <p class="testi-text">Die Tagesgerichte updaten, das Foto für die Aktion tauschen – das mache ich jetzt selbst. Ailima ist wie ein Webentwickler, dem ich einfach schreiben kann.</p>
           <div class="testi-author">
-            <img class="testi-avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80" alt="Marco B." />
+            <img class="testi-avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80" alt="Marco B." loading="lazy" />
             <div>
               <div class="testi-name">Marco B.</div>
               <div class="testi-biz">Trattoria da Marco, München</div>
@@ -915,7 +1106,7 @@
           <div class="testi-stars">★★★★★</div>
           <p class="testi-text">Als Handwerksbetrieb haben wir keine Zeit für IT-Kram. Ailima ist das Erste, das wirklich funktioniert – einfach, schnell, und unsere Seite sieht top aus.</p>
           <div class="testi-author">
-            <img class="testi-avatar" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80" alt="Thomas R." />
+            <img class="testi-avatar" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80" alt="Thomas R." loading="lazy" />
             <div>
               <div class="testi-name">Thomas R.</div>
               <div class="testi-biz">Elektro Reichert, Nürnberg</div>
@@ -928,11 +1119,11 @@
 
   <!-- CTA -->
   <section class="cta-section" id="kontakt">
-    <img class="cta-eddi" src="eddi.png" alt="Eddi" />
+    <img class="cta-eddi" src="eddi.png" alt="Ailima KI-Assistent Eddi" loading="lazy" />
     <h2>Bereit, deine Website<br />selbst in die Hand zu nehmen?</h2>
     <p>Teste Ailima kostenlos an unserer Demo-Seite – kein Account nötig.</p>
     <div class="cta-actions">
-      <a href="https://siteai-production.up.railway.app/demo/?edit=sat_vl3f1zk715r3rkhfbl0brn" class="btn-white">Demo jetzt editieren →</a>
+      <a href="https://siteai-khmo.onrender.com/demo/?edit=sat_4ug6sat368k4ew976lr8z" class="btn-white">Demo jetzt editieren →</a>
       <a href="mailto:info@ailima.de" class="btn-outline-white">Kontakt aufnehmen</a>
     </div>
   </section>
@@ -952,7 +1143,7 @@
             <li><a href="#so-funktionierts">So funktioniert's</a></li>
             <li><a href="#funktionen">Funktionen</a></li>
             <li><a href="#preise">Preise</a></li>
-            <li><a href="https://siteai-production.up.railway.app/demo/?edit=sat_vl3f1zk715r3rkhfbl0brn">Demo</a></li>
+            <li><a href="https://siteai-khmo.onrender.com/demo/?edit=sat_4ug6sat368k4ew976lr8z">Demo</a></li>
           </ul>
         </div>
         <div class="footer-col">
@@ -966,7 +1157,6 @@
       </div>
       <div class="footer-bottom">
         <span>© 2026 Ailima. Alle Rechte vorbehalten.</span>
-        <span>Made with ❤️ in Deutschland · Powered by <a href="https://anthropic.com" target="_blank">Claude AI</a></span>
       </div>
     </div>
   </footer>
@@ -976,6 +1166,24 @@
     const nav = document.getElementById('main-nav');
     window.addEventListener('scroll', () => {
       nav.classList.toggle('scrolled', window.scrollY > 40);
+    });
+
+    // Hamburger menu (mobile-menu ist außerhalb nav – backdrop-filter fix)
+    const hamburger = document.getElementById('nav-hamburger');
+    const mobileMenu = document.getElementById('mobile-menu');
+    hamburger.addEventListener('click', () => {
+      const isOpen = mobileMenu.classList.toggle('open');
+      hamburger.classList.toggle('open', isOpen);
+      hamburger.setAttribute('aria-expanded', isOpen);
+      document.body.style.overflow = isOpen ? 'hidden' : '';
+    });
+    mobileMenu.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        mobileMenu.classList.remove('open');
+        hamburger.classList.remove('open');
+        hamburger.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+      });
     });
 
     // Scroll reveal

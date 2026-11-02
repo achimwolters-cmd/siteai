@@ -2,12 +2,29 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
+  <link rel="canonical" href="https://ailima.de/" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ailima – Deine Website. Einfach.</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+  
+  
+  
   <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url('/fonts/inter-latin-ext.woff2') format('woff2');
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url('/fonts/inter-latin.woff2') format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; font-size: 16px; }
     body { font-family: 'Inter', sans-serif; color: #1a2a2e; background: #fff; overflow-x: hidden; }
@@ -315,7 +332,7 @@
       width: 64px; height: 64px; border-radius: 16px;
       background: var(--teal-bg);
       display: flex; align-items: center; justify-content: center;
-      font-size: 28px; margin-bottom: 24px;
+      margin-bottom: 24px;
     }
     .step-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 12px; color: var(--dark); }
     .step-card p { font-size: 15px; color: var(--mid); line-height: 1.7; }
@@ -374,7 +391,7 @@
       cursor: default;
     }
     .branche-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.1); }
-    .branche-icon { font-size: 36px; margin-bottom: 12px; }
+    .branche-icon { width: 44px; height: 44px; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; }
     .branche-card h4 { font-size: 15px; font-weight: 700; color: var(--dark); margin-bottom: 6px; }
     .branche-card p { font-size: 13px; color: var(--mid); line-height: 1.5; }
 
@@ -391,14 +408,15 @@
       padding: 3px 10px; border-radius: 50px; font-size: 11px; font-weight: 700;
     }
     .pricing-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 28px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
     }
     .pricing-card {
-      border-radius: 20px; padding: 40px 32px;
+      border-radius: 20px; padding: 36px 28px;
       border: 2px solid #f0f4f5;
       transition: transform 0.25s, box-shadow 0.25s;
       position: relative; overflow: hidden;
+      display: flex; flex-direction: column;
     }
     .pricing-card:hover { transform: translateY(-6px); box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
     .pricing-card.featured {
@@ -427,7 +445,7 @@
     .pricing-card.featured .pricing-desc { color: rgba(255,255,255,0.6); }
     .pricing-divider { height: 1px; background: #f0f4f5; margin: 20px 0; }
     .pricing-card.featured .pricing-divider { background: rgba(255,255,255,0.1); }
-    .pricing-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 32px; }
+    .pricing-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 32px; flex: 1; }
     .pricing-features li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--mid); }
     .pricing-card.featured .pricing-features li { color: rgba(255,255,255,0.7); }
     .pricing-check { width: 18px; height: 18px; border-radius: 50%; background: var(--teal-bg); color: var(--teal); font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -443,6 +461,9 @@
     .pricing-card.featured .pricing-btn { background: var(--teal); color: #fff; }
     .pricing-card.featured .pricing-btn:hover { background: var(--teal-l); }
     .pricing-note { text-align: center; margin-top: 32px; font-size: 14px; color: #aaa; }
+    .pricing-own { text-align: center; margin: 12px auto 0; max-width: 560px; font-size: 15px; color: var(--mid); line-height: 1.5; }
+    .pricing-yearly { font-size: 13px; font-weight: 600; color: var(--teal, #3d8a96); margin-bottom: 4px; }
+    .pricing-card.featured .pricing-yearly { color: #fff; }
 
     /* ── TESTIMONIALS ── */
     .testimonials { padding: 100px 5%; background: var(--light); }
@@ -678,19 +699,19 @@
     <div class="steps-grid">
       <div class="step-card reveal">
         <div class="step-num">1</div>
-        <div class="step-icon">🔌</div>
+        <div class="step-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="6" height="8" rx="1"/><line x1="9" y1="4" x2="9" y2="9"/><line x1="15" y1="4" x2="15" y2="9"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="9" y1="21" x2="15" y2="21"/></svg></div>
         <h3>Wir rüsten deine Website auf</h3>
         <p>Du hast bereits eine Website? Perfekt. Wir passen sie für Ailima an und installieren das Tool direkt – ohne Umbau, ohne Neustart, ohne Ausfallzeit.</p>
       </div>
       <div class="step-card reveal">
         <div class="step-num">2</div>
-        <div class="step-icon">🔑</div>
+        <div class="step-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M21 2l-9.6 9.6"/><line x1="15.5" y1="7.5" x2="18" y2="10"/><line x1="17" y1="6" x2="19.5" y2="8.5"/></svg></div>
         <h3>Du bekommst deinen Zugangscode</h3>
         <p>Mit einem persönlichen Geheimlink öffnet sich der Ailima-Editor auf deiner Seite. Kein Login, kein Backend – einfach der Link, fertig.</p>
       </div>
       <div class="step-card reveal">
         <div class="step-num">3</div>
-        <div class="step-icon">💬</div>
+        <div class="step-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
         <h3>Änderungen per Sprache eingeben</h3>
         <p>Schreib einfach was du möchtest: „Neue Öffnungszeiten ab Montag" oder „Mach den Buchen-Button grün". Ailima setzt es sofort um.</p>
       </div>
@@ -712,7 +733,8 @@
           <ul class="feature-list">
             <li>Texte, Farben und Preise ändern</li>
             <li>Öffnungszeiten und Kontaktdaten updaten</li>
-            <li>Überschriften, Buttons und Links anpassen</li>
+            <li>Neue Sektionen einbauen (FAQ, Team, Anfahrt …)</li>
+            <li>Menüpunkte hinzufügen oder anpassen</li>
             <li>Änderungen sofort live sichtbar</li>
           </ul>
         </div>
@@ -737,7 +759,7 @@
 
       <div class="features-grid reveal">
         <div class="feature-visual">
-          <img src="https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&q=80" alt="Versionen" />
+          <img src="https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&q=80" alt="Versionen" />
         </div>
         <div class="feature-content">
           <div class="feature-badge">💾 Versionshistorie</div>
@@ -752,6 +774,23 @@
         </div>
       </div>
 
+      <div class="features-grid reverse reveal">
+        <div class="feature-visual">
+          <img src="https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&q=80" alt="Auto-Blog" />
+        </div>
+        <div class="feature-content">
+          <div class="feature-badge">📝 Auto-Blog</div>
+          <h2>Neue Blogartikel – vollautomatisch</h2>
+          <p>Ailima schreibt alle drei Tage einen neuen, SEO-optimierten Blogartikel für deine Website – und veröffentlicht ihn automatisch. Keine Redaktion, kein Aufwand, kontinuierlich mehr Sichtbarkeit.</p>
+          <ul class="feature-list">
+            <li>KI erstellt themenrelevante Artikel für deine Branche</li>
+            <li>Automatisch auf deiner Website veröffentlicht</li>
+            <li>SEO-optimiert für mehr Google-Sichtbarkeit</li>
+            <li>Immer frische Inhalte – ohne deinen Aufwand</li>
+          </ul>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -762,42 +801,42 @@
       <h2 class="section-title reveal">Gebaut für lokale Unternehmen</h2>
       <div class="branchen-grid">
         <div class="branche-card reveal">
-          <div class="branche-icon">💇</div>
+          <div class="branche-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></div>
           <h4>Friseure & Kosmetik</h4>
           <p>Öffnungszeiten, Preislisten & Fotos immer aktuell halten</p>
         </div>
         <div class="branche-card reveal">
-          <div class="branche-icon">🍕</div>
+          <div class="branche-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="21" y1="15" x2="21" y2="22"/><path d="M16 2a5 5 0 0 1 5 5v6h-5V2z"/></svg></div>
           <h4>Restaurants & Cafés</h4>
           <p>Speisekarte, Tagesangebote und Reservierungszeiten anpassen</p>
         </div>
         <div class="branche-card reveal">
-          <div class="branche-icon">🔧</div>
+          <div class="branche-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
           <h4>Handwerksbetriebe</h4>
           <p>Leistungen, Kontakt und Referenzfotos selbst verwalten</p>
         </div>
         <div class="branche-card reveal">
-          <div class="branche-icon">💆</div>
+          <div class="branche-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8C8 10 5.9 16.17 3.82 19.34c-.58.93.21 1.87 1.19 1.49C7.93 19.21 18 14 22 4c-5.5 0-12 2-16 7"/><path d="M22 4L11.5 14.5"/></svg></div>
           <h4>Physiotherapie & Wellness</h4>
           <p>Behandlungsangebote und Termine einfach kommunizieren</p>
         </div>
         <div class="branche-card reveal">
-          <div class="branche-icon">⚖️</div>
+          <div class="branche-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><path d="M3 6l9-3 9 3"/><polyline points="6 9 3 14 9 14 6 9"/><polyline points="18 9 15 14 21 14 18 9"/><line x1="3" y1="21" x2="21" y2="21"/></svg></div>
           <h4>Kanzleien & Beratung</h4>
           <p>Leistungen und Ansprechpartner jederzeit aktualisieren</p>
         </div>
         <div class="branche-card reveal">
-          <div class="branche-icon">🌸</div>
+          <div class="branche-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
           <h4>Blumenläden & Boutiquen</h4>
           <p>Aktionen, Sortiment und Öffnungszeiten selbst pflegen</p>
         </div>
         <div class="branche-card reveal">
-          <div class="branche-icon">🏋️</div>
+          <div class="branche-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="4" x2="6" y2="20"/><line x1="18" y1="4" x2="18" y2="20"/><line x1="3" y1="8" x2="6" y2="8"/><line x1="3" y1="16" x2="6" y2="16"/><line x1="18" y1="8" x2="21" y2="8"/><line x1="18" y1="16" x2="21" y2="16"/><line x1="6" y1="12" x2="18" y2="12"/></svg></div>
           <h4>Fitnessstudios</h4>
           <p>Kursplan, Preise und Events immer auf dem neuesten Stand</p>
         </div>
         <div class="branche-card reveal">
-          <div class="branche-icon">🏨</div>
+          <div class="branche-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><line x1="6" y1="12" x2="6" y2="12.01"/><line x1="10" y1="12" x2="10" y2="12.01"/><line x1="14" y1="12" x2="14" y2="12.01"/><line x1="18" y1="12" x2="18" y2="12.01"/></svg></div>
           <h4>Hotels & Pensionen</h4>
           <p>Zimmerpreise, Angebote und Verfügbarkeiten selbst anpassen</p>
         </div>
@@ -810,21 +849,23 @@
     <div class="pricing-inner">
       <p class="section-label reveal">Transparent & fair</p>
       <h2 class="section-title reveal">Einfache Preise.<br />Keine versteckten Kosten.</h2>
-      <p class="section-sub reveal">Einmalige Einrichtungsgebühr + kleines monatliches Abo. Das war's.</p>
+      <p class="section-sub reveal">Keine Einrichtungsgebühr. Ein kleines Abo, monatlich kündbar. Das war's.</p>
 
       <div class="pricing-grid">
         <div class="pricing-card reveal">
           <div class="pricing-plan">Starter</div>
           <div class="pricing-price">
             <span class="pricing-eur">€</span>
-            <span class="pricing-amount">19</span>
+            <span class="pricing-amount">19,90</span>
             <span class="pricing-period">/Monat</span>
           </div>
+          <div class="pricing-yearly">oder 199 € im Jahr – 2 Monate geschenkt</div>
           <div class="pricing-desc">Für den Einstieg – perfekt für einfache Seiten</div>
           <div class="pricing-divider"></div>
           <ul class="pricing-features">
             <li><span class="pricing-check">✓</span> 20 KI-Änderungen/Monat</li>
             <li><span class="pricing-check">✓</span> Inline-Editor</li>
+            <li><span class="pricing-check">✓</span> Vorschau, bevor etwas live geht</li>
             <li><span class="pricing-check">✓</span> Versionshistorie (5 Versionen)</li>
             <li><span class="pricing-check">✓</span> SSL & Hosting inklusive</li>
           </ul>
@@ -836,7 +877,7 @@
           <div class="pricing-plan">Professional</div>
           <div class="pricing-price">
             <span class="pricing-eur">€</span>
-            <span class="pricing-amount">39</span>
+            <span class="pricing-amount">59</span>
             <span class="pricing-period">/Monat</span>
           </div>
           <div class="pricing-desc">Für aktive Unternehmen mit regelmäßigen Updates</div>
@@ -855,7 +896,7 @@
           <div class="pricing-plan">Business</div>
           <div class="pricing-price">
             <span class="pricing-eur">€</span>
-            <span class="pricing-amount">69</span>
+            <span class="pricing-amount">89</span>
             <span class="pricing-period">/Monat</span>
           </div>
           <div class="pricing-desc">Für Unternehmen mit mehreren Seiten oder hohem Bedarf</div>
@@ -869,8 +910,28 @@
           </ul>
           <a href="#kontakt" class="pricing-btn">Jetzt starten</a>
         </div>
+
+        <div class="pricing-card reveal">
+          <div class="pricing-plan">Wachstum</div>
+          <div class="pricing-price">
+            <span class="pricing-eur">€</span>
+            <span class="pricing-amount">129</span>
+            <span class="pricing-period">/Monat</span>
+          </div>
+          <div class="pricing-desc">Für Unternehmen, die automatisch mehr Reichweite aufbauen</div>
+          <div class="pricing-divider"></div>
+          <ul class="pricing-features">
+            <li><span class="pricing-check">✓</span> Alles aus Business</li>
+            <li><span class="pricing-check">✓</span> Auto-Blog: alle 3 Tage neuer Artikel</li>
+            <li><span class="pricing-check">✓</span> KI schreibt & veröffentlicht automatisch</li>
+            <li><span class="pricing-check">✓</span> SEO-optimierte Bloginhalte</li>
+            <li><span class="pricing-check">✓</span> Kein redaktioneller Aufwand</li>
+          </ul>
+          <a href="#kontakt" class="pricing-btn">Jetzt starten</a>
+        </div>
       </div>
-      <p class="pricing-note">Alle Preise zzgl. einmaliger Einrichtungsgebühr ab 299 €. Monatlich kündbar.</p>
+      <p class="pricing-note">Keine Einrichtungsgebühr · Monatlich kündbar</p>
+      <p class="pricing-own">🔒 <strong>Ihre Website gehört Ihnen.</strong> Sie können sie jederzeit vollständig als Dateien mitnehmen – auch nach einer Kündigung.</p>
     </div>
   </section>
 
@@ -924,7 +985,7 @@
     <p>Teste Ailima kostenlos an unserer Demo-Seite – kein Account nötig.</p>
     <div class="cta-actions">
       <a href="/demo/?edit=sat_vl3f1zk715r3rkhfbl0brn" class="btn-white">Demo jetzt editieren →</a>
-      <a href="mailto:hallo@ailima.de" class="btn-outline-white">Kontakt aufnehmen</a>
+      <a href="mailto:info@ailima.de" class="btn-outline-white">Kontakt aufnehmen</a>
     </div>
   </section>
 
@@ -943,24 +1004,24 @@
             <li><a href="#so-funktionierts">So funktioniert's</a></li>
             <li><a href="#funktionen">Funktionen</a></li>
             <li><a href="#preise">Preise</a></li>
-            <li><a href="/demo/">Demo</a></li>
+            <li><a href="https://siteai-khmo.onrender.com/demo/" target="_blank">Demo</a></li>
           </ul>
         </div>
         <div class="footer-col">
           <h5>Branchen</h5>
           <ul>
-            <li><a href="#">Friseure</a></li>
-            <li><a href="#">Restaurants</a></li>
-            <li><a href="#">Handwerk</a></li>
-            <li><a href="#">Wellness</a></li>
+            <li><a href="/#branchen">Friseure</a></li>
+            <li><a href="/#branchen">Restaurants</a></li>
+            <li><a href="/#branchen">Handwerk</a></li>
+            <li><a href="/#branchen">Wellness</a></li>
           </ul>
         </div>
         <div class="footer-col">
           <h5>Kontakt</h5>
           <ul>
-            <li><a href="mailto:hallo@ailima.de">hallo@ailima.de</a></li>
-            <li><a href="#">Impressum</a></li>
-            <li><a href="#">Datenschutz</a></li>
+            <li><a href="mailto:info@ailima.de">info@ailima.de</a></li>
+            <li><a href="/impressum.html">Impressum</a></li>
+            <li><a href="/datenschutz.html">Datenschutz</a></li>
           </ul>
         </div>
       </div>
@@ -989,6 +1050,44 @@
       });
     }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
     reveals.forEach(el => observer.observe(el));
+  </script>
+
+  <!-- COOKIE BANNER -->
+  <div id="cookie-banner" style="
+    display:none;
+    position:fixed; bottom:0; left:0; right:0; z-index:9999;
+    background:#fff;
+    border-top:2px solid #e8f0f2;
+    box-shadow:0 -8px 40px rgba(0,0,0,0.10);
+    padding:20px 5%;
+    font-family:'Inter',sans-serif;
+  ">
+    <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;">
+      <p style="font-size:14px;color:#4a6b72;line-height:1.6;margin:0;flex:1;min-width:260px;">
+        🍪 Diese Website verwendet ausschließlich technisch notwendige Cookies. Es werden keine Tracking- oder Marketing-Cookies gesetzt.
+        <a href="/datenschutz.html" style="color:#3d8a96;font-weight:600;">Mehr erfahren</a>
+      </p>
+      <div style="display:flex;gap:12px;flex-shrink:0;">
+        <button onclick="acceptCookies()" style="
+          background:#3d8a96;color:#fff;
+          border:none;cursor:pointer;
+          padding:11px 28px;border-radius:50px;
+          font-size:14px;font-weight:700;font-family:'Inter',sans-serif;
+          transition:background 0.2s;
+        " onmouseover="this.style.background='#2a6670'" onmouseout="this.style.background='#3d8a96'">
+          Verstanden
+        </button>
+      </div>
+    </div>
+  </div>
+  <script>
+    function acceptCookies() {
+      localStorage.setItem('ailima_cookie_consent', '1');
+      document.getElementById('cookie-banner').style.display = 'none';
+    }
+    if (!localStorage.getItem('ailima_cookie_consent')) {
+      document.getElementById('cookie-banner').style.display = 'block';
+    }
   </script>
 </body>
 </html>
