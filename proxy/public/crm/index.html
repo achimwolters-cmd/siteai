@@ -1667,6 +1667,8 @@ function updateDiscFooter() {
 }
 
 // ── OUTBOX ──
+// Selected follow-up drafts (by lead id) for releasing several at once
+const fuSel = new Set();
 function renderOutbox() {
   const now = new Date();
 
@@ -1692,10 +1694,19 @@ function renderOutbox() {
   if (fuDrafts.length) {
     html += `<div class="outbox-section">
       <div class="outbox-section-title">🤖 Follow-ups zur Freigabe <span class="outbox-section-count" style="background:#fff3cd;color:#92400e">${fuDrafts.length}</span>
-        <button class="btn-outbox-send" style="margin-left:auto;text-transform:none;letter-spacing:0" onclick="releaseAllFuDrafts()">⏳ Alle ${fuDrafts.length} freigeben</button></div>
+        <span style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select class="fu-sel-industry" onchange="fuSelectIndustry(this.value)" style="padding:6px 8px;border-radius:8px;border:1px solid #d6dde3;font:inherit;font-size:13px;text-transform:none;letter-spacing:0">
+            <option value="">Auswählen …</option><option value="*">Alle</option><option value="-">Keine</option>
+            ${[...new Set(fuDrafts.map(l => l.industry || 'Sonstige'))].sort().map(i => `<option value="${esc(i)}">${esc(i)} (${fuDrafts.filter(l => (l.industry || 'Sonstige') === i).length})</option>`).join('')}
+          </select>
+          <button class="btn-outbox-send" id="fu-sel-release" style="text-transform:none;letter-spacing:0" onclick="releaseSelectedFuDrafts()" ${fuSel.size ? '' : 'disabled'}>⏳ Ausgewählte (${fuSel.size}) freigeben</button>
+          <button class="btn-outbox-send" style="text-transform:none;letter-spacing:0" onclick="releaseAllFuDrafts()">⏳ Alle ${fuDrafts.length} freigeben</button>
+        </span></div>
       <div class="outbox-cards">${fuDrafts.map(l => `<div class="outbox-card">
-        <div class="outbox-card-top"><div><div class="outbox-card-company">${esc(l.company)}</div>
-          <div class="outbox-card-meta">${esc(l.email)} · ${l.fuDraft.kind === 'fu2' ? 'Follow-up 2 (letzte Mail)' : 'Follow-up 1'}</div></div></div>
+        <div class="outbox-card-top"><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">
+          <input type="checkbox" style="margin-top:4px;width:16px;height:16px;accent-color:#3d8a96" ${fuSel.has(l.id) ? 'checked' : ''} onchange="toggleFuSel('${l.id}', this.checked)">
+          <div><div class="outbox-card-company">${esc(l.company)}</div>
+          <div class="outbox-card-meta">${esc(l.email)} · ${esc(l.industry || '')} · ${l.fuDraft.kind === 'fu2' ? 'Follow-up 2 (letzte Mail)' : 'Follow-up 1'}</div></div></label></div>
         <div class="outbox-card-subject">📋 ${esc(l.fuDraft.subject)}</div>
         <div class="outbox-card-preview">${esc(l.fuDraft.body)}</div>
         <div class="outbox-card-actions">
@@ -1841,13 +1852,35 @@ async function discardFuDraft(id) {
   } catch (e) { showToast('❌ ' + e.message, 'err'); }
 }
 
+function toggleFuSel(id, on) {
+  on ? fuSel.add(id) : fuSel.delete(id);
+  const btn = document.getElementById('fu-sel-release');
+  if (btn) { btn.disabled = !fuSel.size; btn.textContent = `⏳ Ausgewählte (${fuSel.size}) freigeben`; }
+}
+function fuSelectIndustry(v) {
+  const drafts = activeLeads().filter(l => l.fuDraft);
+  if (v === '-' || v === '*') fuSel.clear();
+  if (v === '*') drafts.forEach(l => fuSel.add(l.id));
+  else if (v && v !== '-') drafts.filter(l => (l.industry || 'Sonstige') === v).forEach(l => fuSel.add(l.id));
+  renderOutbox();
+}
+
+async function releaseFuDrafts(ids) {
+  let ok = 0;
+  showToast(`⏳ Gebe ${ids.length} Follow-ups frei …`, 'ok');
+  for (const id of ids) { try { await fuDraftAction(id, { action: 'release' }); ok++; fuSel.delete(id); } catch {} }
+  renderStats(); renderTable(); updateOutboxBadge(); renderOutbox();
+  showToast(`⏳ ${ok} von ${ids.length} Follow-ups in der Warteschlange`, ok === ids.length ? 'ok' : 'err');
+}
+async function releaseSelectedFuDrafts() {
+  const ids = activeLeads().filter(l => l.fuDraft && fuSel.has(l.id)).map(l => l.id);
+  if (!ids.length || !confirm(`${ids.length} ausgewählte Follow-ups freigeben?`)) return;
+  await releaseFuDrafts(ids);
+}
 async function releaseAllFuDrafts() {
   const ids = activeLeads().filter(l => l.fuDraft).map(l => l.id);
-  if (!confirm(`${ids.length} Follow-ups ungeprüft freigeben?`)) return;
-  let ok = 0;
-  for (const id of ids) { try { await fuDraftAction(id, { action: 'release' }); ok++; } catch {} }
-  renderStats(); renderTable(); updateOutboxBadge(); renderOutbox();
-  showToast(`⏳ ${ok} Follow-ups in der Warteschlange`, 'ok');
+  if (!confirm(`Alle ${ids.length} Follow-ups freigeben?`)) return;
+  await releaseFuDrafts(ids);
 }
 
 function openFuDraft(id) {
