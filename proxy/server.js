@@ -329,19 +329,20 @@ async function saveCRM(data) {
 
 // Render's disk is wiped on every restart, so the CRM is mirrored to the private FTP folder.
 // Only on Render: a local dev server must never overwrite the production copy.
+// Seit 26.11.2026 mit eigenem Zugang „ailimadaten“ (Ordner noexec/_ailima-daten,
+// per .htaccess gesperrt). Ohne FTP_PASS_DATEN gilt noch der alte admin-Weg.
 const CRM_REMOTE_DIR = 'ailima-data';
-const CRM_FTP_ENABLED = !!process.env.RENDER && !!process.env.FTP_PASS;
+const CRM_FTP_ENABLED = !!process.env.RENDER && !!(process.env.FTP_PASS_DATEN || process.env.FTP_PASS);
 let crmFtpWritable = false;
 let crmReady = Promise.resolve();
 let crmUploadTimer = null;
 
 async function restoreCRMFromFtp() {
   if (!CRM_FTP_ENABLED) return;
-  setupFtpNetrc();
   const tmp = '/tmp/crm-remote.json';
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      await run(`curl --netrc-file "${NETRC_FILE}" -sS --fail -o "${tmp}" "ftp://${FTP_HOST}/${CRM_REMOTE_DIR}/crm.json"`, 30000);
+      await run(`curl ${ftpArgs('daten')} -sS --fail -o "${tmp}" "${ftpBasis('daten')}/crm.json"`, 30000);
       const data = JSON.parse(fs.readFileSync(tmp, 'utf8'));
       if (!Array.isArray(data.leads)) throw new Error('ungültige CRM-Datei');
       fs.writeFileSync(CRM_FILE, JSON.stringify(data, null, 2));
@@ -370,7 +371,7 @@ function scheduleCRMUpload() {
     const tmp = '/tmp/crm-upload.json';
     try {
       fs.copyFileSync(CRM_FILE, tmp);
-      await run(`curl --netrc-file "${NETRC_FILE}" -sS -T "${tmp}" "ftp://${FTP_HOST}/${CRM_REMOTE_DIR}/crm.json.tmp" -Q "-RNFR crm.json.tmp" -Q "-RNTO crm.json"`, 30000);
+      await run(`curl ${ftpArgs('daten')} -sS -T "${tmp}" "${ftpBasis('daten')}/crm.json.tmp" -Q "-RNFR crm.json.tmp" -Q "-RNTO crm.json"`, 30000);
       console.log('[CRM] FTP-Sicherung aktualisiert');
     } catch (e) {
       console.error('[CRM] FTP-Sicherung fehlgeschlagen:', e.message);
@@ -1558,8 +1559,7 @@ let leadPool = null;
 
 async function loadPool(force = false) {
   if (leadPool && !force) return leadPool;
-  setupFtpNetrc();
-  await run(`curl --netrc-file "${NETRC_FILE}" -sS -o "${POOL_LOCAL}" "ftp://${FTP_HOST}/ailima-data/lead-pool.json"`, 60000);
+  await run(`curl ${ftpArgs('daten')} -sS -o "${POOL_LOCAL}" "${ftpBasis('daten')}/lead-pool.json"`, 60000);
   leadPool = JSON.parse(fs.readFileSync(POOL_LOCAL, 'utf8'));
   return leadPool;
 }
@@ -1877,11 +1877,36 @@ ${pageContext || ''}`.slice(0, 60000)
 
 // ── AUTO-BLOG: Neuen Blogbeitrag generieren und per FTP hochladen ────────────
 
+// FTP-Zugänge auf tojopo. Seit 26.11.2026 hat jedes Ziel seinen eigenen Zugang,
+// der nur seinen Ordner sieht (Startordner „/“ = Webroot). Die Kennwörter kommen
+// aus FTP_PASS_AILIMA, FTP_PASS_FAIRWAY und FTP_PASS_DATEN. Übertragen wird mit
+// TLS. Fehlt ein Kennwort, gilt übergangsweise der alte gemeinsame Zugang
+// (FTP_USER/FTP_PASS) mit den alten Pfaden — der fällt weg, sobald admin ein
+// neues Kennwort bekommt.
 const FTP_HOST = 'tojopo.han-solo.net';
-const FTP_USER = process.env.FTP_USER || 'admin';
-const FTP_PASS = process.env.FTP_PASS || '';
-const FTP_SITE = 'ftp://tojopo.han-solo.net/noexec/ailima.de';
-const NETRC_FILE = '/tmp/ailima-netrc';
+const FTP_ZUGAENGE = {
+  ailima:  { user: 'ailimade',     env: 'FTP_PASS_AILIMA',  alt: '/noexec/ailima.de' },
+  fairway: { user: 'fairwayappde', env: 'FTP_PASS_FAIRWAY', alt: '/noexec/fairwayapp.de' },
+  daten:   { user: 'ailimadaten',  env: 'FTP_PASS_DATEN',   alt: '/ailima-data' },
+};
+
+function ftpZugang(name) {
+  const z = FTP_ZUGAENGE[name];
+  if (process.env[z.env]) return { user: z.user, pass: process.env[z.env], pfad: '' };
+  return { user: process.env.FTP_USER || 'admin', pass: process.env.FTP_PASS || '', pfad: z.alt };
+}
+
+// netrc-Datei je Zugang, nur für diesen Prozess lesbar; Kennwort nie auf der Kommandozeile.
+function ftpArgs(name) {
+  const z = ftpZugang(name);
+  const datei = `/tmp/ftp-netrc-${name}`;
+  fs.writeFileSync(datei, `machine ${FTP_HOST}\nlogin ${z.user}\npassword ${z.pass}\n`, { mode: 0o600 });
+  return `--netrc-file "${datei}" --ssl-reqd`;
+}
+
+function ftpBasis(name) {
+  return `ftp://${FTP_HOST}${ftpZugang(name).pfad}`;
+}
 
 const BLOG_HERO_PHOTOS = [
   'photo-1557804506-669a67965ba0', 'photo-1460925895917-afdab827c52f',
@@ -1900,16 +1925,12 @@ function run(cmd, timeoutMs = 30000) {
   });
 }
 
-function setupFtpNetrc() {
-  fs.writeFileSync(NETRC_FILE, `machine ${FTP_HOST}\nlogin ${FTP_USER}\npassword ${FTP_PASS}\n`, { mode: 0o600 });
-}
-
 async function ftpGet(remotePath, localPath) {
-  await run(`curl --netrc-file "${NETRC_FILE}" -s -o "${localPath}" "${FTP_SITE}/${remotePath}"`, 30000);
+  await run(`curl ${ftpArgs('ailima')} -s -o "${localPath}" "${ftpBasis('ailima')}/${remotePath}"`, 30000);
 }
 
 async function ftpPut(localPath, remotePath) {
-  await run(`curl --netrc-file "${NETRC_FILE}" -s -T "${localPath}" "${FTP_SITE}/${remotePath}"`, 30000);
+  await run(`curl ${ftpArgs('ailima')} -s -T "${localPath}" "${ftpBasis('ailima')}/${remotePath}"`, 30000);
 }
 
 function todayDE() {
@@ -1924,7 +1945,6 @@ function todayISO() {
 
 async function generateAndUploadBlogPost() {
   console.log('[auto-blog] Starte Blog-Generierung…');
-  setupFtpNetrc();
 
   // Dateien herunterladen
   await ftpGet('blog/index.html', '/tmp/ab-index.html');
@@ -2054,13 +2074,11 @@ function handleAutoBlog(req, res) {
 
 // ── AUTO-BLOG FAIRWAYAPP ─────────────────────────────────────────────────────
 
-const FTP_SITE_FAIRWAY = 'ftp://tojopo.han-solo.net/noexec/fairwayapp.de';
-
 async function ftpGetFW(remotePath, localPath) {
-  await run(`curl --netrc-file "${NETRC_FILE}" -s -o "${localPath}" "${FTP_SITE_FAIRWAY}/${remotePath}"`, 30000);
+  await run(`curl ${ftpArgs('fairway')} -s -o "${localPath}" "${ftpBasis('fairway')}/${remotePath}"`, 30000);
 }
 async function ftpPutFW(localPath, remotePath) {
-  await run(`curl --netrc-file "${NETRC_FILE}" -s -T "${localPath}" "${FTP_SITE_FAIRWAY}/${remotePath}"`, 30000);
+  await run(`curl ${ftpArgs('fairway')} -s -T "${localPath}" "${ftpBasis('fairway')}/${remotePath}"`, 30000);
 }
 
 const FW_SVG_PATTERNS = [
@@ -2072,7 +2090,6 @@ const FW_SVG_PATTERNS = [
 
 async function generateAndUploadFairwayBlogPost() {
   console.log('[fw-blog] Starte FairwayApp Blog-Generierung…');
-  setupFtpNetrc();
 
   // Dateien herunterladen
   await ftpGetFW('blog/index.html', '/tmp/fw-index.html');
